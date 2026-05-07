@@ -1,0 +1,485 @@
+syntax = "proto3";
+
+package ommo;
+
+message Vector3i
+{
+    sint32 x = 1;
+    sint32 y = 2;
+    sint32 z = 3;
+}
+
+message Vector3f
+{
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Vector4f
+{
+    float w = 1;
+    float x = 2;
+    float y = 3;
+    float z = 4;
+}
+
+message RawSensorData
+{
+    Vector3i mag = 1;
+    Vector3i gyro = 2;
+    Vector3i accel = 3;
+}
+
+enum ButtonState
+{
+    BUTTON_STATE_UNKNOWN = 0;
+    BUTTON_STATE_IDLE = 1;
+    BUTTON_STATE_UP = 2;
+    BUTTON_STATE_DOWN = 3;
+    BUTTON_STATE_LEFT = 4;
+    BUTTON_STATE_RIGHT = 5;
+    BUTTON_STATE_PRESSED = 6;
+}
+
+enum LatencyTimestampType
+{
+    LATENCY_TIMESTAMP_TYPE_UNKNOWN = 0;
+    LATENCY_TIMESTAMP_TYPE_SAMPLE = 1;
+    LATENCY_TIMESTAMP_TYPE_SERVICE_RECEIVED = 2;
+    LATENCY_TIMESTAMP_TYPE_SERVICE_SENT = 3;
+    LATENCY_TIMESTAMP_TYPE_SDK_RECEIVED = 4;
+}
+
+message LatencyTimestampData
+{
+    LatencyTimestampType timestamp_type = 1;
+    uint64 steady_timestamp_milliseconds = 2;
+    uint64 system_timestamp_milliseconds = 3;
+}
+
+message BatteryState
+{
+    int32 state_of_charge = 1;
+    int32 current = 2;
+    int32 remaining_capacity = 3;
+}
+
+message TrackingDeviceData
+{
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    uint32 basestation_angle = 3;
+    uint32 basestation_speed = 4;
+    uint32 timestamp = 5;
+
+    // button_status byte field has been deprecated
+    reserved 6;
+    reserved "button_status";
+
+    repeated RawSensorData raw_sensor_data = 7;
+    repeated Vector3f positions = 8;
+    repeated Vector4f quaternions = 9;
+    repeated float indicator_values = 10;
+    repeated ButtonState buttons = 11;
+    repeated float motion_indicators = 12;
+    repeated float bad_data_indicators = 13;
+    repeated LatencyTimestampData latency_timestamps = 14;
+    BatteryState battery_state = 15;
+}
+
+enum DeviceFusionMode
+{
+    DEVICE_FUSION_MODE_DEFAULT = 0;
+    DEVICE_FUSION_MODE_NO_FUSION = 1;
+    DEVICE_FUSION_MODE_MAG_ONLY_FUSION = 2;
+    DEVICE_FUSION_MODE_IMU_ONLY_FUSION = 3;
+    DEVICE_FUSION_MODE_FULL_FUSION = 4;
+}
+
+message SensorUnitDescriptor
+{
+    // sensor_unit_id has been deprecated
+    reserved 1;
+    reserved "sensor_unit_id";
+
+    Vector3i timestamp_offset = 2;
+    bool mag_present = 3;
+    float mag_scale = 4;
+    bool imu_present = 5;
+    float accel_scale = 6;
+    float gyro_scale = 7;
+    uint64 uuid = 8;
+}
+
+message DeviceDescriptor
+{
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    uint32 user_device_type = 3;
+    uint32 button_count = 4;
+    repeated SensorUnitDescriptor sensor_unit_descriptors = 5;
+    repeated DeviceFusionMode supported_fusion_modes = 6;
+
+    uint32 device_part_number = 7;
+    bool secure_device_info = 8;
+    // Not supported yet, to be added later
+    // uint32 production_date = 8;
+    // bool is_calibrated = 9;
+    // uint32 battery_charge_count = 10;
+    // Vector3f divot_position = 11;
+
+}
+
+message TrackingDevices
+{
+    repeated DeviceDescriptor devices = 1;
+}
+
+message TrackingDeviceEvent
+{
+    DeviceDescriptor device = 1;
+    bool connected = 2;
+}
+
+message TrackingDeviceDataStreamRequest
+{
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    uint32 field_mask = 3;
+
+    // raw_sensor_mask and processed_sensor_mask have been deprecated
+    reserved 4, 5;
+    reserved "raw_sensor_mask", "processed_sensor_mask";
+
+    uint32 report_interval = 6;
+    uint32 buffer_depth = 7;
+    DeviceFusionMode requested_fusion_mode = 8;
+    bool include_raw_sensor_data = 9;
+}
+
+message TrackingGroupDataStreamRequest
+{
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    uint32 field_mask = 3;
+    uint32 report_interval = 4;
+    uint32 buffer_depth = 5;
+    DeviceFusionMode requested_fusion_mode = 6;
+    bool include_raw_sensor_data = 7;
+}
+
+message TrackingDevicesRequest
+{
+}
+
+message TrackingDevicesEventStreamRequest
+{
+    uint32 buffer_depth = 1;
+    bool include_all_connected_devices = 2;
+}
+
+message TrackingGroupsEventStreamRequest
+{
+    uint32 buffer_depth = 1;
+    bool include_all_connected_devices = 2;
+}
+
+message TrackingGroup
+{
+    /*
+     * The siu uuid and port id combination will be used to uniquely identify
+     * the tracking group.
+     *
+     * This uuid/port_id combination is used to identify the tracking group
+     * to request data from in TrackingGroupDataStreamRequest
+     */
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    repeated DeviceDescriptor devices = 3;
+}
+
+message TrackingGroupEvent
+{
+    TrackingGroup tracking_group = 1;
+    bool connected = 2;
+}
+
+message DataFrameTrackingDevice
+{
+    uint32 siu_uuid = 1;
+    uint32 port_id = 2;
+    uint32 field_mask = 3;
+    DeviceFusionMode requested_fusion_mode = 4;
+    bool include_raw_sensor_data = 5;
+}
+
+message DataFrameStreamRequest
+{
+    repeated DataFrameTrackingDevice tracking_devices = 1;
+    uint32 report_interval = 2;
+    uint32 buffer_depth = 3;
+}
+
+message DataFrame
+{
+    repeated TrackingDeviceData device_data = 1;
+}
+
+enum HardwareStatus
+{
+    HARDWARE_STATUS_UNKNOWN = 0;
+    HARDWARE_STATUS_IDLE = 1;
+    HARDWARE_STATUS_SETTING_UP = 2;
+    HARDWARE_STATUS_WAITING_ON_COMMAND = 3;
+    HARDWARE_STATUS_RUNNING = 4;
+    HARDWARE_STATUS_ERROR = 5;
+}
+
+// Fields that are common to all hardware
+message CommonHardwareState
+{
+    bool connected = 1;
+    string serial_number = 2;
+    uint32 uuid = 3;
+    string usb_port_name = 4;
+    HardwareStatus hardware_status = 5;
+}
+
+enum DirectCommStatus
+{
+    DIRECT_COMM_NONE = 0;
+    DIRECT_COMM_IDLE = 1;
+    DIRECT_COMM_CONNECTED = 2;
+    DIRECT_COMM_DESCRIPTOR_REQUEST = 3;
+    DIRECT_COMM_CHANNEL_SEARCH = 4;
+}
+
+message SensorDeviceState
+{
+    uint32 port_number = 1;
+    uint32 mag_sensor_count = 2;
+}
+
+message ReceiverConnection
+{
+    uint32 uuid = 1;
+    uint32 time_slot = 2;
+}
+
+message BasestationHardwareState
+{
+    CommonHardwareState common_state = 1;
+    uint32 sync_channel = 2;
+    DirectCommStatus direct_comm_status = 3;
+    uint32 direct_comm_uuid = 4;
+    bool motor_running = 5;
+}
+
+message SIUHardwareState
+{
+    CommonHardwareState common_state = 1;
+    bool wireless = 2;
+    uint32 sync_channel = 3;
+    uint32 data_channel = 4;
+    repeated SensorDeviceState sensor_device_states = 5;
+}
+
+message WirelessReceiverHardwareState
+{
+    CommonHardwareState common_state = 1;
+    uint32 data_channel = 2;
+    repeated ReceiverConnection connected_sius = 3;
+}
+
+message HardwareStates
+{
+    repeated BasestationHardwareState basestation_states = 1;
+    repeated SIUHardwareState siu_states = 2;
+    repeated WirelessReceiverHardwareState wireless_receiver_states = 3;
+}
+
+message HardwareStatesRequest
+{
+}
+
+message BaseStationDataStreamRequest
+{
+}
+
+message SpecParamf
+{
+    float value = 1;
+    bool out_of_spec = 2;
+}
+
+message BaseStationData
+{
+    SpecParamf accel_figure_of_merit = 1;
+    SpecParamf max_phase_std = 2; // max std of magnet phase signal
+    SpecParamf max_phase_drift = 3; // max deviation from mean magnet phase signal
+    SpecParamf temp_diff_from_calib_c = 4; // difference from calibration temperature in C
+    SpecParamf mean_rotation_rate_hz = 5;
+    SpecParamf tilt_angle_deg = 6;
+    SpecParamf max_mag_rms_res = 7; // max magnet signal rms residual
+    SpecParamf accel_dc_magnitude_g = 8; // dc component of accelerometer in g
+}
+
+enum WirelessManagementRequestType
+{
+    WIRELESS_MANAGEMENT_REQUEST_NONE = 0;
+    WIRELESS_MANAGEMENT_REQUEST_ENABLE_PAIRING_MODE = 1;
+    WIRELESS_MANAGEMENT_REQUEST_DISABLE_PAIRING_MODE = 2;
+    WIRELESS_MANAGEMENT_REQUEST_GET_PAIRING_APPROVED_LIST = 3;
+    WIRELESS_MANAGEMENT_REQUEST_APPROVE_PAIRING = 4;
+    WIRELESS_MANAGEMENT_REQUEST_DENY_PAIRING = 5;
+    WIRELESS_MANAGEMENT_REQUEST_UNPAIR = 6;
+    WIRELESS_MANAGEMENT_REQUEST_GET_PAIRING_BLOCKED_LIST = 7;
+    WIRELESS_MANAGEMENT_REQUEST_BLOCK_PAIRING = 8;
+    WIRELESS_MANAGEMENT_REQUEST_UNBLOCK_PAIRING = 9;
+    WIRELESS_MANAGEMENT_REQUEST_CLEAR_BLOCKED_LIST = 10;
+    WIRELESS_MANAGEMENT_REQUEST_CLEAR_APPROVED_LIST = 11;
+    WIRELESS_MANAGEMENT_REQUEST_RESET_WIRELESS_CONFIG = 12;
+    WIRELESS_MANAGEMENT_REQUEST_SET_INTERVAL_LENGTH = 13;
+    WIRELESS_MANAGEMENT_REQUEST_APPROVE_INTERVAL_PAIRING = 14;
+    WIRELESS_MANAGEMENT_REQUEST_SLEEP_DEVICE = 15;
+    WIRELESS_MANAGEMENT_REQUEST_WAKE_DEVICE = 16;
+    WIRELESS_MANAGEMENT_REQUEST_GET_PAIRING_APPROVED_INTERVAL_LIST = 17;
+}
+
+message WirelessManagementRequest
+{
+    WirelessManagementRequestType request_type = 1;
+    uint32 siu_uuid = 2;
+    uint32 interval_length = 3;
+}
+
+enum WirelessManagementEventType
+{
+    WIRELESS_MANAGEMENT_EVENT_NONE = 0;
+    WIRELESS_MANAGEMENT_EVENT_PAIRING_REQUEST = 1;
+    WIRELESS_MANAGEMENT_EVENT_PAIRING_TIMEOUT = 2;
+    WIRELESS_MANAGEMENT_EVENT_PAIRING_APPROVED_LIST = 3;
+    WIRELESS_MANAGEMENT_EVENT_PAIRING_BLOCKED_LIST = 4;
+    WIRELESS_MANAGEMENT_EVENT_REQUEST_ACK = 5;
+    WIRELESS_MANAGEMENT_EVENT_REQUEST_ERROR = 6;
+    WIRELESS_MANAGEMENT_EVENT_PAIRING_APPROVED_INTERVAL_LIST = 7;
+}
+
+enum WirelessManagementError
+{
+    WIRELESS_MANAGEMENT_ERROR_NONE = 0;
+    WIRELESS_MANAGEMENT_ERROR_UUID_NOT_FOUND = 1;
+    WIRELESS_MANAGEMENT_ERROR_SETTINGS_SAVE_FAILED = 2;
+    WIRELESS_MANAGEMENT_ERROR_COULD_NOT_REMOVE_FROM_PREVIOUS_LIST = 3;
+    WIRELESS_MANAGEMENT_ERROR_UUID_ALREADY_EXISTS = 4;
+    WIRELESS_MANAGEMENT_ERROR_FAILED_TO_CLEAR_LISTS = 5;
+    WIRELESS_MANAGEMENT_ERROR_SLEEP_NOT_SUPPORTED_IN_CURRENT_MODE = 6;
+    WIRELESS_MANAGEMENT_ERROR_DEVICE_ALREADY_SLEEPING = 7;
+    WIRELESS_MANAGEMENT_ERROR_DEVICE_ALREADY_AWAKE = 8;
+}
+
+message DevicePairingInformation
+{
+   repeated uint32 device_part_num = 1;
+}
+
+message PairingInformation
+{
+   uint32 siu_uuid = 1;
+   repeated DevicePairingInformation device_pairing_information = 2;
+}
+
+message WirelessManagementEvent
+{
+    WirelessManagementEventType event_type = 1;
+    WirelessManagementRequestType client_request_type = 2;
+    repeated uint32 siu_uuids = 3;
+    WirelessManagementError request_error = 4;
+    PairingInformation pairing_information = 5;
+}
+
+message DataLoggingRequest
+{
+    bool enable_logging = 1;
+    string directory = 2;
+    string file_name = 3;
+    bool overwrite = 4;
+}
+
+enum DataLogState
+{
+    DATA_LOG_STATE_UNKNOWN = 0;
+    DATA_LOG_STATE_ENABLED = 1;
+    DATA_LOG_STATE_DISABLED = 2;
+    DATA_LOG_STATE_ERROR = 3;
+}
+
+message BaseStationMotorRunningRequest
+{
+    bool active = 1;
+}
+
+message BaseStationMotorRunningResponse
+{
+    bool success = 1;
+}
+
+message DataLoggingResponse
+{
+    DataLogState log_state = 1;
+}
+
+message SelectReferenceDeviceRequest
+{
+    bool enabled = 1;
+    uint32 siu_uuid = 2;
+    uint32 port_num = 3;
+}
+
+message SelectReferenceDeviceResponse
+{
+    bool success = 1;
+}
+
+message ReferenceDeviceState
+{
+    bool is_enabled = 1;
+    uint32 siu_uuid = 2;
+    uint32 port_num = 3;
+}
+
+message ReferenceDeviceStateStreamRequest
+{
+    bool include_initial_state = 2;
+}
+
+service CoreService
+{
+    rpc GetTrackingDevices (TrackingDevicesRequest) returns (TrackingDevices);
+    rpc GetHardwareStates (HardwareStatesRequest) returns (HardwareStates);
+
+    rpc OpenTrackingDevicesEventStream (TrackingDevicesEventStreamRequest) returns (stream TrackingDeviceEvent);
+    rpc OpenTrackingGroupsEventStream (TrackingGroupsEventStreamRequest) returns (stream TrackingGroupEvent);
+
+    rpc OpenTrackingDeviceDataStream (TrackingDeviceDataStreamRequest) returns (stream TrackingDeviceData);
+    rpc OpenTrackingGroupDataStream (TrackingGroupDataStreamRequest) returns (stream DataFrame);
+    rpc OpenDataFrameStream (DataFrameStreamRequest) returns (stream DataFrame);
+
+    rpc OpenBaseStationDataStream (BaseStationDataStreamRequest) returns (stream BaseStationData);
+
+    rpc OpenWirelessManagementStream (stream WirelessManagementRequest) returns (stream WirelessManagementEvent);
+
+    rpc SendDataLoggingRequest(DataLoggingRequest) returns (DataLoggingResponse);
+
+    rpc SetBaseStationMotorRunning (BaseStationMotorRunningRequest) returns (BaseStationMotorRunningResponse);
+
+    /*
+     * EXPERIMENTAL
+     * Reference device selection is an experimental feature and
+     * the data returned in this mode is subject to change
+     */
+    rpc SelectReferenceDevice(SelectReferenceDeviceRequest) returns (SelectReferenceDeviceResponse);
+
+    rpc OpenReferenceDeviceStateStream(ReferenceDeviceStateStreamRequest) returns (stream ReferenceDeviceState);
+}

@@ -1,0 +1,523 @@
+[2026-04-21 16:06:56.943] [info] [main.cpp:main:460] [thread 5372] ommo_service version v0.22.0, alg version v0.16.23
+[2026-04-21 16:06:56.943] [info] [main.cpp:main:469] [thread 5372] Checking for service runtime options
+[2026-04-21 16:06:57.335] [info] [main.cpp:main:538] [thread 5372] Loading splash screen
+[2026-04-21 16:06:57.396] [info] [BatchedLogger.cpp:ommo::BatchedLogger::Start:37] [thread 5372] Creating logging thread.
+[2026-04-21 16:06:57.400] [info] [ommoDataRouter.cpp:ommoDataRouter::Start:82] [thread 5372] Creating reader thread
+[2026-04-21 16:06:57.406] [info] [wireless_pairing_manager.cpp:WirelessPairingManager::LoadApprovedIntervalList:166] [thread 5372] Application settings do not contain wireless pairing approved interval list
+[2026-04-21 16:06:57.406] [info] [wireless_pairing_manager.cpp:WirelessPairingManager::LoadBlockedList:229] [thread 5372] Application settings do not contain wireless pairing blocked list
+[2026-04-21 16:06:57.407] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::Start:86] [thread 5372] Creating USB Notifier thread.
+[2026-04-21 16:06:57.407] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::RegisterWithOS:560] [thread 8272] Registering for USB events with OS.
+[2026-04-21 16:06:57.408] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:691] [thread 8272] Successfully registered for USB device notifications
+[2026-04-21 16:06:57.411] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5372] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.411] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5372] Adding serial interface 0 at COM3
+[2026-04-21 16:06:57.411] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5372] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.411] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11220] Added hardware 06BCA430D7 with uuid 3164877015 to UI State Manager
+[2026-04-21 16:06:57.412] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 06BCA430D7: Creating thread. port=COM3 pid=84
+[2026-04-21 16:06:57.412] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 14168] Wireless Receiver, 06BCA430D7: Opening port COM3
+[2026-04-21 16:06:57.412] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14168] Setting up port on \\.\COM3
+[2026-04-21 16:06:57.412] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5372] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06DB3D393E communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.413] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5372] Adding serial interface 0 at COM5
+[2026-04-21 16:06:57.413] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5372] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.413] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11220] Added hardware 06DB3D393E with uuid 3678222654 to UI State Manager
+[2026-04-21 16:06:57.413] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 06DB3D393E: Creating thread. port=COM5 pid=84
+[2026-04-21 16:06:57.413] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 7276] Wireless Receiver, 06DB3D393E: Opening port COM5
+[2026-04-21 16:06:57.413] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 7276] Setting up port on \\.\COM5
+[2026-04-21 16:06:57.414] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5372] Found Ommo hardware vendor_id:0x3334 product_id:0x9 serial_number:01C119BF94 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-04-21 16:06:57.414] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Setting up wireless receiver
+[2026-04-21 16:06:57.414] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing Initial Ping
+[2026-04-21 16:06:57.414] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 14168] Wireless Receiver, 06BCA430D7: Sending Ping
+[2026-04-21 16:06:57.414] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5372] Adding serial interface 0 at COM4
+[2026-04-21 16:06:57.414] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5372] Pushing hardware event to queue - adding Base Station
+[2026-04-21 16:06:57.414] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11220] Added hardware 01C119BF94 with uuid 3239690132 to UI State Manager
+[2026-04-21 16:06:57.414] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 14168] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_PING
+[2026-04-21 16:06:57.414] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing FW Version String
+[2026-04-21 16:06:57.414] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Basestation, 01C119BF94: Creating thread. port=COM4 pid=9
+[2026-04-21 16:06:57.414] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting Firmware Version String
+[2026-04-21 16:06:57.415] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 9684] Basestation, 01C119BF94: Opening port COM4
+[2026-04-21 16:06:57.415] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 9684] Setting up port on \\.\COM4
+[2026-04-21 16:06:57.415] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5372] Found Ommo hardware vendor_id:0x3334 product_id:0x55 serial_number:0611652124 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.415] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Setting up wireless receiver
+[2026-04-21 16:06:57.415] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing Initial Ping
+[2026-04-21 16:06:57.415] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 7276] Wireless Receiver, 06DB3D393E: Sending Ping
+[2026-04-21 16:06:57.415] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5372] Adding serial interface 0 at COM6
+[2026-04-21 16:06:57.415] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5372] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.415] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11220] Added hardware 0611652124 with uuid 291840292 to UI State Manager
+[2026-04-21 16:06:57.416] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 0611652124: Creating thread. port=COM6 pid=85
+[2026-04-21 16:06:57.416] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 4360] Wireless Receiver, 0611652124: Opening port COM6
+[2026-04-21 16:06:57.416] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 4360] Setting up port on \\.\COM6
+[2026-04-21 16:06:57.417] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:86] [thread 9684] Basestation, 01C119BF94: SM: Starting base station
+[2026-04-21 16:06:57.417] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:99] [thread 9684] Basestation, 01C119BF94: SM: Queueing Initial Ping
+[2026-04-21 16:06:57.417] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::LoadChannelHoppingSettings:433] [thread 9684] Loaded channel hopping settings. Sync: false, Data: false
+[2026-04-21 16:06:57.417] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 9684] Basestation, 01C119BF94: Sending Ping
+[2026-04-21 16:06:57.417] [warning] [BatchedLogger.cpp:ommo::BatchedLogger::LogMessage:96] [thread 9684] Packet with unknown packetId 0 received. Discarding data.
+[2026-04-21 16:06:57.418] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 14168] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:06:57.418] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 4360] Wireless Receiver, 0611652124: SM: Setting up wireless receiver
+[2026-04-21 16:06:57.418] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 14168] Wireless Receiver, 06BCA430D7: Version string received: v7013 
+[2026-04-21 16:06:57.418] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing FW Version
+[2026-04-21 16:06:57.418] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting Firmware Version
+[2026-04-21 16:06:57.418] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing Initial Ping
+[2026-04-21 16:06:57.418] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 4360] Wireless Receiver, 0611652124: Sending Ping
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 14168] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 7276] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_PING
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing FW Version String
+[2026-04-21 16:06:57.419] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting Firmware Version String
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 4360] Wireless Receiver, 0611652124: Received OMMO_COMMAND_PING
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing FW Version String
+[2026-04-21 16:06:57.419] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 4360] Wireless Receiver, 0611652124: Requesting Firmware Version String
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 14168] Wireless Receiver, 06BCA430D7: firmware version Bootloader=7010 Application=7013
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing IsCrashed
+[2026-04-21 16:06:57.419] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting firmware crash state
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 7276] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 14168] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 14168] Wireless Receiver, 06BCA430D7: Firmware has not crashed, continue startup
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing Read Device Info
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing Get UUID
+[2026-04-21 16:06:57.419] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting Device Info type 193 on port 0
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 7276] Wireless Receiver, 06DB3D393E: Version string received: v7016 
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing FW Version
+[2026-04-21 16:06:57.419] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting Firmware Version
+[2026-04-21 16:06:57.419] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 4360] Wireless Receiver, 0611652124: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:06:57.419] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 14168] Wireless Receiver, 06BCA430D7: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 4360] Wireless Receiver, 0611652124: Version string received: v7016 
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing FW Version
+[2026-04-21 16:06:57.420] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 4360] Wireless Receiver, 0611652124: Requesting Firmware Version
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 7276] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:06:57.420] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting UUID
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 7276] Wireless Receiver, 06DB3D393E: firmware version Bootloader=7016 Application=7016
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 14168] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 4360] Wireless Receiver, 0611652124: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 14168] Wireless Receiver, 06BCA430D7: UUID Received: 3164877015
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Queueing Get Crash Report
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 14168] Wireless Receiver, 06BCA430D7: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:06:57.420] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 14168] Wireless Receiver, 06BCA430D7: Requesting crash report
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing IsCrashed
+[2026-04-21 16:06:57.420] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting firmware crash state
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 4360] Wireless Receiver, 0611652124: firmware version Bootloader=7016 Application=7016
+[2026-04-21 16:06:57.420] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing IsCrashed
+[2026-04-21 16:06:57.420] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 4360] Wireless Receiver, 0611652124: Requesting firmware crash state
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 7276] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 7276] Wireless Receiver, 06DB3D393E: Firmware has not crashed, continue startup
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing Read Device Info
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing Get UUID
+[2026-04-21 16:06:57.421] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting Device Info type 193 on port 0
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 4360] Wireless Receiver, 0611652124: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 4360] Wireless Receiver, 0611652124: Firmware has not crashed, continue startup
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing Read Device Info
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing Get UUID
+[2026-04-21 16:06:57.421] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 4360] Wireless Receiver, 0611652124: Requesting Device Info type 193 on port 0
+[2026-04-21 16:06:57.421] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 7276] Wireless Receiver, 06DB3D393E: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:06:57.421] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting UUID
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 7276] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 7276] Wireless Receiver, 06DB3D393E: UUID Received: 3678222654
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Queueing Get Crash Report
+[2026-04-21 16:06:57.421] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 7276] Wireless Receiver, 06DB3D393E: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:06:57.421] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 7276] Wireless Receiver, 06DB3D393E: Requesting crash report
+[2026-04-21 16:06:57.425] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 4360] Wireless Receiver, 0611652124: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:06:57.425] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 14168] Wireless Receiver, 06BCA430D7: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:06:57.425] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 4360] Wireless Receiver, 0611652124: Requesting UUID
+[2026-04-21 16:06:57.425] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 4360] Wireless Receiver, 0611652124: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:06:57.425] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 4360] Wireless Receiver, 0611652124: UUID Received: 291840292
+[2026-04-21 16:06:57.425] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 4360] Wireless Receiver, 0611652124: SM: Queueing Get Crash Report
+[2026-04-21 16:06:57.425] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 4360] Wireless Receiver, 0611652124: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:06:57.425] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 4360] Wireless Receiver, 0611652124: Requesting crash report
+[2026-04-21 16:06:57.426] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 7276] Wireless Receiver, 06DB3D393E: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:06:57.429] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 4360] Wireless Receiver, 0611652124: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:06:57.440] [info] [rpc_ommo_server_manager.cpp:rpcOmmoServerManager::ServerThreadedFunction:185] [thread 9148] Server listening on localhost:50051
+[2026-04-21 16:06:57.441] [info] [rpc_get_connected_devices_server_call_data.cpp:rpcGetConnectedDevicesServerCallData::rpcGetConnectedDevicesServerCallData:15] [thread 9148] CallData 0x1a9d848d180 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_add_data_listener_server_call_data.cpp:rpcAddDataListenerServerCallData::rpcAddDataListenerServerCallData:20] [thread 9148] CallData 0x1a9d848da50 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_add_device_list_change_listener_server_call_data.cpp:rpcAddDeviceListChangeListenerServerCallData::rpcAddDeviceListChangeListenerServerCallData:17] [thread 9148] CallData 0x1a9d848e5c0 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_data_frame_listener_server_call_data.cpp:rpcOpenDataFrameListenerServerCallData::rpcOpenDataFrameListenerServerCallData:20] [thread 9148] CallData 0x1a9d848f0e0 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_wireless_management_stream_server_call_data.cpp:RpcOpenWirelessManagementStreamServerCallData::RpcOpenWirelessManagementStreamServerCallData:24] [thread 9148] CallData 0x1a9d85a58d0 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_tracking_group_event_stream_server_call_data.cpp:RpcOpenTrackingGroupEventStreamServerCallData::RpcOpenTrackingGroupEventStreamServerCallData:20] [thread 9148] CallData 0x1a9d8490520 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_tracking_group_data_stream_server_call_data.cpp:RpcOpenTrackingGroupDataStreamServerCallData::RpcOpenTrackingGroupDataStreamServerCallData:20] [thread 9148] CallData 0x1a9d85a65d0 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_base_station_data_stream_server_call_data.cpp:RpcOpenBaseStationDataStreamServerCallData::RpcOpenBaseStationDataStreamServerCallData:20] [thread 9148] CallData 0x1a9d85aea00 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_select_reference_device_server_call_data.cpp:RpcSelectReferenceDeviceServerCallData::RpcSelectReferenceDeviceServerCallData:16] [thread 9148] CallData 0x1a9d85af560 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_send_data_logging_request_server_call_data.cpp:RpcSendDataLoggingRequestServerCallData::RpcSendDataLoggingRequestServerCallData:16] [thread 9148] CallData 0x1a9d7792800 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_set_base_station_motor_running_server_call_data.cpp:RpcSetBaseStationMotorRunningServerCallData::RpcSetBaseStationMotorRunningServerCallData:16] [thread 9148] CallData 0x1a9d85afe30 ready.
+[2026-04-21 16:06:57.441] [info] [rpc_open_reference_device_state_stream_server_call_data.cpp:RpcOpenReferenceDeviceStateStreamServerCallData::RpcOpenReferenceDeviceStateStreamServerCallData:16] [thread 9148] CallData 0x1a9d85b0700 ready for ReferenceDeviceStateStream.
+[2026-04-21 16:06:57.520] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:207] [thread 9684] Basestation, 01C119BF94: Removed timed out command from ack queue. New size: 0
+[2026-04-21 16:06:57.520] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:218] [thread 9684] Basestation, 01C119BF94: Ping timed out, continuing startup.
+[2026-04-21 16:06:57.520] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:117] [thread 9684] Basestation, 01C119BF94: SM: Queueing FW Version String
+[2026-04-21 16:06:57.520] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 9684] Basestation, 01C119BF94: Requesting Firmware Version String
+[2026-04-21 16:06:57.520] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:970] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:06:57.520] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:986] [thread 9684] Basestation, 01C119BF94: Version string received: v7016 
+[2026-04-21 16:06:57.520] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:128] [thread 9684] Basestation, 01C119BF94: SM: Queueing FW Version
+[2026-04-21 16:06:57.520] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 9684] Basestation, 01C119BF94: Requesting Firmware Version
+[2026-04-21 16:06:57.524] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1011] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:06:57.524] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1027] [thread 9684] Basestation, 01C119BF94: firmware version: Bootloader=7016 Application=7016
+[2026-04-21 16:06:57.524] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:142] [thread 9684] Basestation, 01C119BF94: SM: Queueing IsCrashed
+[2026-04-21 16:06:57.524] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 9684] Basestation, 01C119BF94: Requesting firmware crash state
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1088] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1110] [thread 9684] Basestation, 01C119BF94: Firmware has not crashed, continue startup
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:158] [thread 9684] Basestation, 01C119BF94: SM: Queueing Read Device Info
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:180] [thread 9684] Basestation, 01C119BF94: SM: Queueing Get Crash Report
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:195] [thread 9684] Basestation, 01C119BF94: SM: Queueing Pairing Lists Updates
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::SendBaseStationPairingModeCommand:2154] [thread 9684] Basestation, 01C119BF94: Updating base station pairing mode: false
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::UpdateBaseStationWhiteList:2124] [thread 9684] Basestation, 01C119BF94: Updating pairing approved list on base station
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::UpdateBaseStationBlackList:2139] [thread 9684] Basestation, 01C119BF94: Updating pairing blocked list on base station
+[2026-04-21 16:06:57.528] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:207] [thread 9684] Basestation, 01C119BF94: SM: Queueing Block Geometry
+[2026-04-21 16:06:57.528] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 9684] Basestation, 01C119BF94: Requesting Device Info type 193 on port 0
+[2026-04-21 16:06:57.551] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1118] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_READ_DEVICE_INFO
+[2026-04-21 16:06:57.551] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1131] [thread 9684] Basestation, 01C119BF94: Requested DeviceInfoField = DEVICE_INFO_FIELD_MANUFACTURING
+[2026-04-21 16:06:57.551] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 9684] Basestation, 01C119BF94: Requesting crash report
+[2026-04-21 16:06:57.554] [warning] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2639] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:06:57.557] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1132] [thread 9684] Basestation, 01C119BF94: Turning off base station pairing mode
+[2026-04-21 16:06:57.558] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_PAIRING_MODE, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:06:57.559] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1062] [thread 9684] Basestation, 01C119BF94: Updating wireless approved list for base station
+[2026-04-21 16:06:57.560] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_WHITELIST, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:06:57.560] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1100] [thread 9684] Basestation, 01C119BF94: Updating wireless blocked list for base station
+[2026-04-21 16:06:57.564] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_BLACKLIST, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:06:57.565] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:623] [thread 9684] Basestation, 01C119BF94: Requesting drive geometry
+[2026-04-21 16:06:57.569] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1152] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_BLOCK_DEV_REQ_GEOMETRY
+[2026-04-21 16:06:57.569] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1169] [thread 9684] Basestation, 01C119BF94: Block Count 14336, Block Size 512
+[2026-04-21 16:06:57.570] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1722] [thread 7120] Basestation, 01C119BF94: Constants file download thread started
+[2026-04-21 16:06:57.876] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:872] [thread 8272] System is resuming from suspend (S0). Sending system resume notification.
+[2026-04-21 16:06:57.876] [info] [IOManager.cpp:ommo::IOManager::HandleSystemResume:311] [thread 8272] System resume notification received. Scanning for connected hardware.
+[2026-04-21 16:06:57.882] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.887] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM3
+[2026-04-21 16:06:57.887] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.887] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06BCA430D7, hardware stream already exists
+[2026-04-21 16:06:57.888] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06DB3D393E communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.889] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM5
+[2026-04-21 16:06:57.890] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.890] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06DB3D393E, hardware stream already exists
+[2026-04-21 16:06:57.897] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x9 serial_number:01C119BF94 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-04-21 16:06:57.900] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM4
+[2026-04-21 16:06:57.900] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Base Station
+[2026-04-21 16:06:57.900] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 01C119BF94, hardware stream already exists
+[2026-04-21 16:06:57.902] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x55 serial_number:0611652124 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:06:57.902] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM6
+[2026-04-21 16:06:57.902] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:06:57.902] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 0611652124, hardware stream already exists
+[2026-04-21 16:06:58.601] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1792] [thread 7120] Basestation, 01C119BF94: Constants file hash match, using local version of constants file
+[2026-04-21 16:06:58.601] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1913] [thread 7120] Basestation, 01C119BF94: Constants file download complete
+[2026-04-21 16:06:58.601] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:218] [thread 7120] Basestation, 01C119BF94: SM: Queueing ESB disable
+[2026-04-21 16:06:58.601] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:231] [thread 7120] Basestation, 01C119BF94: SM: Queueing channel scan
+[2026-04-21 16:06:58.604] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:979] [thread 9684] Basestation, 01C119BF94: Setting wireless communication mode to 0
+[2026-04-21 16:06:58.607] [warning] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2629] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_SET_ESB_ENABLED, Response: OMMO_ACK_INVALID_MODE
+[2026-04-21 16:06:58.608] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:947] [thread 9684] Basestation, 01C119BF94: Send deep channel scan request
+[2026-04-21 16:07:00.004] [info] [rpc_get_connected_devices_server_call_data.cpp:rpcGetConnectedDevicesServerCallData::Proceed:25] [thread 9148] CallData 0x1a9d848d180 connected to client.
+[2026-04-21 16:07:00.004] [info] [rpc_get_connected_devices_server_call_data.cpp:rpcGetConnectedDevicesServerCallData::rpcGetConnectedDevicesServerCallData:15] [thread 9148] CallData 0x1a9d3fb15b0 ready.
+[2026-04-21 16:07:02.536] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1204] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_USB_CHANNEL_SCAN_TRAFFIC_AND_ED
+[2026-04-21 16:07:02.536] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1218] [thread 9684] Basestation, 01C119BF94: deep channel scan response received.
+[2026-04-21 16:07:02.536] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 9684] Deep Scan Channel 5: Value: 32
+[2026-04-21 16:07:02.536] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 9684] Deep Scan Channel 3: Value: 31
+[2026-04-21 16:07:02.536] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 9684] Deep Scan Channel 6: Value: 27
+[2026-04-21 16:07:02.536] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 9684] Deep Scan Channel 34: Value: 33
+[2026-04-21 16:07:02.536] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 9684] Deep Scan Channel 25: Value: 29
+[2026-04-21 16:07:02.536] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1243] [thread 9684] Basestation, 01C119BF94: Setting 6 as sync channel
+[2026-04-21 16:07:02.536] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:241] [thread 9684] Basestation, 01C119BF94: SM: Queueing Sync Channel
+[2026-04-21 16:07:02.537] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:864] [thread 9684] Basestation, 01C119BF94: Setting sync channel: 6
+[2026-04-21 16:07:02.538] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:251] [thread 9684] Basestation, 01C119BF94: SM: Queueing Enable ESB
+[2026-04-21 16:07:02.538] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:276] [thread 9684] Basestation, 01C119BF94: SM: Queueing Auto Motor Behavior (auto_on=0, auto_off=0, brake=1)
+[2026-04-21 16:07:02.538] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_USB_SET_SYNCH_CH_ID, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:07:02.538] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:979] [thread 9684] Basestation, 01C119BF94: Setting wireless communication mode to 1
+[2026-04-21 16:07:02.538] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_SET_ESB_ENABLED, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:07:02.539] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:998] [thread 9684] Basestation, 01C119BF94: Setting motor auto behavior (auto_start=0, auto_stop=0, auto_brake=1)
+[2026-04-21 16:07:02.539] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:289] [thread 9684] Basestation, 01C119BF94: SM: Queueing Get Packet Descriptor
+[2026-04-21 16:07:02.539] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 9684] Basestation, 01C119BF94: OMMO_COMMAND_SET_AUTO_MOTOR, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:07:02.595] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:836] [thread 9684] Basestation, 01C119BF94: Received OMMO_COMMAND_GET_PACKET_DESCRIPTOR
+[2026-04-21 16:07:02.596] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::GetPacketId:385] [thread 9684] Basestation, 01C119BF94: Returning new packet_id for request. packet_id=0
+[2026-04-21 16:07:02.597] [info] [ommoDataRouter.cpp:ommoDataRouter::ProcessBasestationDescriptor:1350] [thread 9684] RBF Compensation files not specified. Compensation disabled
+[2026-04-21 16:07:02.597] [info] [ommoDataRouter.cpp:ommoDataRouter::ProcessBasestationDescriptor:1424] [thread 9684] Sent basestation registration to alg
+[2026-04-21 16:07:02.597] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:300] [thread 9684] Basestation, 01C119BF94: SM: Initial startup complete; waiting for listener to connect
+[2026-04-21 16:07:08.406] [warning] [BatchedLogger.cpp:ommo::BatchedLogger::LogMessage:96] [thread 6964] Packet with unknown packetId 0 received. Discarding data. (Logged 2 times in 10 seconds)
+[2026-04-21 16:07:16.206] [info] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:303] [thread 10068] Basestation successfully registered
+[2026-04-21 16:07:47.379] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:814] [thread 8272] Ommo Hardware disconnected with VID: 13108, PID: 84, Serial: 06BCA430D7
+[2026-04-21 16:07:47.379] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:286] [thread 8272] Received USB device removal event for 06BCA430D7
+[2026-04-21 16:07:47.379] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:293] [thread 8272] Device COM3 matched serial number 06BCA430D7. Adding to removal queue.
+[2026-04-21 16:07:47.379] [info] [IOManager.cpp:ommo::IOManager::RemoveDataStream:599] [thread 8272] Pushing hardware event to queue - removing Wireless Receiver
+[2026-04-21 16:07:47.379] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:768] [thread 11220] Removing hardware stream for port: COM3
+[2026-04-21 16:07:47.379] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 06BCA430D7: Shutdown initiated
+[2026-04-21 16:07:47.380] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:814] [thread 8272] Ommo Hardware disconnected with VID: 13108, PID: 84, Serial: 06DB3D393E
+[2026-04-21 16:07:47.380] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:286] [thread 8272] Received USB device removal event for 06DB3D393E
+[2026-04-21 16:07:47.380] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:293] [thread 8272] Device COM5 matched serial number 06DB3D393E. Adding to removal queue.
+[2026-04-21 16:07:47.380] [info] [IOManager.cpp:ommo::IOManager::RemoveDataStream:599] [thread 8272] Pushing hardware event to queue - removing Wireless Receiver
+[2026-04-21 16:07:47.382] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 11220] Wireless Receiver, 06BCA430D7: Thread destroyed. port=COM3 pid=84
+[2026-04-21 16:07:47.382] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 11220] Wireless Receiver, 06BCA430D7: Serial port closed.
+[2026-04-21 16:07:47.382] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 06BCA430D7: Shutdown initiated
+[2026-04-21 16:07:47.382] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 11220] Wireless Receiver, 06BCA430D7: No active thread to shutdown. port=COM3 pid=84
+[2026-04-21 16:07:47.382] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:768] [thread 11220] Removing hardware stream for port: COM5
+[2026-04-21 16:07:47.382] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 06DB3D393E: Shutdown initiated
+[2026-04-21 16:07:47.383] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:814] [thread 8272] Ommo Hardware disconnected with VID: 13108, PID: 9, Serial: 01C119BF94
+[2026-04-21 16:07:47.383] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:286] [thread 8272] Received USB device removal event for 01C119BF94
+[2026-04-21 16:07:47.383] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:293] [thread 8272] Device COM4 matched serial number 01C119BF94. Adding to removal queue.
+[2026-04-21 16:07:47.383] [info] [IOManager.cpp:ommo::IOManager::RemoveDataStream:599] [thread 8272] Pushing hardware event to queue - removing Basestation
+[2026-04-21 16:07:47.386] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 11220] Wireless Receiver, 06DB3D393E: Thread destroyed. port=COM5 pid=84
+[2026-04-21 16:07:47.387] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 11220] Wireless Receiver, 06DB3D393E: Serial port closed.
+[2026-04-21 16:07:47.387] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 06DB3D393E: Shutdown initiated
+[2026-04-21 16:07:47.387] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 11220] Wireless Receiver, 06DB3D393E: No active thread to shutdown. port=COM5 pid=84
+[2026-04-21 16:07:47.387] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:814] [thread 8272] Ommo Hardware disconnected with VID: 13108, PID: 85, Serial: 0611652124
+[2026-04-21 16:07:47.387] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:286] [thread 8272] Received USB device removal event for 0611652124
+[2026-04-21 16:07:47.387] [info] [IOManager.cpp:ommo::IOManager::USBRemoved:293] [thread 8272] Device COM6 matched serial number 0611652124. Adding to removal queue.
+[2026-04-21 16:07:47.387] [info] [IOManager.cpp:ommo::IOManager::RemoveDataStream:599] [thread 8272] Pushing hardware event to queue - removing Wireless Receiver
+[2026-04-21 16:07:47.388] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:768] [thread 11220] Removing hardware stream for port: COM4
+[2026-04-21 16:07:47.389] [info] [ommoDataRouter.cpp:ommoDataRouter::RemoveBasestation:1291] [thread 11220] Notifying clients that all devices have disconnected.
+[2026-04-21 16:07:47.390] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Basestation, 01C119BF94: Shutdown initiated
+[2026-04-21 16:07:47.394] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 11220] Basestation, 01C119BF94: Thread destroyed. port=COM4 pid=9
+[2026-04-21 16:07:47.394] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 11220] Basestation, 01C119BF94: Serial port closed.
+[2026-04-21 16:07:47.394] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Basestation, 01C119BF94: Shutdown initiated
+[2026-04-21 16:07:47.394] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 11220] Basestation, 01C119BF94: No active thread to shutdown. port=COM4 pid=9
+[2026-04-21 16:07:47.399] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:768] [thread 11220] Removing hardware stream for port: COM6
+[2026-04-21 16:07:47.399] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 0611652124: Shutdown initiated
+[2026-04-21 16:07:47.401] [info] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:318] [thread 10068] Base station deregistration success
+[2026-04-21 16:07:47.402] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 11220] Wireless Receiver, 0611652124: Thread destroyed. port=COM6 pid=85
+[2026-04-21 16:07:47.402] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 11220] Wireless Receiver, 0611652124: Serial port closed.
+[2026-04-21 16:07:47.402] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 11220] Wireless Receiver, 0611652124: Shutdown initiated
+[2026-04-21 16:07:47.402] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 11220] Wireless Receiver, 0611652124: No active thread to shutdown. port=COM6 pid=85
+[2026-04-21 16:08:25.644] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:805] [thread 8272] Ommo Hardware connected with VID: 13108, PID: 84, Serial: 06BCA430D7
+[2026-04-21 16:08:25.667] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.668] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM3
+[2026-04-21 16:08:25.668] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.668] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:59] [thread 11220] Hardware 3164877015 is already present in UI State Manager. Updating its state to: (Connected: Yes, Port: COM3, Wireless: No, Serial Number: 06BCA430D7)
+[2026-04-21 16:08:25.668] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 06BCA430D7: Creating thread. port=COM3 pid=84
+[2026-04-21 16:08:25.670] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 7236] Wireless Receiver, 06BCA430D7: Opening port COM3
+[2026-04-21 16:08:25.670] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 7236] Setting up port on \\.\COM3
+[2026-04-21 16:08:25.674] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Setting up wireless receiver
+[2026-04-21 16:08:25.675] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Initial Ping
+[2026-04-21 16:08:25.676] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 7236] Wireless Receiver, 06BCA430D7: Sending Ping
+[2026-04-21 16:08:25.678] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_PING
+[2026-04-21 16:08:25.678] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing FW Version String
+[2026-04-21 16:08:25.678] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting Firmware Version String
+[2026-04-21 16:08:25.680] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:08:25.680] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 7236] Wireless Receiver, 06BCA430D7: Version string received: v7013 
+[2026-04-21 16:08:25.680] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing FW Version
+[2026-04-21 16:08:25.680] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting Firmware Version
+[2026-04-21 16:08:25.681] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:08:25.681] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 7236] Wireless Receiver, 06BCA430D7: firmware version Bootloader=7010 Application=7013
+[2026-04-21 16:08:25.681] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing IsCrashed
+[2026-04-21 16:08:25.681] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting firmware crash state
+[2026-04-21 16:08:25.682] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:08:25.682] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 7236] Wireless Receiver, 06BCA430D7: Firmware has not crashed, continue startup
+[2026-04-21 16:08:25.682] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Read Device Info
+[2026-04-21 16:08:25.682] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Get UUID
+[2026-04-21 16:08:25.682] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting Device Info type 193 on port 0
+[2026-04-21 16:08:25.682] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 7236] Wireless Receiver, 06BCA430D7: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:08:25.683] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting UUID
+[2026-04-21 16:08:25.683] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:08:25.683] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 7236] Wireless Receiver, 06BCA430D7: UUID Received: 3164877015
+[2026-04-21 16:08:25.683] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Get Crash Report
+[2026-04-21 16:08:25.683] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:08:25.683] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 7236] Wireless Receiver, 06BCA430D7: Requesting crash report
+[2026-04-21 16:08:25.688] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 7236] Wireless Receiver, 06BCA430D7: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:08:25.728] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:805] [thread 8272] Ommo Hardware connected with VID: 13108, PID: 84, Serial: 06DB3D393E
+[2026-04-21 16:08:25.753] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.754] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM3
+[2026-04-21 16:08:25.754] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.754] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06BCA430D7, hardware stream already exists
+[2026-04-21 16:08:25.756] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06DB3D393E communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.756] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM5
+[2026-04-21 16:08:25.756] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.756] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:59] [thread 11220] Hardware 3678222654 is already present in UI State Manager. Updating its state to: (Connected: Yes, Port: COM5, Wireless: No, Serial Number: 06DB3D393E)
+[2026-04-21 16:08:25.757] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 06DB3D393E: Creating thread. port=COM5 pid=84
+[2026-04-21 16:08:25.757] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 6744] Wireless Receiver, 06DB3D393E: Opening port COM5
+[2026-04-21 16:08:25.757] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 6744] Setting up port on \\.\COM5
+[2026-04-21 16:08:25.760] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Setting up wireless receiver
+[2026-04-21 16:08:25.760] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing Initial Ping
+[2026-04-21 16:08:25.760] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 6744] Wireless Receiver, 06DB3D393E: Sending Ping
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 6744] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_PING
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing FW Version String
+[2026-04-21 16:08:25.761] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting Firmware Version String
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 6744] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 6744] Wireless Receiver, 06DB3D393E: Version string received: v7016 
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing FW Version
+[2026-04-21 16:08:25.761] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting Firmware Version
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 6744] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 6744] Wireless Receiver, 06DB3D393E: firmware version Bootloader=7016 Application=7016
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing IsCrashed
+[2026-04-21 16:08:25.761] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting firmware crash state
+[2026-04-21 16:08:25.761] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 6744] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 6744] Wireless Receiver, 06DB3D393E: Firmware has not crashed, continue startup
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing Read Device Info
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing Get UUID
+[2026-04-21 16:08:25.762] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting Device Info type 193 on port 0
+[2026-04-21 16:08:25.762] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 6744] Wireless Receiver, 06DB3D393E: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:08:25.762] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting UUID
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 6744] Wireless Receiver, 06DB3D393E: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 6744] Wireless Receiver, 06DB3D393E: UUID Received: 3678222654
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Queueing Get Crash Report
+[2026-04-21 16:08:25.762] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 6744] Wireless Receiver, 06DB3D393E: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:08:25.762] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 6744] Wireless Receiver, 06DB3D393E: Requesting crash report
+[2026-04-21 16:08:25.768] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 6744] Wireless Receiver, 06DB3D393E: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:08:25.862] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:805] [thread 8272] Ommo Hardware connected with VID: 13108, PID: 9, Serial: 01C119BF94
+[2026-04-21 16:08:25.890] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.892] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM3
+[2026-04-21 16:08:25.892] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.892] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06BCA430D7, hardware stream already exists
+[2026-04-21 16:08:25.893] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06DB3D393E communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.893] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM5
+[2026-04-21 16:08:25.893] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.893] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06DB3D393E, hardware stream already exists
+[2026-04-21 16:08:25.894] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x9 serial_number:01C119BF94 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-04-21 16:08:25.895] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM4
+[2026-04-21 16:08:25.895] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Base Station
+[2026-04-21 16:08:25.895] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:59] [thread 11220] Hardware 3239690132 is already present in UI State Manager. Updating its state to: (Connected: Yes, Port: COM4, Wireless: No, Serial Number: 01C119BF94)
+[2026-04-21 16:08:25.895] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Basestation, 01C119BF94: Creating thread. port=COM4 pid=9
+[2026-04-21 16:08:25.895] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 264] Basestation, 01C119BF94: Opening port COM4
+[2026-04-21 16:08:25.895] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 264] Setting up port on \\.\COM4
+[2026-04-21 16:08:25.898] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:86] [thread 264] Basestation, 01C119BF94: SM: Starting base station
+[2026-04-21 16:08:25.898] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:99] [thread 264] Basestation, 01C119BF94: SM: Queueing Initial Ping
+[2026-04-21 16:08:25.898] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 264] Basestation, 01C119BF94: Sending Ping
+[2026-04-21 16:08:25.898] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1567] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_PING
+[2026-04-21 16:08:25.898] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:117] [thread 264] Basestation, 01C119BF94: SM: Queueing FW Version String
+[2026-04-21 16:08:25.898] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 264] Basestation, 01C119BF94: Requesting Firmware Version String
+[2026-04-21 16:08:25.899] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:970] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:08:25.900] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:986] [thread 264] Basestation, 01C119BF94: Version string received: v7016 
+[2026-04-21 16:08:25.901] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:128] [thread 264] Basestation, 01C119BF94: SM: Queueing FW Version
+[2026-04-21 16:08:25.901] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 264] Basestation, 01C119BF94: Requesting Firmware Version
+[2026-04-21 16:08:25.903] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1011] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:08:25.903] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1027] [thread 264] Basestation, 01C119BF94: firmware version: Bootloader=7016 Application=7016
+[2026-04-21 16:08:25.903] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:142] [thread 264] Basestation, 01C119BF94: SM: Queueing IsCrashed
+[2026-04-21 16:08:25.903] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 264] Basestation, 01C119BF94: Requesting firmware crash state
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1088] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1110] [thread 264] Basestation, 01C119BF94: Firmware has not crashed, continue startup
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:158] [thread 264] Basestation, 01C119BF94: SM: Queueing Read Device Info
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:180] [thread 264] Basestation, 01C119BF94: SM: Queueing Get Crash Report
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:195] [thread 264] Basestation, 01C119BF94: SM: Queueing Pairing Lists Updates
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::SendBaseStationPairingModeCommand:2154] [thread 264] Basestation, 01C119BF94: Updating base station pairing mode: false
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::UpdateBaseStationWhiteList:2124] [thread 264] Basestation, 01C119BF94: Updating pairing approved list on base station
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::UpdateBaseStationBlackList:2139] [thread 264] Basestation, 01C119BF94: Updating pairing blocked list on base station
+[2026-04-21 16:08:25.905] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:207] [thread 264] Basestation, 01C119BF94: SM: Queueing Block Geometry
+[2026-04-21 16:08:25.905] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 264] Basestation, 01C119BF94: Requesting Device Info type 193 on port 0
+[2026-04-21 16:08:25.930] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1118] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_READ_DEVICE_INFO
+[2026-04-21 16:08:25.930] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1131] [thread 264] Basestation, 01C119BF94: Requested DeviceInfoField = DEVICE_INFO_FIELD_MANUFACTURING
+[2026-04-21 16:08:25.932] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 264] Basestation, 01C119BF94: Requesting crash report
+[2026-04-21 16:08:25.933] [warning] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2639] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:08:25.935] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1132] [thread 264] Basestation, 01C119BF94: Turning off base station pairing mode
+[2026-04-21 16:08:25.935] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_PAIRING_MODE, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:25.935] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1062] [thread 264] Basestation, 01C119BF94: Updating wireless approved list for base station
+[2026-04-21 16:08:25.935] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_WHITELIST, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:25.936] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:1100] [thread 264] Basestation, 01C119BF94: Updating wireless blocked list for base station
+[2026-04-21 16:08:25.939] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_USB_ESB_SET_BLACKLIST, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:25.939] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:623] [thread 264] Basestation, 01C119BF94: Requesting drive geometry
+[2026-04-21 16:08:25.944] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1152] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_BLOCK_DEV_REQ_GEOMETRY
+[2026-04-21 16:08:25.944] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1169] [thread 264] Basestation, 01C119BF94: Block Count 14336, Block Size 512
+[2026-04-21 16:08:25.944] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1722] [thread 10124] Basestation, 01C119BF94: Constants file download thread started
+[2026-04-21 16:08:25.974] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:805] [thread 8272] Ommo Hardware connected with VID: 13108, PID: 85, Serial: 0611652124
+[2026-04-21 16:08:25.996] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06BCA430D7 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.997] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM3
+[2026-04-21 16:08:25.997] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.997] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06BCA430D7, hardware stream already exists
+[2026-04-21 16:08:25.998] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x54 serial_number:06DB3D393E communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:25.998] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM5
+[2026-04-21 16:08:25.999] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:25.999] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 06DB3D393E, hardware stream already exists
+[2026-04-21 16:08:25.999] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x9 serial_number:01C119BF94 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-04-21 16:08:26.001] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM4
+[2026-04-21 16:08:26.001] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Base Station
+[2026-04-21 16:08:26.002] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11220] Skipping 01C119BF94, hardware stream already exists
+[2026-04-21 16:08:26.010] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 8272] Found Ommo hardware vendor_id:0x3334 product_id:0x55 serial_number:0611652124 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-04-21 16:08:26.011] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 8272] Adding serial interface 0 at COM6
+[2026-04-21 16:08:26.011] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 8272] Pushing hardware event to queue - adding Wireless Receiver
+[2026-04-21 16:08:26.011] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:59] [thread 11220] Hardware 291840292 is already present in UI State Manager. Updating its state to: (Connected: Yes, Port: COM6, Wireless: No, Serial Number: 0611652124)
+[2026-04-21 16:08:26.011] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11220] Wireless Receiver, 0611652124: Creating thread. port=COM6 pid=85
+[2026-04-21 16:08:26.014] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 2852] Wireless Receiver, 0611652124: Opening port COM6
+[2026-04-21 16:08:26.014] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 2852] Setting up port on \\.\COM6
+[2026-04-21 16:08:26.016] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:544] [thread 2852] Wireless Receiver, 0611652124: SM: Setting up wireless receiver
+[2026-04-21 16:08:26.016] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:555] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing Initial Ping
+[2026-04-21 16:08:26.016] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:420] [thread 2852] Wireless Receiver, 0611652124: Sending Ping
+[2026-04-21 16:08:26.021] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1598] [thread 2852] Wireless Receiver, 0611652124: Received OMMO_COMMAND_PING
+[2026-04-21 16:08:26.021] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:571] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing FW Version String
+[2026-04-21 16:08:26.021] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:498] [thread 2852] Wireless Receiver, 0611652124: Requesting Firmware Version String
+[2026-04-21 16:08:26.026] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1205] [thread 2852] Wireless Receiver, 0611652124: Received OMMO_COMMAND_FW_VERSION_STRING
+[2026-04-21 16:08:26.026] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1221] [thread 2852] Wireless Receiver, 0611652124: Version string received: v7016 
+[2026-04-21 16:08:26.027] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:582] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing FW Version
+[2026-04-21 16:08:26.027] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:483] [thread 2852] Wireless Receiver, 0611652124: Requesting Firmware Version
+[2026-04-21 16:08:26.028] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1246] [thread 2852] Wireless Receiver, 0611652124: Received OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:08:26.028] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1262] [thread 2852] Wireless Receiver, 0611652124: firmware version Bootloader=7016 Application=7016
+[2026-04-21 16:08:26.028] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:596] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing IsCrashed
+[2026-04-21 16:08:26.028] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:513] [thread 2852] Wireless Receiver, 0611652124: Requesting firmware crash state
+[2026-04-21 16:08:26.029] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1329] [thread 2852] Wireless Receiver, 0611652124: Received OMMO_COMMAND_IS_CRASHED
+[2026-04-21 16:08:26.029] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1351] [thread 2852] Wireless Receiver, 0611652124: Firmware has not crashed, continue startup
+[2026-04-21 16:08:26.029] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:612] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing Read Device Info
+[2026-04-21 16:08:26.029] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:628] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing Get UUID
+[2026-04-21 16:08:26.029] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:528] [thread 2852] Wireless Receiver, 0611652124: Requesting Device Info type 193 on port 0
+[2026-04-21 16:08:26.029] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2273] [thread 2852] Wireless Receiver, 0611652124: OMMO_COMMAND_READ_DEVICE_INFO, Response: OMMO_ACK_UNKNOWN_COMMAND
+[2026-04-21 16:08:26.030] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:467] [thread 2852] Wireless Receiver, 0611652124: Requesting UUID
+[2026-04-21 16:08:26.034] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1176] [thread 2852] Wireless Receiver, 0611652124: Received OMMO_COMMAND_GET_UUID
+[2026-04-21 16:08:26.035] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1198] [thread 2852] Wireless Receiver, 0611652124: UUID Received: 291840292
+[2026-04-21 16:08:26.035] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:644] [thread 2852] Wireless Receiver, 0611652124: SM: Queueing Get Crash Report
+[2026-04-21 16:08:26.035] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:659] [thread 2852] Wireless Receiver, 0611652124: SM: Initial startup complete; waiting for wireless device to connect
+[2026-04-21 16:08:26.035] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:931] [thread 2852] Wireless Receiver, 0611652124: Requesting crash report
+[2026-04-21 16:08:26.037] [warning] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessAckResponse:2285] [thread 2852] Wireless Receiver, 0611652124: OMMO_COMMAND_GET_CRASH_REPORT, Response: OMMO_ACK_NOT_FOUND
+[2026-04-21 16:08:26.975] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1792] [thread 10124] Basestation, 01C119BF94: Constants file hash match, using local version of constants file
+[2026-04-21 16:08:26.975] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ConstantsFileThread:1913] [thread 10124] Basestation, 01C119BF94: Constants file download complete
+[2026-04-21 16:08:26.975] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:218] [thread 10124] Basestation, 01C119BF94: SM: Queueing ESB disable
+[2026-04-21 16:08:26.975] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:231] [thread 10124] Basestation, 01C119BF94: SM: Queueing channel scan
+[2026-04-21 16:08:26.979] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:979] [thread 264] Basestation, 01C119BF94: Setting wireless communication mode to 0
+[2026-04-21 16:08:26.981] [warning] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2629] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_SET_ESB_ENABLED, Response: OMMO_ACK_INVALID_MODE
+[2026-04-21 16:08:26.982] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:947] [thread 264] Basestation, 01C119BF94: Send deep channel scan request
+[2026-04-21 16:08:31.012] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1204] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_USB_CHANNEL_SCAN_TRAFFIC_AND_ED
+[2026-04-21 16:08:31.012] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1218] [thread 264] Basestation, 01C119BF94: deep channel scan response received.
+[2026-04-21 16:08:31.012] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 264] Deep Scan Channel 38: Value: 47
+[2026-04-21 16:08:31.012] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 264] Deep Scan Channel 5: Value: 43
+[2026-04-21 16:08:31.012] [warning] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:75] [thread 264] Deep Scan Channel 5 is already in use by another device.
+[2026-04-21 16:08:31.012] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 264] Deep Scan Channel 35: Value: 43
+[2026-04-21 16:08:31.012] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 264] Deep Scan Channel 9: Value: 31
+[2026-04-21 16:08:31.012] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 264] Deep Scan Channel 11: Value: 26
+[2026-04-21 16:08:31.012] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1243] [thread 264] Basestation, 01C119BF94: Setting 11 as sync channel
+[2026-04-21 16:08:31.012] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:241] [thread 264] Basestation, 01C119BF94: SM: Queueing Sync Channel
+[2026-04-21 16:08:31.012] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:864] [thread 264] Basestation, 01C119BF94: Setting sync channel: 11
+[2026-04-21 16:08:31.016] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:251] [thread 264] Basestation, 01C119BF94: SM: Queueing Enable ESB
+[2026-04-21 16:08:31.016] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:276] [thread 264] Basestation, 01C119BF94: SM: Queueing Auto Motor Behavior (auto_on=0, auto_off=0, brake=1)
+[2026-04-21 16:08:31.016] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_USB_SET_SYNCH_CH_ID, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:31.016] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:979] [thread 264] Basestation, 01C119BF94: Setting wireless communication mode to 1
+[2026-04-21 16:08:31.016] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_SET_ESB_ENABLED, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:31.017] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:998] [thread 264] Basestation, 01C119BF94: Setting motor auto behavior (auto_start=0, auto_stop=0, auto_brake=1)
+[2026-04-21 16:08:31.017] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:289] [thread 264] Basestation, 01C119BF94: SM: Queueing Get Packet Descriptor
+[2026-04-21 16:08:31.017] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_SET_AUTO_MOTOR, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:31.072] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:836] [thread 264] Basestation, 01C119BF94: Received OMMO_COMMAND_GET_PACKET_DESCRIPTOR
+[2026-04-21 16:08:31.072] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::GetPacketId:385] [thread 264] Basestation, 01C119BF94: Returning new packet_id for request. packet_id=0
+[2026-04-21 16:08:31.072] [info] [ommoDataRouter.cpp:ommoDataRouter::ProcessBasestationDescriptor:1350] [thread 264] RBF Compensation files not specified. Compensation disabled
+[2026-04-21 16:08:31.072] [info] [ommoDataRouter.cpp:ommoDataRouter::ProcessBasestationDescriptor:1424] [thread 264] Sent basestation registration to alg
+[2026-04-21 16:08:31.072] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ContinueStartup:300] [thread 264] Basestation, 01C119BF94: SM: Initial startup complete; waiting for listener to connect
+[2026-04-21 16:08:43.399] [info] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:303] [thread 10068] Basestation successfully registered
+[2026-04-21 16:08:47.096] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1268] [thread 264] Basestation, 01C119BF94: Direct communication started for UUID: 858006919
+[2026-04-21 16:08:47.096] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1275] [thread 264] Basestation, 01C119BF94: Quick connect available?: No
+[2026-04-21 16:08:47.096] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1303] [thread 264] Basestation, 01C119BF94: Device 858006919 is in the wireless pairing approved list, connecting...
+[2026-04-21 16:08:47.096] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1315] [thread 264] Basestation, 01C119BF94: Quick connect not available. Connecting normally
+[2026-04-21 16:08:47.107] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:808] [thread 264] Basestation, 01C119BF94: Sending wireless firmware version request
+[2026-04-21 16:08:47.107] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_FW_VERSION, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:47.138] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1507] [thread 264] Basestation, 01C119BF94: Received Relay OMMO_COMMAND_FW_VERSION
+[2026-04-21 16:08:47.139] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessPacket:1513] [thread 264] Basestation, 01C119BF94: wireless firmware version: Bootloader=7016 Application=7016
+[2026-04-21 16:08:47.147] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:731] [thread 264] Basestation, 01C119BF94: Requesting data descriptor from wireless sensor
+[2026-04-21 16:08:47.150] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_GET_PACKET_DESCRIPTOR, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:47.245] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ReservePacketSpace:280] [thread 264] Wireless Receiver, 06BCA430D7: Packet size 33 transmit time required: 600
+[2026-04-21 16:08:47.246] [info] [IOManager.cpp:ommo::IOManager::FindWirelessReceiverForSensor:451] [thread 264] Assigning device to wireless receiver 3164877015
+[2026-04-21 16:08:47.246] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::GetPacketId:385] [thread 264] Wireless Receiver, 06BCA430D7: Returning new packet_id for request. packet_id=0
+[2026-04-21 16:08:47.246] [info] [ui_state_manager.cpp:UIStateManager::AddWirelessSIU:97] [thread 264] Adding wireless siu with uuid 858006919 to wireless receiver 3164877015
+[2026-04-21 16:08:47.246] [info] [ui_state_manager.cpp:UIStateManager::AddWirelessSIU:115] [thread 264] Adding wireless SIU 858006919 to UI State Manager
+[2026-04-21 16:08:47.248] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::SetSensor:911] [thread 264] Wireless Receiver, 06BCA430D7: Transmit start time: 0
+[2026-04-21 16:08:47.248] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:665] [thread 264] Wireless Receiver, 06BCA430D7: SM: Queueing Channel Scan
+[2026-04-21 16:08:47.251] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:947] [thread 7236] Wireless Receiver, 06BCA430D7: Send deep channel scan request
+[2026-04-21 16:08:47.252] [info] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:349] [thread 10068] Tracking group successfully registered
+[2026-04-21 16:08:47.252] [info] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:392] [thread 10068] Disabling processing for 858006919
+[2026-04-21 16:08:47.254] [warning] [ommoDataRouter.cpp:ommoDataRouter::HandleContextStatusMessage:491] [thread 10068] 0,000000(2294117,579617) DeviceGrp(858006919-0)(206) : Tracking group does not have temperature compensation for: all mags
+[2026-04-21 16:08:47.752] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 1
+[2026-04-21 16:08:47.755] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:48.254] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 2
+[2026-04-21 16:08:48.256] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:48.756] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 3
+[2026-04-21 16:08:48.758] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:49.259] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 4
+[2026-04-21 16:08:49.261] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:49.760] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 5
+[2026-04-21 16:08:49.763] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:50.263] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 6
+[2026-04-21 16:08:50.265] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:50.766] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 7
+[2026-04-21 16:08:50.767] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:51.267] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:773] [thread 264] Basestation, 01C119BF94: Pinging wireless device. Wireless SIU 858006919 is being setup, Ping count: 8
+[2026-04-21 16:08:51.269] [info] [BasestationDataStream.cpp:ommo::BasestationDataStream::ProcessAckResponse:2483] [thread 264] Basestation, 01C119BF94: OMMO_COMMAND_PING, Response: OMMO_ACK_SUCCESS
+[2026-04-21 16:08:51.556] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1457] [thread 7236] Wireless Receiver, 06BCA430D7: Received OMMO_COMMAND_USB_CHANNEL_SCAN_TRAFFIC_AND_ED
+[2026-04-21 16:08:51.557] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1471] [thread 7236] Wireless Receiver, 06BCA430D7: Deep channel scan response received.
+[2026-04-21 16:08:51.557] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 7236] Deep Scan Channel 36: Value: 40
+[2026-04-21 16:08:51.557] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 7236] Deep Scan Channel 37: Value: 39
+[2026-04-21 16:08:51.557] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 7236] Deep Scan Channel 25: Value: 20
+[2026-04-21 16:08:51.557] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 7236] Deep Scan Channel 39: Value: 40
+[2026-04-21 16:08:51.557] [info] [wireless_channel_handler.cpp:WirelessChannelHandler::ParseDeepScanChannels:49] [thread 7236] Deep Scan Channel 4: Value: 38
+[2026-04-21 16:08:51.557] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ProcessPacket:1501] [thread 7236] Wireless Receiver, 06BCA430D7: Selecting 25 as data channel
+[2026-04-21 16:08:51.557] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:675] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Set Data Channel
+[2026-04-21 16:08:51.557] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::SendNextCommand:881] [thread 7236] Wireless Receiver, 06BCA430D7: Setting data channel: 25
+[2026-04-21 16:08:51.558] [info] [WirelessReceiverDataStream.cpp:ommo::WirelessReceiverDataStream::ContinueStartup:685] [thread 7236] Wireless Receiver, 06BCA430D7: SM: Queueing Data Enable
+[2026-04-21 16:08:5
