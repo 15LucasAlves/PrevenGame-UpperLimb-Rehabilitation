@@ -1,4 +1,108 @@
+# Projeto Unity principal (PrevenGame/)
+PrevenGame/[Ll]ibrary/
+PrevenGame/[Tt]emp/
+PrevenGame/[Oo]bj/
+PrevenGame/[Bb]uild/
+PrevenGame/[Bb]uilds/
+PrevenGame/[Ll]ogs/
+PrevenGame/[Uu]ser[Ss]ettings/
+PrevenGame/.vs/
+PrevenGame/.idea/
+PrevenGame/*.sln
+PrevenGame/*.csproj
+PrevenGame/.vsconfig
+
+# Projeto Unity do Ommo (referência, não editar)
+OMMO/ommo_v2/ommo_v2/[Ll]ibrary/
+OMMO/ommo_v2/ommo_v2/[Tt]emp/
+OMMO/ommo_v2/ommo_v2/[Oo]bj/
+OMMO/ommo_v2/ommo_v2/[Ll]ogs/
+OMMO/ommo_v2/ommo_v2/[Uu]ser[Ss]ettings/
+OMMO/ommo_v2/ommo_v2/.vs/
+OMMO/ommo_v2/ommo_v2/*.sln
+OMMO/ommo_v2/ommo_v2/*.csproj
+
+# Sistema operativo
 .DS_Store
 Thumbs.db
 *.tmp
-.claude/
+
+# Unity - pastas geradas automaticamente
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# Unity - memória e cache
+MemoryCaptures/
+Recordings/
+
+# Unity - ficheiros de assets gerados
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity Package Manager
+/[Pp]ackages/
+!/[Pp]ackages/manifest.json
+!/[Pp]ackages/packages-lock.json
+
+# Unity crash reports
+sysinfo.txt
+crashlytics-build.properties
+
+# Visual Studio / Rider - ficheiros do IDE
+.vs/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# Compiled script assemblies gerados pelo Unity
+[Ss]cripting[Bb]ackend/
+
+# Nuget (apenas raiz do repositório)
+/packages/
+*.nupkg
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Android
+*.apk
+*.aab
+*.unitypackage
+
+# iOS
+*.ipa
+
+# macOS
+*.dSYM.zip
+*.dSYM
+
+# Burst cache
+BurstCache/
+
+# Editor específico do utilizador
+/Assets/AssetStoreTools*

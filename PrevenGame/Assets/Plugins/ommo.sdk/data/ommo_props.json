@@ -1,0 +1,50 @@
+{
+ "vendorId": 13108,
+ "serverUri": "localhost:50051",
+ "wirelessPoseRxImuVec": [
+  0,
+  0,
+  0
+ ],
+ "wirelessPoseRxImuQuat": [
+  0,
+  0.70710678,
+  -0.70710678,
+  0
+ ],
+ "jstPoseRxImuVec": [
+  0,
+  2.7,
+  0
+ ],
+ "jstPoseRxImuQuat": [
+  0,
+  0,
+  0,
+  1
+ ],
+ "upInWorld": [
+  0,
+  0,
+  1
+ ],
+ "localGravity": 9806.65,
+ "pInitPos": 1,
+ "pInitVel": 10,
+ "pInitAcc": 100,
+ "pInitAng": 0.02,
+ "pInitRate": 10,
+ "pInitAccelBias": 1000,
+ "pInitBaseRot": 0,
+ "accelStd": 16,
+ "gyroStd": 0.006,
+ "posePosScale": 3.2e-12,
+ "poseAngScale": 3.8e-12,
+ "qBasePos": 1e-30,
+ "qBasePosSlow": 0.0001,
+ "qBasePosFast": 100000000,
+ "qBaseAng": 10,
+ "qBaseAccelBias": 10,
+ "qBaseBaseRot": 1e-10,
+ "compensationFiles": []
+}
