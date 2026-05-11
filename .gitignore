@@ -108,7 +108,7 @@ BurstCache/
 /Assets/AssetStoreTools*
 
 # Ommo service — logs e crash reports gerados em runtime
-PrevenGame/Assets/Plugins/ommo.sdk/data/log-*.txt
-PrevenGame/Assets/Plugins/ommo.sdk/data/log-*.txt.meta
-PrevenGame/.sentry-native/
-PrevenGame/Assets/Plugins/ommo.sdk/.sentry-native/
+**/ommo.sdk/data/log-*.txt
+**/ommo.sdk/data/log-*.txt.meta
+**/.sentry-native/
+**/.sentry_native/
