@@ -18,63 +18,133 @@ public class OmmoSceneBuilder : EditorWindow
     public static void BuildSceneJogo()
     {
         if (!EditorUtility.DisplayDialog("Ommo Scene Builder — Jogo",
-            "Cria a cena mínima do PrevenGame:\n" +
-            "• AppManager com hardware (sem painel de diagnóstico)\n" +
+            "Cria o mundo 3D do PrevenGame:\n" +
+            "• Mundo 3D com câmara e piso de referência\n" +
+            "• BaseStation = origem do espaço de tracking\n" +
+            "• Objeto 3D controlado pelo sensor Ommo\n" +
             "• OmmoSensorManager inicia tracking automaticamente\n\nContinuar?",
             "Sim, construir!", "Cancelar"))
             return;
 
-        Debug.Log("[OmmoBuilder] A construir cena do jogo...");
-        ClearExisting();
+        Debug.Log("[OmmoBuilder] A construir mundo 3D do jogo...");
+        ClearExistingJogo();
 
-        Material redMat = CreateUnlitMaterial("OmmoRed", new Color(0.9f, 0.08f, 0.08f));
+        // ── Materiais ─────────────────────────────────────────────────
+        // Sensor — cápsula branca (representa o membro a reabilitar)
+        Material sensorMat = new Material(Shader.Find("Standard"));
+        sensorMat.color = new Color(0.95f, 0.95f, 0.95f);
+        sensorMat.SetFloat("_Metallic", 0.1f);
+        sensorMat.SetFloat("_Glossiness", 0.6f);
+        sensorMat.name = "SensorMaterial";
+
+        // Piso — grid subtil
+        Material pisoMat = new Material(Shader.Find("Standard"));
+        pisoMat.color = new Color(0.22f, 0.22f, 0.25f);
+        pisoMat.SetFloat("_Metallic", 0f);
+        pisoMat.SetFloat("_Glossiness", 0.1f);
+        pisoMat.name = "PisoMaterial";
 
         // ── AppManager ────────────────────────────────────────────────
         GameObject appManager = CreateEmpty("AppManager");
         appManager.AddComponent<UnityMainThreadDispatcher>();
-        var launcher    = appManager.AddComponent<OmmoServiceLauncher>();
+        var launcher   = appManager.AddComponent<OmmoServiceLauncher>();
         launcher.ServiceExeName = "ommo_service_v0.22.0.exe";
         launcher.WarmupSeconds  = 2.5f;
         launcher.KillOnExit     = true;
-        var monitor     = appManager.AddComponent<OmmoHardwareMonitor>();
-        var devManager  = appManager.AddComponent<OmmoDeviceManager>();
-        var sensorMgr   = appManager.AddComponent<OmmoSensorManager>();
+        var monitor    = appManager.AddComponent<OmmoHardwareMonitor>();
+        var devManager = appManager.AddComponent<OmmoDeviceManager>();
+        var sensorMgr  = appManager.AddComponent<OmmoSensorManager>();
 
         // ── BaseStation ───────────────────────────────────────────────
+        // Empty object na origem — representa a Base Station física Ommo.
+        // Todas as posições dos sensores são relativas a este ponto.
         GameObject baseStation = CreateEmpty("BaseStation");
         baseStation.transform.position = Vector3.zero;
 
+        // Marcador visual da BaseStation (esfera pequena, não afecta o jogo)
+        var bsMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        bsMarker.name = "BaseStation_Marcador";
+        bsMarker.transform.SetParent(baseStation.transform);
+        bsMarker.transform.localPosition = Vector3.zero;
+        bsMarker.transform.localScale    = Vector3.one * 0.08f;
+        Object.DestroyImmediate(bsMarker.GetComponent<SphereCollider>());
+        var bsMat = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.2f, 0.6f, 1f) };
+        bsMarker.GetComponent<MeshRenderer>().sharedMaterial = bsMat;
+
+        // ── Piso ──────────────────────────────────────────────────────
+        // Plano de referência visual — YUnity = 0 corresponde ao plano da Base Station
+        var piso = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        piso.name = "Piso";
+        piso.transform.position   = Vector3.zero;
+        piso.transform.localScale = new Vector3(4f, 1f, 4f); // 40×40 Unity units
+        Object.DestroyImmediate(piso.GetComponent<MeshCollider>());
+        piso.GetComponent<MeshRenderer>().sharedMaterial = pisoMat;
+
+        // ── SensorPrefab (o objeto controlado pelo sensor) ────────────
+        // Cápsula branca — filho do TrackedDevicePrefab.
+        // OmmoDevice instancia um por sensor e move-o com os dados do Ommo.
+        var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        capsule.name = "ObjetoControlado";
+        capsule.transform.localScale = new Vector3(0.3f, 0.4f, 0.3f);
+        Object.DestroyImmediate(capsule.GetComponent<CapsuleCollider>());
+        capsule.GetComponent<MeshRenderer>().sharedMaterial = sensorMat;
+
         // ── TrackedDevice Prefab ──────────────────────────────────────
-        GameObject trackedDevicePrefab = BuildTrackedDevicePrefab(redMat);
+        // Root inativo — OmmoDeviceManager instancia um por dispositivo conectado.
+        // O SensorPrefab (cápsula) é criado como filho de cada instância.
+        var trackedRoot = CreateEmpty("TrackedDevicePrefab_TEMP");
+        var ommoDevice  = trackedRoot.AddComponent<OmmoDevice>();
+        ommoDevice.SensorPrefab = capsule;
+        capsule.transform.SetParent(trackedRoot.transform, false);
+        capsule.transform.localPosition = Vector3.zero;
+        trackedRoot.SetActive(false);
 
         // ── OmmoDeviceManager ─────────────────────────────────────────
         devManager.BaseStation    = baseStation;
-        devManager.UnityScaleInCM = 10f;
+        devManager.UnityScaleInCM = 10f; // 1 Unity unit = 10 cm
         devManager.DeviceTypePrefabs = new OmmoDeviceManager.DeviceTypePrefab[]
         {
-            new OmmoDeviceManager.DeviceTypePrefab { DeviceType = 0, Prefab = trackedDevicePrefab }
+            // DeviceType 0 cobre o tipo genérico; o manager tem fallback para 255 e primeiro disponível
+            new OmmoDeviceManager.DeviceTypePrefab { DeviceType = 0, Prefab = trackedRoot }
         };
 
         // ── OmmoSensorManager ─────────────────────────────────────────
         sensorMgr.DeviceManager   = devManager;
         sensorMgr.HardwareMonitor = monitor;
-        // PainelALigar e TextoEstado ficam a null — sem UI de ligação obrigatória
+        // PainelALigar = null → sem ecrã de ligação (podes adicionar depois no Inspector)
 
-        // ── Main Camera ───────────────────────────────────────────────
+        // ── Iluminação ────────────────────────────────────────────────
+        // Luz direcional suave vinda de cima
+        var luzObj = new GameObject("LuzDirecional");
+        var luz = luzObj.AddComponent<Light>();
+        luz.type      = LightType.Directional;
+        luz.intensity = 1.2f;
+        luz.color     = new Color(1f, 0.95f, 0.85f);
+        luzObj.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+
+        // ── Câmara principal ──────────────────────────────────────────
+        // Posicionada para ver bem o espaço de tracking (~2m³ à frente da BaseStation)
+        // Com UnityScaleInCM=10: 200cm = 20 Unity units de alcance.
         Camera mainCam = Camera.main;
         if (mainCam != null)
         {
-            mainCam.clearFlags      = CameraClearFlags.SolidColor;
-            mainCam.backgroundColor = new Color(0.1f, 0.1f, 0.1f);
+            mainCam.clearFlags       = CameraClearFlags.SolidColor;
+            mainCam.backgroundColor  = new Color(0.08f, 0.08f, 0.12f); // fundo escuro
+            mainCam.fieldOfView      = 55f;
+            mainCam.nearClipPlane    = 0.1f;
+            mainCam.farClipPlane     = 200f;
+            // Posição: elevada e ligeiramente recuada — vê o espaço de tracking de frente
+            mainCam.transform.position = new Vector3(0f, 12f, -18f);
+            mainCam.transform.LookAt(new Vector3(0f, 5f, 5f));
         }
 
-        Debug.Log("[OmmoBuilder] ✅ Cena do jogo pronta! " +
-                  "OmmoSensorManager inicia tracking automaticamente ao carregar Play.");
+        Debug.Log("[OmmoBuilder] ✅ Mundo 3D pronto!");
         EditorUtility.DisplayDialog("Ommo Scene Builder — Jogo",
-            "✅ Cena do jogo pronta!\n\n" +
-            "O OmmoSensorManager inicia o tracking automaticamente.\n" +
-            "Usa OmmoSensorManager.SensoresConectados e OnNumeroDeSensoresMudou " +
-            "nos scripts do jogo para reagir ao estado dos sensores.",
+            "✅ Mundo 3D criado!\n\n" +
+            "• BaseStation (azul) = origem do tracking (posição 0,0,0)\n" +
+            "• Cápsula branca = objeto controlado pelo sensor\n" +
+            "• OmmoSensorManager inicia tracking automaticamente\n\n" +
+            "Carrega Play para testar. O sensor Ommo deve estar ligado.",
             "OK");
     }
 
@@ -161,6 +231,17 @@ public class OmmoSceneBuilder : EditorWindow
     {
         string[] names = { "AppManager", "BaseStation", "MainCanvas", "HUDCanvas", "GridCamera",
                            "TrackedDevicePrefab_TEMP", "DeviceRowPrefab_TEMP" };
+        foreach (var n in names)
+        {
+            var go = GameObject.Find(n);
+            if (go != null) Object.DestroyImmediate(go);
+        }
+    }
+
+    static void ClearExistingJogo()
+    {
+        string[] names = { "AppManager", "BaseStation", "Piso", "LuzDirecional",
+                           "TrackedDevicePrefab_TEMP", "ObjetoControlado" };
         foreach (var n in names)
         {
             var go = GameObject.Find(n);
