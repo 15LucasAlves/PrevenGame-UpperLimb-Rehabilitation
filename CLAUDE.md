@@ -62,16 +62,27 @@ O serviço `.exe` é **obrigatório** como intermediário. O `OmmoServiceLaunche
 | `OmmoDeviceManager.cs` | Instancia/destrói `OmmoDevice`s quando sensores ligam/desligam; expõe `StartTracking()` / `StopTracking()` |
 | `OmmoSIU.cs` | Alternativa legada — usa `StreamDataFrame` (todos os dispositivos num único stream) em vez de streams individuais por dispositivo |
 | `OmmoHardwareMonitor.cs` | Polling a cada 1.5s ao `GetHardwareStates`; expõe `ServiceInfo` com listas Connected/Disconnected/Blocked; emite `OnHardwareUpdated` |
-| `OmmoUIManager.cs` | Gere os dois painéis: Hardware Panel (MainCanvas) e 3D Grid View (HUDCanvas + GridCamera); chama `DeviceManager.StartTracking()` ao abrir a vista 3D |
-| `OmmoGridVisualizer.cs` | Camera component — desenha grelha 3D wireframe via GL e marcadores dos sensores em tempo real |
-| `OmmoDeviceRow.cs` | Linha de UI para um dispositivo; botões para Start/Stop Motor (Base Station) e Block/Unblock (SIU wireless) |
-| `OmmoDiagnostic.cs` | Script de diagnóstico — imprime no Console os dispositivos conectados e instâncias `OmmoDevice` (usado em desenvolvimento) |
+| `OmmoSensorManager.cs` | **Gestor de hardware para o jogo** — inicia tracking automaticamente ao `OnServiceReady`, para o motor em segurança, expõe `SensoresConectados`, `NumeroSensores` e evento `OnNumeroDeSensoresMudou` |
+| `OmmoUIManager.cs` | Painel de diagnóstico/fisioterapeuta — hardware panel + 3D grid view; **não é usado na cena do jogo** mas preserva `StartTracking`/`StopTracking`/`StopBaseStationMotor` para uso futuro na interface do fisioterapeuta |
+| `OmmoGridVisualizer.cs` | Camera component — grelha 3D wireframe via GL + marcadores de sensores (diagnóstico) |
+| `OmmoDeviceRow.cs` | Linha de UI do hardware panel: botões Start/Stop Motor e Block/Unblock SIU |
+| `OmmoDiagnostic.cs` | Script de diagnóstico — imprime no Console dispositivos conectados e instâncias `OmmoDevice` |
 | `UnityMainThreadDispatcher.cs` | Singleton persistente — fila de `Action`s para despachar callbacks gRPC (threads) para o main thread Unity |
 
-### Hierarquia de GameObjects na cena
+### Hierarquias de GameObjects — dois modos de cena
 
-O `OmmoSceneBuilder` (menu **Ommo → Build Scene**) constrói automaticamente:
+O `OmmoSceneBuilder` tem dois menus distintos:
 
+**Ommo → Build Scene (Jogo)** — para o PrevenGame (sem UI de diagnóstico):
+```
+AppManager    ← UnityMainThreadDispatcher, OmmoServiceLauncher,
+                 OmmoHardwareMonitor, OmmoDeviceManager, OmmoSensorManager
+BaseStation   ← origem do espaço de tracking (posição 0,0,0)
+TrackedDevicePrefab_TEMP  ← prefab inativo para OmmoDeviceManager
+```
+`OmmoSensorManager` inicia o tracking automaticamente quando o serviço fica pronto.
+
+**Ommo → Build Scene (Diagnóstico)** — painel de hardware completo:
 ```
 AppManager                  ← UnityMainThreadDispatcher, OmmoServiceLauncher,
                                OmmoHardwareMonitor, OmmoDeviceManager, OmmoUIManager
@@ -79,7 +90,7 @@ BaseStation                 ← origem do espaço de tracking (posição 0,0,0)
 MainCanvas                  ← Hardware Panel UI (lista Connected/Disconnected/Blocked)
 HUDCanvas                   ← Overlay 3D com dados de sensores em tempo real
 GridCamera                  ← Camera + OmmoGridVisualizer (grelha wireframe + marcadores)
-TrackedDevicePrefab_TEMP    ← prefab inativo usado pelo OmmoDeviceManager
+TrackedDevicePrefab_TEMP    ← prefab inativo para OmmoDeviceManager
 DeviceRowPrefab_TEMP        ← prefab inativo para linhas do Hardware Panel
 ```
 
@@ -119,14 +130,35 @@ Callbacks gRPC chegam em threads separadas. Para actualizar UI ou GameObjects, u
 UnityMainThreadDispatcher.Enqueue(() => { /* código Unity */ });
 ```
 
-## Configuração mínima de uma scene
+## Configuração de uma scene de jogo
 
-Usar o menu **Ommo → Build Scene** para criar toda a cena automaticamente.
+Usar o menu **Ommo → Build Scene (Jogo)** para criar a cena mínima automaticamente.
 
-Para uma cena manual mínima:
+Para uma cena manual mínima do jogo:
 1. `AppManager` vazio → `OmmoServiceLauncher` + `UnityMainThreadDispatcher`
-2. `AppManager` → `OmmoDeviceManager` (aponta `BaseStation`, define `DeviceTypePrefabs`)
-3. `OmmoDeviceManager.StartTracking()` é chamado explicitamente (não no `Start`)
+2. `AppManager` → `OmmoHardwareMonitor` + `OmmoDeviceManager` + `OmmoSensorManager`
+3. `OmmoSensorManager` referencia `DeviceManager` e `HardwareMonitor` no Inspector
+4. O tracking inicia automaticamente — não é necessário chamar `StartTracking()` manualmente
+
+### Utilizar dados dos sensores nos scripts do jogo
+
+```csharp
+// Subscrever ao estado de conectividade
+void Start()
+{
+    var sensorMgr = FindObjectOfType<OmmoSensorManager>();
+    sensorMgr.OnNumeroDeSensoresMudou += AoSensoresMudarem;
+}
+
+void AoSensoresMudarem(int count)
+{
+    if (count == 0) /* pausa o jogo / mostra "reconectar" */
+    else            /* resume / inicia round */
+}
+
+// Verificar em qualquer momento
+bool prontoParaJogar = sensorMgr.SensoresConectados;
+```
 
 ## Dependências externas
 
