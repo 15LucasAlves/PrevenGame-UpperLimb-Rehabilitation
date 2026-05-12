@@ -80,23 +80,24 @@ public class OmmoSceneBuilder : EditorWindow
         Object.DestroyImmediate(piso.GetComponent<MeshCollider>());
         piso.GetComponent<MeshRenderer>().sharedMaterial = pisoMat;
 
-        // ── SensorPrefab (o objeto controlado pelo sensor) ────────────
-        // Cápsula branca — filho do TrackedDevicePrefab.
-        // OmmoDevice instancia um por sensor e move-o com os dados do Ommo.
-        var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        capsule.name = "ObjetoControlado";
-        capsule.transform.localScale = new Vector3(0.3f, 0.4f, 0.3f);
-        Object.DestroyImmediate(capsule.GetComponent<CapsuleCollider>());
-        capsule.GetComponent<MeshRenderer>().sharedMaterial = sensorMat;
+        // ── CuboSensor (SensorPrefab — o objeto controlado pelo sensor) ─
+        // Cubo branco — filho do TrackedDevicePrefab.
+        // OmmoDevice instancia um por unidade de sensor e move-o em Update()
+        // com os dados de posição + rotação vindos do hardware Ommo.
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "CuboSensor";
+        cubo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        Object.DestroyImmediate(cubo.GetComponent<BoxCollider>());
+        cubo.GetComponent<MeshRenderer>().sharedMaterial = sensorMat;
 
         // ── TrackedDevice Prefab ──────────────────────────────────────
         // Root inativo — OmmoDeviceManager instancia um por dispositivo conectado.
-        // O SensorPrefab (cápsula) é criado como filho de cada instância.
+        // O CuboSensor é criado como filho de cada instância pelo OmmoDevice.
         var trackedRoot = CreateEmpty("TrackedDevicePrefab_TEMP");
         var ommoDevice  = trackedRoot.AddComponent<OmmoDevice>();
-        ommoDevice.SensorPrefab = capsule;
-        capsule.transform.SetParent(trackedRoot.transform, false);
-        capsule.transform.localPosition = Vector3.zero;
+        ommoDevice.SensorPrefab = cubo;
+        cubo.transform.SetParent(trackedRoot.transform, false);
+        cubo.transform.localPosition = Vector3.zero;
         trackedRoot.SetActive(false);
 
         // ── OmmoDeviceManager ─────────────────────────────────────────
@@ -108,10 +109,50 @@ public class OmmoSceneBuilder : EditorWindow
             new OmmoDeviceManager.DeviceTypePrefab { DeviceType = 0, Prefab = trackedRoot }
         };
 
+        // ── Painel de espera "A ligar ao sensor Ommo..." ──────────────
+        // Canvas overlay por cima de tudo (sortingOrder 99).
+        // Visível ao arrancar; OmmoSensorManager.OcultarPainelALigar() desativa-o
+        // automaticamente quando OnServiceReady disparar (~2.5s de warmup).
+        var painelGO = new GameObject("PainelALigar_TEMP");
+        Undo.RegisterCreatedObjectUndo(painelGO, "Create PainelALigar_TEMP");
+        var painelCanvas = painelGO.AddComponent<Canvas>();
+        painelCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        painelCanvas.sortingOrder = 99; // fica à frente de tudo
+        painelGO.AddComponent<CanvasScaler>().uiScaleMode =
+            CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        painelGO.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920, 1080);
+
+        // Fundo escuro opaco — cobre o mundo 3D enquanto o serviço não está pronto
+        var fundoGO  = new GameObject("Fundo");
+        fundoGO.transform.SetParent(painelGO.transform, false);
+        var fundoRect = fundoGO.AddComponent<RectTransform>();
+        fundoRect.anchorMin = Vector2.zero;
+        fundoRect.anchorMax = Vector2.one;
+        fundoRect.offsetMin = Vector2.zero;
+        fundoRect.offsetMax = Vector2.zero;
+        var fundoImg = fundoGO.AddComponent<Image>();
+        fundoImg.color = new Color(0.06f, 0.06f, 0.08f, 1f);
+
+        // Texto centrado
+        var textoGO = new GameObject("TextoEstado");
+        textoGO.transform.SetParent(painelGO.transform, false);
+        var textoRect = textoGO.AddComponent<RectTransform>();
+        textoRect.anchorMin        = new Vector2(0.5f, 0.5f);
+        textoRect.anchorMax        = new Vector2(0.5f, 0.5f);
+        textoRect.pivot            = new Vector2(0.5f, 0.5f);
+        textoRect.anchoredPosition = Vector2.zero;
+        textoRect.sizeDelta        = new Vector2(800f, 80f);
+        var textoTMP = textoGO.AddComponent<TextMeshProUGUI>();
+        textoTMP.text      = "A ligar ao sensor Ommo...";
+        textoTMP.fontSize  = 28;
+        textoTMP.color     = Color.white;
+        textoTMP.alignment = TextAlignmentOptions.Center;
+
         // ── OmmoSensorManager ─────────────────────────────────────────
         sensorMgr.DeviceManager   = devManager;
         sensorMgr.HardwareMonitor = monitor;
-        // PainelALigar = null → sem ecrã de ligação (podes adicionar depois no Inspector)
+        sensorMgr.PainelALigar    = painelCanvas;   // ← canvas de espera
+        sensorMgr.TextoEstado     = textoTMP;        // ← texto de estado
 
         // ── Iluminação ────────────────────────────────────────────────
         // Luz direcional suave vinda de cima
@@ -141,10 +182,11 @@ public class OmmoSceneBuilder : EditorWindow
         Debug.Log("[OmmoBuilder] ✅ Mundo 3D pronto!");
         EditorUtility.DisplayDialog("Ommo Scene Builder — Jogo",
             "✅ Mundo 3D criado!\n\n" +
-            "• BaseStation (azul) = origem do tracking (posição 0,0,0)\n" +
-            "• Cápsula branca = objeto controlado pelo sensor\n" +
-            "• OmmoSensorManager inicia tracking automaticamente\n\n" +
-            "Carrega Play para testar. O sensor Ommo deve estar ligado.",
+            "• Ecrã 'A ligar ao sensor Ommo...' aparece ao arrancar\n" +
+            "• Após ~2.5s o mundo 3D é revelado automaticamente\n" +
+            "• Cubo branco move-se com o sensor quando ligado\n" +
+            "• BaseStation (azul) = origem do espaço de tracking\n\n" +
+            "Guarda a cena (Ctrl+S) e carrega Play para testar.",
             "OK");
     }
 
@@ -240,8 +282,14 @@ public class OmmoSceneBuilder : EditorWindow
 
     static void ClearExistingJogo()
     {
-        string[] names = { "AppManager", "BaseStation", "Piso", "LuzDirecional",
-                           "TrackedDevicePrefab_TEMP", "ObjetoControlado" };
+        // Limpa objetos do jogo E eventuais restos da cena de diagnóstico
+        string[] names = {
+            "AppManager", "BaseStation", "Piso", "LuzDirecional",
+            "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
+            "PainelALigar_TEMP",
+            // restos da cena de diagnóstico
+            "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP"
+        };
         foreach (var n in names)
         {
             var go = GameObject.Find(n);
