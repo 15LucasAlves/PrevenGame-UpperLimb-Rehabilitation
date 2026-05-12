@@ -1,0 +1,94 @@
+[2026-05-11 15:54:05.485] [info] [main.cpp:main:460] [thread 2592] ommo_service version v0.22.0, alg version v0.16.23
+[2026-05-11 15:54:05.486] [info] [main.cpp:main:469] [thread 2592] Checking for service runtime options
+[2026-05-11 15:54:07.381] [info] [main.cpp:main:538] [thread 2592] Loading splash screen
+[2026-05-11 15:54:07.572] [info] [BatchedLogger.cpp:ommo::BatchedLogger::Start:37] [thread 2592] Creating logging thread.
+[2026-05-11 15:54:07.641] [info] [ommoDataRouter.cpp:ommoDataRouter::Start:82] [thread 2592] Creating reader thread
+[2026-05-11 15:54:07.669] [info] [wireless_pairing_manager.cpp:WirelessPairingManager::LoadApprovedIntervalList:166] [thread 2592] Application settings do not contain wireless pairing approved interval list
+[2026-05-11 15:54:07.669] [info] [wireless_pairing_manager.cpp:WirelessPairingManager::LoadBlockedList:229] [thread 2592] Application settings do not contain wireless pairing blocked list
+[2026-05-11 15:54:07.674] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::Start:86] [thread 2592] Creating USB Notifier thread.
+[2026-05-11 15:54:07.675] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::RegisterWithOS:560] [thread 5520] Registering for USB events with OS.
+[2026-05-11 15:54:07.687] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:691] [thread 5520] Successfully registered for USB device notifications
+[2026-05-11 15:54:07.711] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 2592] Found Ommo hardware vendor_id:0x3334 product_id:0x3 serial_number:01AD747688 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-05-11 15:54:07.714] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 2592] Adding serial interface 0 at COM7
+[2026-05-11 15:54:07.716] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 2592] Pushing hardware event to queue - adding Base Station
+[2026-05-11 15:54:07.720] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11800] Added hardware 01AD747688 with uuid 2910090888 to UI State Manager
+[2026-05-11 15:54:07.722] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 2592] Found Ommo hardware vendor_id:0x3334 product_id:0x13 serial_number:064BBE9A89 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-05-11 15:54:07.722] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11800] Basestation, 01AD747688: Creating thread. port=COM7 pid=3
+[2026-05-11 15:54:07.723] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 12996] Basestation, 01AD747688: Opening port COM7
+[2026-05-11 15:54:07.723] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 12996] Setting up port on \\.\COM7
+[2026-05-11 15:54:07.723] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 12996] Error setting up serial port: Invalid handle value for COM7. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:07.723] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 12996] Basestation, 01AD747688: Connection attempt 1 to COM7 failed, retrying.
+[2026-05-11 15:54:07.723] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 2592] Adding serial interface 0 at COM8
+[2026-05-11 15:54:07.723] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 2592] Pushing hardware event to queue - adding Wireless Receiver
+[2026-05-11 15:54:07.723] [info] [ui_state_manager.cpp:UIStateManager::AddHardware:72] [thread 11800] Added hardware 064BBE9A89 with uuid 1270782601 to UI State Manager
+[2026-05-11 15:54:07.723] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Start:86] [thread 11800] Wireless Receiver, 064BBE9A89: Creating thread. port=COM8 pid=19
+[2026-05-11 15:54:07.724] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:141] [thread 14280] Wireless Receiver, 064BBE9A89: Opening port COM8
+[2026-05-11 15:54:07.724] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14280] Setting up port on \\.\COM8
+[2026-05-11 15:54:07.724] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 14280] Error setting up serial port: Invalid handle value for COM8. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:07.724] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 14280] Wireless Receiver, 064BBE9A89: Connection attempt 1 to COM8 failed, retrying.
+[2026-05-11 15:54:07.804] [info] [usb_connection_notifier.cpp:USBConnectionNotifier::WindowMessageHandler:872] [thread 5520] System is resuming from suspend (S0). Sending system resume notification.
+[2026-05-11 15:54:07.804] [info] [IOManager.cpp:ommo::IOManager::HandleSystemResume:311] [thread 5520] System resume notification received. Scanning for connected hardware.
+[2026-05-11 15:54:07.806] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5520] Found Ommo hardware vendor_id:0x3334 product_id:0x3 serial_number:01AD747688 communication_class:COMMUNICATION_CLASS_BASE_STATION
+[2026-05-11 15:54:07.813] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5520] Adding serial interface 0 at COM7
+[2026-05-11 15:54:07.813] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5520] Pushing hardware event to queue - adding Base Station
+[2026-05-11 15:54:07.813] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11800] Skipping 01AD747688, hardware stream already exists
+[2026-05-11 15:54:07.816] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:211] [thread 5520] Found Ommo hardware vendor_id:0x3334 product_id:0x13 serial_number:064BBE9A89 communication_class:COMMUNICATION_CLASS_WIRELESS_DONGLE
+[2026-05-11 15:54:07.817] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:220] [thread 5520] Adding serial interface 0 at COM8
+[2026-05-11 15:54:07.817] [info] [IOManager.cpp:ommo::IOManager::PopulateDataStreams:262] [thread 5520] Pushing hardware event to queue - adding Wireless Receiver
+[2026-05-11 15:54:07.817] [info] [IOManager.cpp:ommo::IOManager::EventQueueThreadedFunction:863] [thread 11800] Skipping 064BBE9A89, hardware stream already exists
+[2026-05-11 15:54:07.895] [error] [rpc_ommo_server_manager.cpp:rpcOmmoServerManager::ServerThreadedFunction:152] [thread 13840] ommo service startup failure. Error creating the gRPC server
+[2026-05-11 15:54:07.896] [info] [rpc_ommo_server_manager.cpp:rpcOmmoServerManager::shutdown:56] [thread 2592] Data Frame processing thread destroyed
+[2026-05-11 15:54:07.896] [info] [main.cpp:main:659] [thread 2592] Rpc Server shut down successfully
+[2026-05-11 15:54:08.226] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14280] Setting up port on \\.\COM8
+[2026-05-11 15:54:08.226] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 12996] Setting up port on \\.\COM7
+[2026-05-11 15:54:08.226] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 14280] Error setting up serial port: Invalid handle value for COM8. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:08.226] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 12996] Error setting up serial port: Invalid handle value for COM7. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:08.226] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 14280] Wireless Receiver, 064BBE9A89: Connection attempt 2 to COM8 failed, retrying.
+[2026-05-11 15:54:08.226] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 12996] Basestation, 01AD747688: Connection attempt 2 to COM7 failed, retrying.
+[2026-05-11 15:54:08.728] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14280] Setting up port on \\.\COM8
+[2026-05-11 15:54:08.728] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 12996] Setting up port on \\.\COM7
+[2026-05-11 15:54:08.728] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 14280] Error setting up serial port: Invalid handle value for COM8. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:08.728] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 12996] Error setting up serial port: Invalid handle value for COM7. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:08.730] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 12996] Basestation, 01AD747688: Connection attempt 3 to COM7 failed, retrying.
+[2026-05-11 15:54:08.728] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 14280] Wireless Receiver, 064BBE9A89: Connection attempt 3 to COM8 failed, retrying.
+[2026-05-11 15:54:08.825] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 2592] Basestation, 01AD747688: Shutdown initiated
+[2026-05-11 15:54:09.232] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14280] Setting up port on \\.\COM8
+[2026-05-11 15:54:09.232] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 12996] Setting up port on \\.\COM7
+[2026-05-11 15:54:09.233] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 14280] Error setting up serial port: Invalid handle value for COM8. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:09.233] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 12996] Error setting up serial port: Invalid handle value for COM7. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:09.233] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 14280] Wireless Receiver, 064BBE9A89: Connection attempt 4 to COM8 failed, retrying.
+[2026-05-11 15:54:09.233] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:164] [thread 12996] Basestation, 01AD747688: Connection attempt 4 to COM7 failed, retrying.
+[2026-05-11 15:54:09.735] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 12996] Setting up port on \\.\COM7
+[2026-05-11 15:54:09.735] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 12996] Error setting up serial port: Invalid handle value for COM7. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:09.735] [error] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:155] [thread 12996] Basestation, 01AD747688: Could not connect to hardware on port COM7, Ommo device will not be available.
+[2026-05-11 15:54:09.737] [info] [ofSerial.cpp:ofSerial::setup:433] [thread 14280] Setting up port on \\.\COM8
+[2026-05-11 15:54:09.737] [error] [ofSerial.cpp:ofSerial::setup:468] [thread 14280] Error setting up serial port: Invalid handle value for COM8. Error Reason: Acesso negado.
+
+[2026-05-11 15:54:09.737] [error] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::ThreadedFunction:155] [thread 14280] Wireless Receiver, 064BBE9A89: Could not connect to hardware on port COM8, Ommo device will not be available.
+[2026-05-11 15:54:09.748] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 2592] Basestation, 01AD747688: Thread destroyed. port=COM7 pid=3
+[2026-05-11 15:54:09.748] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 2592] Basestation, 01AD747688: Serial port closed.
+[2026-05-11 15:54:09.748] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 2592] Wireless Receiver, 064BBE9A89: Shutdown initiated
+[2026-05-11 15:54:09.750] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:124] [thread 2592] Wireless Receiver, 064BBE9A89: Thread destroyed. port=COM8 pid=19
+[2026-05-11 15:54:09.750] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:128] [thread 2592] Wireless Receiver, 064BBE9A89: Serial port closed.
+[2026-05-11 15:54:09.750] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 2592] Wireless Receiver, 064BBE9A89: Shutdown initiated
+[2026-05-11 15:54:09.750] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 2592] Wireless Receiver, 064BBE9A89: No active thread to shutdown. port=COM8 pid=19
+[2026-05-11 15:54:09.752] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:109] [thread 2592] Basestation, 01AD747688: Shutdown initiated
+[2026-05-11 15:54:09.752] [info] [BaseHardwareDataStream.cpp:ommo::BaseHardwareDataStream::Shutdown:133] [thread 2592] Basestation, 01AD747688: No active thread to shutdown. port=COM7 pid=3
+[2026-05-11 15:54:09.752] [info] [main.cpp:main:664] [thread 2592] IO Manager shut down successfully
+[2026-05-11 15:54:09.752] [info] [ommoDataRouter.cpp:ommoDataRouter::Shutdown:103] [thread 2592] Deregistering all devices from the algorithm
+[2026-05-11 15:54:09.757] [info] [ommoDataRouter.cpp:ommoDataRouter::Shutdown:164] [thread 2592] Alg reader thread destroyed
+[2026-05-11 15:54:09.759] [info] [main.cpp:main:669] [thread 2592] Data Router shut down successfully
+[2026-05-11 15:54:10.590] [info] [main.cpp:main:674] [thread 2592] Batched Logger shutdown succesfully
+[2026-05-11 15:54:10.591] [info] [main.cpp:main:676] [thread 2592] ommo service shut down successfully
+[2026-05-11 15:54:35.542] [info] [ommoDataRouter.cpp:ommoDataRouter::Shutdown:103] [thread 2592] Deregistering all devices from the algorithm
+[2026-05-11 15:54:35.543] [info] [ommoDataRouter.cpp:ommoDataRouter::Shutdown:103] [thread 2592] Deregistering all devices from the algorithm
+[2026-05-11 15:54:35.543] [info] [main.cpp:ShutdownSpdlog:119] [thread 13784] Shutting down spdlog.
