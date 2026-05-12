@@ -33,12 +33,18 @@ public class OmmoDevice : MonoBehaviour
 
     private Ommo.DeviceDescriptor _device = null;
 
-    // Use this for initialization
-    void Start()
+    // Awake corre imediatamente quando SetActive(true) é chamado, antes de qualquer Set*().
+    // É aqui que _source/_token têm de ser inicializados porque SetDeviceDescriptor()
+    // (que usa _token) é chamado no mesmo frame que SetActive(true), antes de Start().
+    void Awake()
     {
         _source = new CancellationTokenSource();
-        _token = _source.Token;
-        Debug.Log("Device started");
+        _token  = _source.Token;
+    }
+
+    void Start()
+    {
+        Debug.Log("[OmmoDevice] Iniciado");
     }
 
     // Update is called once per frame

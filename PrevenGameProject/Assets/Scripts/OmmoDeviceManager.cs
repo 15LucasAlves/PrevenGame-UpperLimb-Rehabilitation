@@ -174,6 +174,12 @@ public class OmmoDeviceManager : MonoBehaviour
                 _deviceTypePrefabDict[key],
                 _basePosition, Quaternion.identity).GetComponent<OmmoDevice>();
 
+            // O prefab template está SetActive(false) para não aparecer na cena como objeto solto.
+            // A cópia instanciada herda esse estado, por isso é preciso ativá-la explicitamente.
+            // SetActive(true) dispara Awake() imediatamente (antes do próximo frame),
+            // o que inicializa _source/_token em OmmoDevice antes de SetDeviceDescriptor ser chamado.
+            device.gameObject.SetActive(true);
+
             device.gameObject.name = $"OmmoDevice_{deviceInfo.SiuUuid}_{deviceInfo.PortId}";
             device.SetBasePosition(_basePosition);
             device.SetUnityScaleInCM(UnityScaleInCM);
@@ -225,7 +231,9 @@ public class OmmoDeviceManager : MonoBehaviour
     {
         lock (this)
         {
-            if (!_deviceTypePrefabDict.ContainsKey(a.DeviceInfo.UserDeviceType)) return;
+            // Aceita qualquer tipo de dispositivo desde que haja pelo menos um prefab registado.
+            // O Update() tem lógica de fallback para escolher o prefab correto.
+            if (_deviceTypePrefabDict.Count == 0) return;
 
             if (a.Connected)
             {
