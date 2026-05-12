@@ -27,6 +27,11 @@ public class OmmoDevice : MonoBehaviour
     private uint _portId = 0;
     public Ommo.DeviceFusionMode RequestedMode = Ommo.DeviceFusionMode.Default;
 
+    [Header("Debug")]
+    [Tooltip("Intervalo em segundos entre cada linha de debug na consola (0 = desativado).")]
+    public float DebugIntervalSegundos = 1f;
+    private float _debugTimer = 0f;
+
     // TODO: make this a singleton
     private Ommo.Client _client;
 
@@ -54,11 +59,29 @@ public class OmmoDevice : MonoBehaviour
         {
             if (_sensors[i] != null)
             {
-                //Debug.Log("Update - for " + i + " position " + _sensorPositions[i]);
                 _sensors[i].transform.position = _basePosition + _sensorPositions[i];
                 _sensors[i].transform.rotation = _sensorOrientations[i];
             }
         }
+
+        // ── Debug periódico na consola ────────────────────────────────
+        if (DebugIntervalSegundos <= 0f || _sensorPositions == null) return;
+        _debugTimer += Time.deltaTime;
+        if (_debugTimer < DebugIntervalSegundos) return;
+        _debugTimer = 0f;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"[OmmoDevice] {gameObject.name} | {_sensorPositions.Length} sensor(es)\n");
+        for (int i = 0; i < _sensorPositions.Length; i++)
+        {
+            Vector3  pos = _basePosition + _sensorPositions[i];
+            Vector3  posCM = pos * _unityScaleInCM; // converte de volta para cm para facilitar leitura
+            Quaternion rot = _sensorOrientations[i];
+            sb.Append($"  S{i} | pos Unity: ({pos.x:F3}, {pos.y:F3}, {pos.z:F3})" +
+                      $"  cm: ({posCM.x:F1}, {posCM.y:F1}, {posCM.z:F1})" +
+                      $"  rot: ({rot.x:F2}, {rot.y:F2}, {rot.z:F2}, {rot.w:F2})\n");
+        }
+        Debug.Log(sb.ToString());
     }
 
     public void SetUnityScaleInCM(float unityScaleInCM)
