@@ -127,6 +127,17 @@ namespace Ommo
                 arg => pb::MessageExtensions.ToByteArray(arg),
                 global::Ommo.HardwareStates.Parser.ParseFrom);
 
+        // Marshallers para WirelessManagement
+        static readonly grpc::Marshaller<global::Ommo.WirelessManagementRequest> __Marshaller_WirelessRequest =
+            grpc::Marshallers.Create(
+                arg => pb::MessageExtensions.ToByteArray(arg),
+                global::Ommo.WirelessManagementRequest.Parser.ParseFrom);
+
+        static readonly grpc::Marshaller<global::Ommo.WirelessManagementEvent> __Marshaller_WirelessEvent =
+            grpc::Marshallers.Create(
+                arg => pb::MessageExtensions.ToByteArray(arg),
+                global::Ommo.WirelessManagementEvent.Parser.ParseFrom);
+
         // Marshallers para MotorRunning
         static readonly grpc::Marshaller<global::Ommo.BaseStationMotorRunningRequest> __Marshaller_MotorRequest =
             grpc::Marshallers.Create(
@@ -139,6 +150,12 @@ namespace Ommo
                 global::Ommo.BaseStationMotorRunningResponse.Parser.ParseFrom);
 
         // Métodos gRPC
+        static readonly grpc::Method<global::Ommo.WirelessManagementRequest, global::Ommo.WirelessManagementEvent>
+            __Method_OpenWirelessManagementStream =
+                new grpc::Method<global::Ommo.WirelessManagementRequest, global::Ommo.WirelessManagementEvent>(
+                    grpc::MethodType.DuplexStreaming, "ommo.CoreService", "OpenWirelessManagementStream",
+                    __Marshaller_WirelessRequest, __Marshaller_WirelessEvent);
+
         static readonly grpc::Method<global::Ommo.HardwareStatesRequest, global::Ommo.HardwareStates>
             __Method_GetHardwareStates =
                 new grpc::Method<global::Ommo.HardwareStatesRequest, global::Ommo.HardwareStates>(
@@ -169,6 +186,11 @@ namespace Ommo
             public virtual grpc::AsyncUnaryCall<global::Ommo.HardwareStates> GetHardwareStatesAsync(
                 global::Ommo.HardwareStatesRequest request)
                 => GetHardwareStatesAsync(request, new grpc::CallOptions());
+
+            // OpenWirelessManagementStream — stream bidirecional para pairing de SIUs
+            public virtual grpc::AsyncDuplexStreamingCall<global::Ommo.WirelessManagementRequest, global::Ommo.WirelessManagementEvent>
+                OpenWirelessManagementStream(grpc::CallOptions options = default)
+                => CallInvoker.AsyncDuplexStreamingCall(__Method_OpenWirelessManagementStream, null, options);
 
             // SetBaseStationMotorRunning
             public virtual bool SetBaseStationMotorRunning(bool enable)

@@ -18,6 +18,8 @@ public class OmmoDevice : MonoBehaviour
     private Vector3 _basePosition;
     private Vector3[] _sensorPositions;
     private Quaternion[] _sensorOrientations;
+    private bool _primeirosDadosRecebidos = false;
+    private string _nomeCache; // cache seguro para acesso em background threads
 
     [Tooltip("Scale for 1 Unity value in centimeters.")]
     private float _unityScaleInCM;
@@ -43,8 +45,9 @@ public class OmmoDevice : MonoBehaviour
     // (que usa _token) é chamado no mesmo frame que SetActive(true), antes de Start().
     void Awake()
     {
-        _source = new CancellationTokenSource();
-        _token  = _source.Token;
+        _source    = new CancellationTokenSource();
+        _token     = _source.Token;
+        _nomeCache = gameObject.name; // main thread — seguro
     }
 
     void Start()
@@ -207,7 +210,15 @@ public class OmmoDevice : MonoBehaviour
 
     public void ProcessTrackingDeviceData(Ommo.TrackingDeviceData mes)
     {
-        //Debug.Log("ProcessTrackingDeviceData " + mes.Timestamp);
+        // Log único na primeira chegada de dados — confirma que o stream gRPC está ativo
+        if (!_primeirosDadosRecebidos)
+        {
+            _primeirosDadosRecebidos = true;
+            string nome = _nomeCache ?? "OmmoDevice"; // _nomeCache é safe em background threads
+            UnityMainThreadDispatcher.Enqueue(() =>
+                Debug.Log($"[OmmoDevice] ✅ {nome} — primeiros dados recebidos! " +
+                          $"Posições={mes.Positions.Count} Quaterniões={mes.Quaternions.Count}"));
+        }
         lock (this)
         {
             //Debug.Log("ProcessTrackingDeviceData - lock");

@@ -46,6 +46,7 @@ public class OmmoSensorManager : MonoBehaviour
     // ── Privado ───────────────────────────────────────────────────────
 
     private bool _trackingIniciado = false;
+    private bool _motorEmInicio    = false; // evita chamar IniciarMotorBaseStation duas vezes
 
     // ── Unity ─────────────────────────────────────────────────────────
 
@@ -122,6 +123,7 @@ public class OmmoSensorManager : MonoBehaviour
             DeviceManager.StopTracking();
 
         _trackingIniciado = false;
+        _motorEmInicio    = false;
     }
 
     void PararMotorBaseStation()
@@ -166,6 +168,68 @@ public class OmmoSensorManager : MonoBehaviour
                 ? "Hardware conectado. A aguardar sensores..."
                 : "A aguardar serviço Ommo...";
         }
+
+        // Inicia o motor da Base Station automaticamente quando o tracking está ativo
+        // e a base station aparece conectada mas ainda não a girar.
+        // _motorEmInicio evita chamadas duplicadas entre polls (a cada 1.5s).
+        if (_trackingIniciado && !_motorEmInicio)
+        {
+            foreach (var dispositivo in info.Connected)
+            {
+                if (dispositivo.IsBaseStation && !dispositivo.IsRunning)
+                {
+                    _motorEmInicio = true;
+                    Debug.Log("[OmmoSensorManager] Base Station detetada — a iniciar motor automaticamente...");
+                    IniciarMotorBaseStation(dispositivo.UUID);
+                    break; // há sempre no máximo uma Base Station
+                }
+            }
+        }
+    }
+
+    void IniciarMotorBaseStation(string uuid)
+    {
+        Task.Run(() =>
+        {
+            // Aguarda 1s antes de tentar — garante que a Base Station
+            // já completou a inicialização interna após o serviço arrancar.
+            System.Threading.Thread.Sleep(1000);
+
+            try
+            {
+                var handler = new Cysharp.Net.Http.YetAnotherHttpHandler { Http2Only = true };
+                var channel = Grpc.Net.Client.GrpcChannel.ForAddress("http://localhost:50051",
+                                  new Grpc.Net.Client.GrpcChannelOptions { HttpHandler = handler });
+                var client = new Ommo.CoreService.CoreServiceClient(channel);
+                bool ok = client.SetBaseStationMotorRunning(true);
+                channel.ShutdownAsync().Wait();
+
+                UnityMainThreadDispatcher.Enqueue(() =>
+                {
+                    _motorEmInicio = false; // liberta para nova tentativa se ok=false
+
+                    if (ok)
+                    {
+                        Debug.Log("[OmmoSensorManager] ✅ Motor da Base Station iniciado — posições dos sensores a caminho.");
+                        HardwareMonitor?.SetMotorRunningState(uuid, true); // marca como running → evita novas tentativas
+                    }
+                    else
+                    {
+                        // ok=false: servidor recusou (Base Station ainda não pronta).
+                        // NÃO actualizar estado local → próximo poll (1.5s) vai tentar de novo.
+                        Debug.LogWarning("[OmmoSensorManager] Motor recusou arranque (success=False) — nova tentativa em ~1.5s...");
+                    }
+                });
+            }
+            catch (System.Exception e)
+            {
+                UnityMainThreadDispatcher.Enqueue(() =>
+                {
+                    _motorEmInicio = false; // liberta para nova tentativa
+                    Debug.LogWarning("[OmmoSensorManager] Erro ao iniciar motor: " + e.Message);
+                });
+            }
+        });
     }
 
     // ── UI de ligação (mínima, opcional) ─────────────────────────────

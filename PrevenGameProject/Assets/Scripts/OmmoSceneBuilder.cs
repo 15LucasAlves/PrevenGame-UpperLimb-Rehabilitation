@@ -95,7 +95,10 @@ public class OmmoSceneBuilder : EditorWindow
         // O CuboSensor é criado como filho de cada instância pelo OmmoDevice.
         var trackedRoot = CreateEmpty("TrackedDevicePrefab_TEMP");
         var ommoDevice  = trackedRoot.AddComponent<OmmoDevice>();
-        ommoDevice.SensorPrefab = cubo;
+        ommoDevice.SensorPrefab  = cubo;
+        // FullFusion combina IMU + magnetómetro + optical tracking → posições 3D reais
+        // Default pode reportar apenas orientação sem posição
+        ommoDevice.RequestedMode = Ommo.DeviceFusionMode.FullFusion;
         cubo.transform.SetParent(trackedRoot.transform, false);
         cubo.transform.localPosition = Vector3.zero;
         trackedRoot.SetActive(false);
@@ -164,19 +167,32 @@ public class OmmoSceneBuilder : EditorWindow
         luzObj.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
 
         // ── Câmara principal ──────────────────────────────────────────
-        // Posicionada para ver bem o espaço de tracking (~2m³ à frente da BaseStation)
-        // Com UnityScaleInCM=10: 200cm = 20 Unity units de alcance.
-        Camera mainCam = Camera.main;
+        // Camera.main exige Tag="MainCamera" — usa FindObjectOfType como fallback.
+        Camera mainCam = Camera.main ?? Object.FindObjectOfType<Camera>();
         if (mainCam != null)
         {
-            mainCam.clearFlags       = CameraClearFlags.SolidColor;
-            mainCam.backgroundColor  = new Color(0.08f, 0.08f, 0.12f); // fundo escuro
-            mainCam.fieldOfView      = 55f;
-            mainCam.nearClipPlane    = 0.1f;
-            mainCam.farClipPlane     = 200f;
-            // Posição: elevada e ligeiramente recuada — vê o espaço de tracking de frente
+            if (mainCam.gameObject.tag != "MainCamera")
+                mainCam.gameObject.tag = "MainCamera";
+
+            mainCam.clearFlags      = CameraClearFlags.SolidColor;
+            mainCam.backgroundColor = new Color(0.08f, 0.08f, 0.12f);
+            mainCam.fieldOfView     = 55f;
+            mainCam.nearClipPlane   = 0.1f;
+            mainCam.farClipPlane    = 200f;
+
+            // Posição definida em edit-time E garantida em runtime pelo OmmoCameraSetup
             mainCam.transform.position = new Vector3(0f, 12f, -18f);
             mainCam.transform.LookAt(new Vector3(0f, 5f, 5f));
+
+            // Componente runtime — garante posição correta em cada Play independentemente do editor
+            if (mainCam.gameObject.GetComponent<OmmoCameraSetup>() == null)
+                mainCam.gameObject.AddComponent<OmmoCameraSetup>();
+
+            Debug.Log($"[OmmoBuilder] Câmara configurada: {mainCam.gameObject.name} pos={mainCam.transform.position}");
+        }
+        else
+        {
+            Debug.LogWarning("[OmmoBuilder] Nenhuma câmara encontrada na cena — adiciona uma manualmente.");
         }
 
         Debug.Log("[OmmoBuilder] ✅ Mundo 3D pronto!");
