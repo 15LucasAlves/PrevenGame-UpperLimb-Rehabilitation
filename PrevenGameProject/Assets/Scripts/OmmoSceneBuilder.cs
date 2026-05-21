@@ -157,6 +157,115 @@ public class OmmoSceneBuilder : EditorWindow
         sensorMgr.PainelALigar    = painelCanvas;   // ← canvas de espera
         sensorMgr.TextoEstado     = textoTMP;        // ← texto de estado
 
+        // ── EsqueletoJogador ──────────────────────────────────────────
+        var esqueletoGO = CreateEmpty("EsqueletoJogador");
+        var esqueleto   = esqueletoGO.AddComponent<OmmoEsqueletoJogador>();
+
+        // ── CalibracaoCanvas ──────────────────────────────────────────
+        // sortingOrder 50 — abaixo do PainelALigar (99), acima do mundo 3D
+        var calibGO     = new GameObject("CalibracaoCanvas");
+        Undo.RegisterCreatedObjectUndo(calibGO, "Create CalibracaoCanvas");
+        var calibCanvas = calibGO.AddComponent<Canvas>();
+        calibCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        calibCanvas.sortingOrder = 50;
+        var calibScaler = calibGO.AddComponent<CanvasScaler>();
+        calibScaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        calibScaler.referenceResolution = new Vector2(1920, 1080);
+
+        // Painel semi-transparente centrado (750×320)
+        var painelCalib = new GameObject("PainelCalibracao");
+        painelCalib.transform.SetParent(calibGO.transform, false);
+        var painelCalibImg  = painelCalib.AddComponent<Image>();
+        painelCalibImg.color = new Color(0f, 0f, 0f, 0.55f);
+        var painelRect = painelCalib.GetComponent<RectTransform>();
+        painelRect.anchorMin        = new Vector2(0.5f, 0.5f);
+        painelRect.anchorMax        = new Vector2(0.5f, 0.5f);
+        painelRect.pivot            = new Vector2(0.5f, 0.5f);
+        painelRect.anchoredPosition = Vector2.zero;
+        painelRect.sizeDelta        = new Vector2(750f, 320f);
+
+        // TextoPasso — "Passo 1 / 3" (canto superior, fontSize 18)
+        var textoPassoGO = new GameObject("TextoPasso");
+        textoPassoGO.transform.SetParent(painelCalib.transform, false);
+        var textoPassoRect = textoPassoGO.AddComponent<RectTransform>();
+        textoPassoRect.anchorMin        = new Vector2(0f, 1f);
+        textoPassoRect.anchorMax        = new Vector2(1f, 1f);
+        textoPassoRect.pivot            = new Vector2(0.5f, 1f);
+        textoPassoRect.anchoredPosition = new Vector2(0f, -14f);
+        textoPassoRect.sizeDelta        = new Vector2(0f, 28f);
+        var textoPasso = textoPassoGO.AddComponent<TextMeshProUGUI>();
+        textoPasso.text      = "";
+        textoPasso.fontSize  = 18;
+        textoPasso.color     = new Color(0.8f, 0.8f, 0.8f);
+        textoPasso.alignment = TextAlignmentOptions.Center;
+
+        // TextoInstrucao — instrução principal (fontSize 28, centrada verticalmente)
+        var textoInstrGO = new GameObject("TextoInstrucao");
+        textoInstrGO.transform.SetParent(painelCalib.transform, false);
+        var textoInstrRect = textoInstrGO.AddComponent<RectTransform>();
+        textoInstrRect.anchorMin        = new Vector2(0.05f, 0.5f);
+        textoInstrRect.anchorMax        = new Vector2(0.95f, 0.5f);
+        textoInstrRect.pivot            = new Vector2(0.5f, 0.5f);
+        textoInstrRect.anchoredPosition = new Vector2(0f, 30f);
+        textoInstrRect.sizeDelta        = new Vector2(0f, 90f);
+        var textoInstr = textoInstrGO.AddComponent<TextMeshProUGUI>();
+        textoInstr.text      = "A aguardar 2 sensores...";
+        textoInstr.fontSize  = 28;
+        textoInstr.color     = Color.white;
+        textoInstr.alignment = TextAlignmentOptions.Center;
+
+        // TextoSub — subtexto (fontSize 18, abaixo da instrução)
+        var textoSubGO = new GameObject("TextoSub");
+        textoSubGO.transform.SetParent(painelCalib.transform, false);
+        var textoSubRect = textoSubGO.AddComponent<RectTransform>();
+        textoSubRect.anchorMin        = new Vector2(0.05f, 0.5f);
+        textoSubRect.anchorMax        = new Vector2(0.95f, 0.5f);
+        textoSubRect.pivot            = new Vector2(0.5f, 0.5f);
+        textoSubRect.anchoredPosition = new Vector2(0f, -28f);
+        textoSubRect.sizeDelta        = new Vector2(0f, 50f);
+        var textoSub = textoSubGO.AddComponent<TextMeshProUGUI>();
+        textoSub.text      = "Liga o sensor da palma e o sensor do ombro.";
+        textoSub.fontSize  = 18;
+        textoSub.color     = new Color(0.75f, 0.75f, 0.75f);
+        textoSub.alignment = TextAlignmentOptions.Center;
+
+        // BarraProgresso — fill horizontal (verde, 500×20 px)
+        var barraGO = new GameObject("BarraProgresso");
+        barraGO.transform.SetParent(painelCalib.transform, false);
+        var barraRect = barraGO.AddComponent<RectTransform>();
+        barraRect.anchorMin        = new Vector2(0.5f, 0f);
+        barraRect.anchorMax        = new Vector2(0.5f, 0f);
+        barraRect.pivot            = new Vector2(0.5f, 0f);
+        barraRect.anchoredPosition = new Vector2(0f, 28f);
+        barraRect.sizeDelta        = new Vector2(500f, 20f);
+
+        // Fundo da barra (cinza escuro)
+        var barraBgGO = new GameObject("BarraFundo");
+        barraBgGO.transform.SetParent(barraGO.transform, false);
+        var barraBgImg = barraBgGO.AddComponent<Image>();
+        barraBgImg.color = new Color(0.2f, 0.2f, 0.2f);
+        StretchFull(barraBgGO.GetComponent<RectTransform>());
+
+        // Fill verde (Image type = Filled, fillMethod = Horizontal)
+        var barraFillGO = new GameObject("BarraFill");
+        barraFillGO.transform.SetParent(barraGO.transform, false);
+        var barraFillImg = barraFillGO.AddComponent<Image>();
+        barraFillImg.color      = new Color(0.2f, 0.85f, 0.3f);
+        barraFillImg.type       = Image.Type.Filled;
+        barraFillImg.fillMethod = Image.FillMethod.Horizontal;
+        barraFillImg.fillAmount = 0f;
+        StretchFull(barraFillGO.GetComponent<RectTransform>());
+
+        // ── OmmoCalibracaoManager ─────────────────────────────────────
+        var calibManager = appManager.AddComponent<OmmoCalibracaoManager>();
+        calibManager.SensorManager       = sensorMgr;
+        calibManager.Esqueleto           = esqueleto;
+        calibManager.PainelCalibracao    = painelCalib;
+        calibManager.TextoInstrucao      = textoInstr;
+        calibManager.TextoPasso          = textoPasso;
+        calibManager.TextoSub            = textoSub;
+        calibManager.BarraProgressoImagem = barraFillImg;
+
         // ── Iluminação ────────────────────────────────────────────────
         // Luz direcional suave vinda de cima
         var luzObj = new GameObject("LuzDirecional");
@@ -200,7 +309,8 @@ public class OmmoSceneBuilder : EditorWindow
             "✅ Mundo 3D criado!\n\n" +
             "• Ecrã 'A ligar ao sensor Ommo...' aparece ao arrancar\n" +
             "• Após ~2.5s o mundo 3D é revelado automaticamente\n" +
-            "• Cubo branco move-se com o sensor quando ligado\n" +
+            "• Painel de calibração aparece quando os 2 sensores ligam\n" +
+            "• Após calibração o esqueleto do membro superior fica ativo\n" +
             "• BaseStation (azul) = origem do espaço de tracking\n\n" +
             "Guarda a cena (Ctrl+S) e carrega Play para testar.",
             "OK");
@@ -302,7 +412,7 @@ public class OmmoSceneBuilder : EditorWindow
         string[] names = {
             "AppManager", "BaseStation", "Piso", "LuzDirecional",
             "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
-            "PainelALigar_TEMP",
+            "PainelALigar_TEMP", "CalibracaoCanvas", "EsqueletoJogador",
             // restos da cena de diagnóstico
             "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP"
         };
