@@ -39,13 +39,15 @@ public class PrevenGameManager : MonoBehaviour
     public Button       BotaoRepetir;
 
     // ── Configuração do exercício ──────────────────────────────────────
-    [Header("Exercício — Braço ao Lado")]
+    [Header("Exercício — Abdução do Braço")]
     [Tooltip("Número de repetições completas (ida + volta = 1 rep).")]
     public int   NumRepeticoes  = 3;
-    [Tooltip("Raio de deteção do toque nos waypoints (Unity units). 0.15 = 15 cm.")]
-    public float RaioWaypoint   = 0.15f;
+    [Tooltip("Raio de deteção do toque nos waypoints (Unity units). 0.30 = 30 cm.")]
+    public float RaioWaypoint   = 0.30f;
     [Tooltip("Escala visual da esfera-waypoint (diâmetro em Unity units).")]
-    public float EscalaEsfera   = 0.25f;
+    public float EscalaEsfera   = 0.45f;
+    [Tooltip("Braço direito (+X) ou esquerdo (-X).")]
+    public bool  BracoDireito   = true;
 
     [Header("Cores")]
     public Color CorLinha       = new Color(0.2f, 0.9f, 0.3f, 0.6f);
@@ -69,7 +71,8 @@ public class PrevenGameManager : MonoBehaviour
     private LineRenderer _linhaGuia;
 
     // Posições dos waypoints (calculadas da calibração)
-    private Vector3[] _posicoes; // [0]=ombro, [1]=meio, [2]=baixo
+    // Arco de abdução: [0]=braço baixo … [4]=braço horizontal ao lado
+    private Vector3[] _posicoes;
 
     // ── Unity ──────────────────────────────────────────────────────────
 
@@ -137,19 +140,25 @@ public class PrevenGameManager : MonoBehaviour
         Vector3 posOmbro = Esqueleto.PosOmbroBase;
         float   L        = Esqueleto.ComprimentoBraco;
 
-        // Fallback caso a calibração não tenha medido o braço (valor 0)
         if (L < 0.05f)
         {
-            L = 0.44f; // 44 cm — valor médio adulto
+            L = 0.44f;
             Debug.LogWarning("[PrevenGame] ComprimentoBraco = 0 — usando fallback 44 cm.");
         }
 
-        _posicoes = new Vector3[]
+        // Abdução no plano frontal: arco de 0° (braço em baixo) a 90° (braço horizontal)
+        // 5 waypoints a cada 22.5° — ida sobe, volta desce
+        float lateral = BracoDireito ? 1f : -1f;
+        float[] angulos = { 0f, 22.5f, 45f, 67.5f, 90f };
+
+        _posicoes = new Vector3[angulos.Length];
+        for (int i = 0; i < angulos.Length; i++)
         {
-            posOmbro,                              // WP0: junto ao ombro
-            posOmbro + Vector3.down * (L * 0.5f), // WP1: meio do braço
-            posOmbro + Vector3.down * L,            // WP2: braço totalmente estendido
-        };
+            float rad = angulos[i] * Mathf.Deg2Rad;
+            _posicoes[i] = posOmbro
+                + Vector3.right * (lateral * Mathf.Sin(rad) * L)
+                + Vector3.down  * (Mathf.Cos(rad) * L);
+        }
 
         // Cria (ou recria) os GameObjects dos waypoints
         if (_waypoints != null)
@@ -360,8 +369,9 @@ public class PrevenGameManager : MonoBehaviour
     {
         if (TextoRepeticao)
         {
-            string dir = _emVolta ? "↑" : "↓";
-            TextoRepeticao.text = $"Repetição {_repAtual + 1} / {NumRepeticoes}  {dir}";
+            // Ida = braço sobe (abdução ↑), Volta = braço desce (adução ↓)
+            string dir = _emVolta ? "↓ Descer" : "↑ Subir";
+            TextoRepeticao.text = $"Rep {_repAtual + 1} / {NumRepeticoes}  {dir}";
         }
 
         if (TextoTempo)
