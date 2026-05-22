@@ -143,6 +143,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
     {
         _modoUmSensor = true;
         Debug.Log("[OmmoCalibracao] Modo: 1 sensor");
+        if (SensorManager) SensorManager.IniciarTracking();
         AvancarEstado(); // → AguardarSensores
     }
 
@@ -151,6 +152,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
     {
         _modoUmSensor = false;
         Debug.Log("[OmmoCalibracao] Modo: 2 sensores");
+        if (SensorManager) SensorManager.IniciarTracking();
         AvancarEstado(); // → AguardarSensores
     }
 

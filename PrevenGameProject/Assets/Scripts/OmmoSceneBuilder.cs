@@ -171,6 +171,7 @@ public class OmmoSceneBuilder : EditorWindow
         var calibScaler = calibGO.AddComponent<CanvasScaler>();
         calibScaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         calibScaler.referenceResolution = new Vector2(1920, 1080);
+        calibGO.AddComponent<GraphicRaycaster>();
 
         // Painel semi-transparente centrado (750×380)
         var painelCalib = new GameObject("PainelCalibracao");
@@ -531,8 +532,8 @@ public class OmmoSceneBuilder : EditorWindow
             mainCam.farClipPlane    = 200f;
 
             // Posição definida em edit-time E garantida em runtime pelo OmmoCameraSetup
-            mainCam.transform.position = new Vector3(0f, 12f, -18f);
-            mainCam.transform.LookAt(new Vector3(0f, 5f, 5f));
+            mainCam.transform.position = new Vector3(0f, 5f, -10f);
+            mainCam.transform.LookAt(new Vector3(0f, 3f, 2f));
 
             // Componente runtime — garante posição correta em cada Play independentemente do editor
             if (mainCam.gameObject.GetComponent<OmmoCameraSetup>() == null)

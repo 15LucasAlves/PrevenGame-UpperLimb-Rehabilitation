@@ -7,10 +7,13 @@ using System.Threading.Tasks;
 /// OmmoSensorManager — Gestor de hardware para o jogo PrevenGame.
 ///
 /// Substitui OmmoUIManager nas scenes do jogo: não tem UI de diagnóstico,
-/// inicia o tracking automaticamente quando o serviço Ommo fica pronto,
-/// e garante que o motor da Base Station é parado em segurança ao sair.
+/// aguarda que o jogador selecione o modo (1 ou 2 sensores) antes de iniciar
+/// o tracking, e garante que o motor da Base Station é parado em segurança ao sair.
 ///
-/// Expõe propriedades e eventos para o jogo reagir ao estado dos sensores.
+/// Fluxo:
+///   1. Serviço Ommo arranca → AoServicoPronto() → mensagem de espera
+///   2. OmmoCalibracaoManager chama IniciarTracking() após seleção de modo
+///   3. DeviceManager.StartTracking() → sensores ficam disponíveis
 /// </summary>
 public class OmmoSensorManager : MonoBehaviour
 {
@@ -45,8 +48,9 @@ public class OmmoSensorManager : MonoBehaviour
 
     // ── Privado ───────────────────────────────────────────────────────
 
-    private bool _trackingIniciado = false;
-    private bool _motorEmInicio    = false; // evita chamar IniciarMotorBaseStation duas vezes
+    private bool _trackingIniciado  = false;
+    private bool _motorEmInicio     = false; // evita chamar IniciarMotorBaseStation duas vezes
+    private bool _trackerSolicitado = false; // IniciarTracking() foi pedido antes do serviço estar pronto
 
     // ── Unity ─────────────────────────────────────────────────────────
 
@@ -55,9 +59,9 @@ public class OmmoSensorManager : MonoBehaviour
         MostrarPainelALigar("A iniciar serviço Ommo...");
 
         if (OmmoServiceLauncher.ServiceReady)
-            IniciarTracking();
+            AoServicoPronto();
         else
-            OmmoServiceLauncher.OnServiceReady += IniciarTracking;
+            OmmoServiceLauncher.OnServiceReady += AoServicoPronto;
 
         if (HardwareMonitor)
             HardwareMonitor.OnHardwareUpdated += AoHardwareAtualizado;
@@ -81,7 +85,7 @@ public class OmmoSensorManager : MonoBehaviour
 
     void OnDestroy()
     {
-        OmmoServiceLauncher.OnServiceReady -= IniciarTracking;
+        OmmoServiceLauncher.OnServiceReady -= AoServicoPronto;
 
         if (HardwareMonitor)
             HardwareMonitor.OnHardwareUpdated -= AoHardwareAtualizado;
@@ -96,14 +100,39 @@ public class OmmoSensorManager : MonoBehaviour
 
     // ── Hardware ──────────────────────────────────────────────────────
 
-    void IniciarTracking()
+    void AoServicoPronto()
     {
-        OmmoServiceLauncher.OnServiceReady -= IniciarTracking;
+        OmmoServiceLauncher.OnServiceReady -= AoServicoPronto;
+        Debug.Log("[OmmoSensorManager] Serviço pronto — a aguardar seleção de modo.");
+        MostrarPainelALigar("Serviço pronto. Seleciona o modo de sensor...");
 
+        // Se o jogador já escolheu o modo antes do serviço arrancar, inicia agora
+        if (_trackerSolicitado)
+            IniciarTrackingInterno();
+    }
+
+    /// <summary>
+    /// Inicia o tracking de sensores.
+    /// Chamado pelo OmmoCalibracaoManager após o jogador selecionar 1 ou 2 sensores.
+    /// Se o serviço ainda não estiver pronto, aguarda e inicia assim que estiver.
+    /// </summary>
+    public void IniciarTracking()
+    {
         if (_trackingIniciado) return;
-        _trackingIniciado = true;
 
-        Debug.Log("[OmmoSensorManager] Serviço pronto — a iniciar tracking...");
+        if (OmmoServiceLauncher.ServiceReady)
+            IniciarTrackingInterno();
+        else
+            _trackerSolicitado = true; // inicia quando AoServicoPronto() for chamado
+    }
+
+    void IniciarTrackingInterno()
+    {
+        if (_trackingIniciado) return;
+        _trackingIniciado  = true;
+        _trackerSolicitado = false;
+
+        Debug.Log("[OmmoSensorManager] A iniciar tracking...");
         OcultarPainelALigar();
 
         if (DeviceManager)
@@ -171,7 +200,6 @@ public class OmmoSensorManager : MonoBehaviour
 
         // Inicia o motor da Base Station automaticamente quando o tracking está ativo
         // e a base station aparece conectada mas ainda não a girar.
-        // _motorEmInicio evita chamadas duplicadas entre polls (a cada 1.5s).
         if (_trackingIniciado && !_motorEmInicio)
         {
             foreach (var dispositivo in info.Connected)
@@ -181,7 +209,7 @@ public class OmmoSensorManager : MonoBehaviour
                     _motorEmInicio = true;
                     Debug.Log("[OmmoSensorManager] Base Station detetada — a iniciar motor automaticamente...");
                     IniciarMotorBaseStation(dispositivo.UUID);
-                    break; // há sempre no máximo uma Base Station
+                    break;
                 }
             }
         }
@@ -191,8 +219,6 @@ public class OmmoSensorManager : MonoBehaviour
     {
         Task.Run(() =>
         {
-            // Aguarda 1s antes de tentar — garante que a Base Station
-            // já completou a inicialização interna após o serviço arrancar.
             System.Threading.Thread.Sleep(1000);
 
             try
@@ -206,17 +232,15 @@ public class OmmoSensorManager : MonoBehaviour
 
                 UnityMainThreadDispatcher.Enqueue(() =>
                 {
-                    _motorEmInicio = false; // liberta para nova tentativa se ok=false
+                    _motorEmInicio = false;
 
                     if (ok)
                     {
                         Debug.Log("[OmmoSensorManager] ✅ Motor da Base Station iniciado — posições dos sensores a caminho.");
-                        HardwareMonitor?.SetMotorRunningState(uuid, true); // marca como running → evita novas tentativas
+                        HardwareMonitor?.SetMotorRunningState(uuid, true);
                     }
                     else
                     {
-                        // ok=false: servidor recusou (Base Station ainda não pronta).
-                        // NÃO actualizar estado local → próximo poll (1.5s) vai tentar de novo.
                         Debug.LogWarning("[OmmoSensorManager] Motor recusou arranque (success=False) — nova tentativa em ~1.5s...");
                     }
                 });
@@ -225,7 +249,7 @@ public class OmmoSensorManager : MonoBehaviour
             {
                 UnityMainThreadDispatcher.Enqueue(() =>
                 {
-                    _motorEmInicio = false; // liberta para nova tentativa
+                    _motorEmInicio = false;
                     Debug.LogWarning("[OmmoSensorManager] Erro ao iniciar motor: " + e.Message);
                 });
             }
