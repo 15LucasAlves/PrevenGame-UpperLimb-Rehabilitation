@@ -69,7 +69,8 @@ public class OmmoSceneBuilder : EditorWindow
         // Empty object na origem — representa a Base Station física Ommo.
         // Todas as posições dos sensores são relativas a este ponto.
         GameObject baseStation = CreateEmpty("BaseStation");
-        baseStation.transform.position = Vector3.zero;
+        // Y=13 = 130 cm — altura aproximada do peito; sensores ficam abaixo deste ponto
+        baseStation.transform.position = new Vector3(0f, 13f, 0f);
 
         // Marcador visual da BaseStation (esfera pequena, não afecta o jogo)
         var bsMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -542,8 +543,9 @@ public class OmmoSceneBuilder : EditorWindow
             mainCam.farClipPlane    = 200f;
 
             // Posição definida em edit-time E garantida em runtime pelo OmmoCameraSetup
-            mainCam.transform.position = new Vector3(0f, 5f, -10f);
-            mainCam.transform.LookAt(new Vector3(0f, 3f, 2f));
+            // Câmara lateral: mostra o braço de perfil à altura da ação (peito/ombro)
+            mainCam.transform.position = new Vector3(4f, 11f, -5f);
+            mainCam.transform.LookAt(new Vector3(0f, 10f, 3f));
 
             // Componente runtime — garante posição correta em cada Play independentemente do editor
             if (mainCam.gameObject.GetComponent<OmmoCameraSetup>() == null)

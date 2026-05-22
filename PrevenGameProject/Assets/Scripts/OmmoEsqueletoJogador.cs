@@ -4,43 +4,38 @@ using UnityEngine;
 /// OmmoEsqueletoJogador — Visualização do esqueleto do membro superior em tempo real.
 ///
 /// Articulações:
-///   Palma  → CuboSensor existente (controlado pelo OmmoDevice)
-///   Cotovelo → esfera verde-limão (calculada live)
-///   Ombro    → esfera laranja (Sensor B live)
+///   Palma    → cubo do sensor A (controlado pelo OmmoDevice)
+///   Cotovelo → esfera verde-limão (calculada por IK de 2 elos)
+///   Ombro    → esfera laranja (Sensor B live ou posição fixa)
 ///   Peito    → esfera azul (posição fixa pós-calibração)
 ///   Cabeça   → esfera branca (posição fixa pós-calibração)
 ///
-/// Ossos (cilindros finos):
-///   Palma↔Cotovelo · Cotovelo↔Ombro · Ombro↔Peito · Peito↔Cabeça
-///
-/// Proporções científicas (DIN 33402 / ISO 7250):
-///   Total ombro→palma = 44% da altura (mão 10.8% + antebraço 14.6% + braço 18.6%)
-///   Cotovelo fica a 57.7% da palma em direção ao ombro:
-///       (10.8 + 14.6) / 44.0 = 0.577
-///   Funciona para qualquer altura — usa a distância real medida na calibração.
+/// IK do cotovelo (2-link IK via lei dos cossenos):
+///   Lu = comprimentoBraco * (18.6 / 44.0)  → braço superior
+///   Lf = comprimentoBraco * (14.6 / 44.0)  → antebraço
+///   Elbow hint: Vector3.back (cotovelo aponta para trás, para longe da base station)
 /// </summary>
 public class OmmoEsqueletoJogador : MonoBehaviour
 {
-    // ── Constante de proporção científica ─────────────────────────────
-    // Cotovelo = palma + (ombro - palma) * PROPORCAO_COTOVELO
-    // Derivado de: (hand 10.8% + forearm 14.6%) / total arm 44.0% = 0.577
-    private const float PROPORCAO_COTOVELO = 0.577f;
+    // ── Proporções (DIN 33402 / ISO 7250) ────────────────────────────
+    private const float FRACAO_BRACO_SUPERIOR = 18.6f / 44.0f; // braço superior
+    private const float FRACAO_ANTEBRACO      = 14.6f / 44.0f; // antebraço
 
-    // ── Limiar de compensação postural (metros Unity = 10 cm) ─────────
+    // ── Limiar de compensação postural ────────────────────────────────
     private const float LIMIAR_COMPENSACAO = 0.02f; // 2 cm
 
-    // ── Espessura dos ossos e raio das esferas ────────────────────────
-    private const float RAIO_OSSO   = 0.02f;  // 2 cm de raio → cilindros finos
-    private const float RAIO_ESFERA = 0.08f;  // 8 cm de raio → articulações
+    // ── Geometria ─────────────────────────────────────────────────────
+    private const float RAIO_OSSO   = 0.02f;
+    private const float RAIO_ESFERA = 0.08f;
 
-    // ── Referências aos dispositivos ──────────────────────────────────
-    private OmmoDevice _devicePalma;  // SIU A — palma (posição do sensor 0)
-    private OmmoDevice _deviceOmbro;  // SIU B — ombro (posição do sensor 0)
+    // ── Dispositivos ──────────────────────────────────────────────────
+    private OmmoDevice _devicePalma;
+    private OmmoDevice _deviceOmbro;
 
-    // ── Posições fixas (definidas na calibração) ──────────────────────
+    // ── Posições fixas ────────────────────────────────────────────────
     private Vector3 _posPeito;
     private Vector3 _posCabeca;
-    private Vector3 _posOmbroBase; // referência em repouso para deteção de compensação
+    private Vector3 _posOmbroBase;
 
     // ── Estado ────────────────────────────────────────────────────────
     private bool _calibrado = false;
@@ -51,87 +46,59 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     private GameObject _goPeito;
     private GameObject _goCabeca;
 
-    // ── GameObjects dos ossos (cilindros) ─────────────────────────────
+    // ── GameObjects dos ossos ─────────────────────────────────────────
     private GameObject _ossoPalmaCotovelo;
     private GameObject _ossoCotoveloOmbro;
     private GameObject _ossoOmbroPeito;
     private GameObject _ossoPeitoCabeca;
 
-    // ── Materiais (para feedback de compensação) ──────────────────────
+    // ── Materiais ─────────────────────────────────────────────────────
     private Material _matOmbro;
     private Material _matOmbroAlerta;
 
     // ── Propriedades públicas — calibração ────────────────────────────
 
-    /// <summary>Posição do peito capturada na calibração (Unity units).</summary>
-    public Vector3 PosPeito { get; private set; }
-
-    /// <summary>Posição da cabeça capturada na calibração (Unity units).</summary>
-    public Vector3 PosCabeca { get; private set; }
-
-    /// <summary>Posição de repouso do ombro gravada no fim da calibração.</summary>
+    public Vector3 PosPeito     { get; private set; }
+    public Vector3 PosCabeca    { get; private set; }
     public Vector3 PosOmbroBase { get; private set; }
+    public float   ComprimentoBraco { get; private set; }
 
-    /// <summary>
-    /// Distância palma→ombro medida no passo "Braço Estendido" da calibração (Unity units).
-    /// 1 Unity unit = 10 cm. Definido pelo OmmoCalibracaoManager.
-    /// </summary>
-    public float ComprimentoBraco { get; private set; }
-
-    /// <summary>Define o comprimento do braço medido durante a calibração.</summary>
     public void DefinirComprimentoBraco(float comprimento)
     {
         ComprimentoBraco = comprimento;
         Debug.Log($"[OmmoEsqueleto] ComprimentoBraco = {comprimento:F2} units = {comprimento * 10f:F1} cm");
     }
 
-    // ── Propriedades públicas — estado de jogo ────────────────────────
+    // ── Propriedades públicas — estado ────────────────────────────────
 
-    /// <summary>Distância do ombro à posição base (em Unity units). 0.02 = 2 cm.</summary>
     public float CompensacaoOmbro { get; private set; }
+    public bool  OmbroCompensando => CompensacaoOmbro > LIMIAR_COMPENSACAO;
+    public bool  Calibrado        => _calibrado;
 
-    /// <summary>True quando o ombro ultrapassou o limiar de compensação postural.</summary>
-    public bool OmbroCompensando => CompensacaoOmbro > LIMIAR_COMPENSACAO;
+    // ── Posições live ─────────────────────────────────────────────────
 
-    /// <summary>True quando a calibração está completa e o esqueleto está ativo.</summary>
-    public bool Calibrado => _calibrado;
-
-    // ── Métodos de acesso à posição live ─────────────────────────────
-
-    /// <summary>Posição live da palma (Sensor A) em espaço Unity.</summary>
     public Vector3 ObterPosPalmaAtual()
         => _devicePalma != null ? _devicePalma.ObterPosicaoSensor(0) : Vector3.zero;
 
-    /// <summary>
-    /// Posição do ombro em espaço Unity.
-    /// Com 2 sensores: posição live do Sensor B.
-    /// Com 1 sensor: posição fixa capturada na calibração.
-    /// </summary>
     public Vector3 ObterPosOmbroAtual()
         => _deviceOmbro != null ? _deviceOmbro.ObterPosicaoSensor(0) : _posOmbroBase;
 
     // ── Inicialização ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Chamado pelo OmmoCalibracaoManager quando os dois dispositivos estão ativos.
-    /// Cria os GameObjects do esqueleto (ainda invisíveis) e guarda as referências.
-    /// </summary>
     public void Inicializar(OmmoDevice devicePalma, OmmoDevice deviceOmbro)
     {
         _devicePalma = devicePalma;
         _deviceOmbro = deviceOmbro;
 
-        // Cor do cubo da palma (azul); ombro (laranja) só se existir sensor físico
         ColorirSensor(devicePalma, new Color(0.3f, 0.7f, 1f));
         if (deviceOmbro != null)
             ColorirSensor(deviceOmbro, new Color(1f, 0.55f, 0.1f));
 
-        // Cria hierarquia de objetos sob este transform
-        _goCotovelo = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));   // verde-limão
-        _matOmbro       = CriarMaterial(new Color(1f, 0.55f, 0.1f));        // laranja
-        _matOmbroAlerta = CriarMaterial(new Color(1f, 0.15f, 0.1f));        // vermelho alerta
+        _goCotovelo = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));
+        _matOmbro       = CriarMaterial(new Color(1f, 0.55f, 0.1f));
+        _matOmbroAlerta = CriarMaterial(new Color(1f, 0.15f, 0.1f));
         _goOmbro   = CriarEsfera("Ombro",  _matOmbro);
-        _goPeito   = CriarEsfera("Peito",  new Color(0.3f, 0.7f, 1f));      // azul
+        _goPeito   = CriarEsfera("Peito",  new Color(0.3f, 0.7f, 1f));
         _goCabeca  = CriarEsfera("Cabeca", Color.white);
 
         _ossoPalmaCotovelo = CriarCilindro("Osso_Palma_Cotovelo", new Color(0.6f, 1f, 0.2f));
@@ -139,43 +106,35 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         _ossoOmbroPeito    = CriarCilindro("Osso_Ombro_Peito",    new Color(0.3f, 0.7f, 1f));
         _ossoPeitoCabeca   = CriarCilindro("Osso_Peito_Cabeca",   Color.white);
 
-        // Desativa tudo até à calibração estar completa
         AtivacaoEsqueleto(false);
-
         Debug.Log("[OmmoEsqueleto] Inicializado — aguarda calibração.");
     }
 
-    /// <summary>
-    /// Define uma posição fixa de articulação após captura na calibração.
-    /// Nomes válidos: "Peito", "Cabeca"
-    /// </summary>
     public void DefinirPosicaoFixa(string nome, Vector3 posicao)
     {
         switch (nome)
         {
             case "Ombro":
-                // Modo 1 sensor: posição fixa do ombro capturada na calibração
                 _posOmbroBase = posicao;
                 PosOmbroBase  = posicao;
                 if (_goOmbro) _goOmbro.transform.position = posicao;
-                Debug.Log($"[OmmoEsqueleto] Ombro fixo definido: {posicao}");
+                Debug.Log($"[OmmoEsqueleto] Ombro fixo: {posicao}");
                 break;
             case "Peito":
                 _posPeito = posicao;
                 PosPeito  = posicao;
                 if (_goPeito) _goPeito.transform.position = posicao;
-                Debug.Log($"[OmmoEsqueleto] Peito definido: {posicao}");
+                Debug.Log($"[OmmoEsqueleto] Peito: {posicao}");
                 break;
             case "Cabeca":
                 _posCabeca = posicao;
                 PosCabeca  = posicao;
                 if (_goCabeca) _goCabeca.transform.position = posicao;
-                Debug.Log($"[OmmoEsqueleto] Cabeça definida: {posicao}");
+                Debug.Log($"[OmmoEsqueleto] Cabeça: {posicao}");
                 break;
         }
     }
 
-    /// <summary>Ativa/desativa a visualização do esqueleto.</summary>
     public void AtivacaoEsqueleto(bool ativo)
     {
         _calibrado = ativo;
@@ -191,10 +150,9 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
         if (ativo && _deviceOmbro != null)
         {
-            // Guarda a posição base do ombro para deteção de compensação
             _posOmbroBase = _deviceOmbro.ObterPosicaoSensor(0);
-            PosOmbroBase  = _posOmbroBase; // propriedade pública
-            Debug.Log($"[OmmoEsqueleto] ✅ Esqueleto ativo | Ombro base: {_posOmbroBase}");
+            PosOmbroBase  = _posOmbroBase;
+            Debug.Log($"[OmmoEsqueleto] ✅ Ativo | Ombro base: {_posOmbroBase}");
         }
     }
 
@@ -204,42 +162,87 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     {
         if (!_calibrado || _devicePalma == null) return;
 
-        // Posições dos sensores — ombro live (2 sensores) ou fixo (1 sensor)
         Vector3 posPalma = _devicePalma.ObterPosicaoSensor(0);
         Vector3 posOmbro = _deviceOmbro != null
             ? _deviceOmbro.ObterPosicaoSensor(0)
             : _posOmbroBase;
 
-        // Cotovelo: proporção científica — 57.7% da palma até ao ombro
-        Vector3 posCotovelo = posPalma + (posOmbro - posPalma) * PROPORCAO_COTOVELO;
+        // IK de 2 elos: cotovelo calculado por lei dos cossenos
+        Vector3 posCotovelo = CalcularPosCotovelo(posOmbro, posPalma, ComprimentoBraco);
 
-        // Atualiza posições das articulações live
         if (_goCotovelo) _goCotovelo.transform.position = posCotovelo;
         if (_goOmbro)    _goOmbro.transform.position    = posOmbro;
-        // Peito e Cabeça são fixos — posição já definida em DefinirPosicaoFixa()
 
-        // Atualiza cilindros
-        AtualizarCilindro(_ossoPalmaCotovelo, posPalma,   posCotovelo);
+        AtualizarCilindro(_ossoPalmaCotovelo, posPalma,    posCotovelo);
         AtualizarCilindro(_ossoCotoveloOmbro, posCotovelo, posOmbro);
-        AtualizarCilindro(_ossoOmbroPeito,    posOmbro,   _posPeito);
-        AtualizarCilindro(_ossoPeitoCabeca,   _posPeito,  _posCabeca);
+        AtualizarCilindro(_ossoOmbroPeito,    posOmbro,    _posPeito);
+        AtualizarCilindro(_ossoPeitoCabeca,   _posPeito,   _posCabeca);
 
-        // Deteção de compensação postural
-        CompensacaoOmbro = Vector3.Distance(posOmbro, _posOmbroBase);
-        if (_matOmbro && _matOmbroAlerta && _goOmbro)
+        // Compensação postural (só com 2 sensores — ombro live)
+        if (_deviceOmbro != null)
         {
-            var renderer = _goOmbro.GetComponent<Renderer>();
-            if (renderer)
-                renderer.material = OmbroCompensando ? _matOmbroAlerta : _matOmbro;
+            CompensacaoOmbro = Vector3.Distance(posOmbro, _posOmbroBase);
+            if (_matOmbro && _matOmbroAlerta && _goOmbro)
+            {
+                var r = _goOmbro.GetComponent<Renderer>();
+                if (r) r.material = OmbroCompensando ? _matOmbroAlerta : _matOmbro;
+            }
         }
+    }
+
+    // ── IK do cotovelo ────────────────────────────────────────────────
+
+    /// <summary>
+    /// IK de 2 elos: calcula a posição do cotovelo dada a posição do ombro e da palma.
+    ///
+    /// Usa a lei dos cossenos para encontrar o ângulo de flexão, depois projeta o
+    /// cotovelo num plano perpendicular ao eixo ombro→palma usando o vetor hint.
+    ///
+    /// Hint = Vector3.back → cotovelo aponta para longe da base station (atrás do player).
+    /// </summary>
+    private static Vector3 CalcularPosCotovelo(Vector3 ombro, Vector3 palma, float comprimentoBraco)
+    {
+        // Fallback se comprimento não calibrado
+        float bracoTotal = comprimentoBraco > 0.05f ? comprimentoBraco : 0.44f;
+
+        float Lu = bracoTotal * FRACAO_BRACO_SUPERIOR; // braço superior (ombro→cotovelo)
+        float Lf = bracoTotal * FRACAO_ANTEBRACO;      // antebraço (cotovelo→palma)
+
+        Vector3 dir = palma - ombro;
+        float d = dir.magnitude;
+
+        if (d < 0.001f) return (ombro + palma) * 0.5f;
+
+        Vector3 dirNorm = dir / d;
+
+        // Limite do alcance: braço totalmente estendido ou dobrado ao máximo
+        float maxAlcance = Lu + Lf;
+        float minAlcance = Mathf.Abs(Lu - Lf);
+        float dEfetivo   = Mathf.Clamp(d, minAlcance + 0.001f, maxAlcance - 0.001f);
+
+        // Lei dos cossenos: distância ao longo do eixo até à base da perpendicular
+        float a = (dEfetivo * dEfetivo + Lu * Lu - Lf * Lf) / (2f * dEfetivo);
+        // Altura do cotovelo acima do eixo ombro→palma
+        float h = Mathf.Sqrt(Mathf.Max(0f, Lu * Lu - a * a));
+
+        // Ponto projetado ao longo do eixo (limite ao comprimento real da direção)
+        Vector3 pontoBase = ombro + dirNorm * Mathf.Min(a, d);
+
+        if (h < 0.001f) return pontoBase; // braço esticado — cotovelo no eixo
+
+        // Vetor hint: cotovelo aponta para trás (longe da base station que está à frente)
+        Vector3 hint = Vector3.back;
+        if (Mathf.Abs(Vector3.Dot(dirNorm, hint)) > 0.98f)
+            hint = Vector3.right; // fallback se braço paralelo ao hint
+
+        // Componente do hint perpendicular ao eixo do braço
+        Vector3 perpHint = (hint - Vector3.Dot(hint, dirNorm) * dirNorm).normalized;
+
+        return pontoBase + perpHint * h;
     }
 
     // ── Helpers de geometria ──────────────────────────────────────────
 
-    /// <summary>
-    /// Posiciona e orienta um cilindro para ligar dois pontos.
-    /// O cilindro Unity tem Y como eixo local e height=2 por defeito.
-    /// </summary>
     private static void AtualizarCilindro(GameObject cil, Vector3 a, Vector3 b)
     {
         if (cil == null) return;
@@ -281,8 +284,8 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     {
         var mat = new Material(Shader.Find("Standard"));
         mat.color = cor;
-        mat.SetFloat("_Metallic", 0f);
-        mat.SetFloat("_Glossiness", 0.3f);
+        mat.SetFloat("_Metallic",    0f);
+        mat.SetFloat("_Glossiness",  0.3f);
         return mat;
     }
 
@@ -291,10 +294,6 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         if (go != null) go.SetActive(ativo);
     }
 
-    /// <summary>
-    /// Aplica uma cor a todos os Renderers dos sensores filhos de um OmmoDevice.
-    /// Cria um novo Material para não partilhar com outros dispositivos.
-    /// </summary>
     private static void ColorirSensor(OmmoDevice device, Color cor)
     {
         if (device == null) return;
@@ -304,8 +303,8 @@ public class OmmoEsqueletoJogador : MonoBehaviour
             if (t == null) continue;
             var renderers = t.GetComponentsInChildren<Renderer>(true);
             var mat = new Material(Shader.Find("Standard")) { color = cor };
-            mat.SetFloat("_Metallic",    0.05f);
-            mat.SetFloat("_Glossiness",  0.5f);
+            mat.SetFloat("_Metallic",   0.05f);
+            mat.SetFloat("_Glossiness", 0.5f);
             foreach (var r in renderers)
                 r.material = mat;
         }
