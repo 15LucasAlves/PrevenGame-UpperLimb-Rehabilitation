@@ -53,7 +53,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
     // ── Parâmetros de estabilidade ────────────────────────────────────
     [Header("Parâmetros")]
     [Tooltip("Tempo necessário de estabilidade para capturar (segundos).")]
-    public float TempoEstabilidade = 1.0f;
+    public float TempoEstabilidade = 3.0f;
     [Tooltip("Variação máxima permitida para considerar estável (Unity units). 0.04 = 4 cm.")]
     public float LimiarMovimento = 0.04f;
     [Tooltip("Número de amostras na janela deslizante.")]
