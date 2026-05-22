@@ -6,14 +6,12 @@ using System.Threading.Tasks;
 /// <summary>
 /// OmmoSensorManager — Gestor de hardware para o jogo PrevenGame.
 ///
-/// Substitui OmmoUIManager nas scenes do jogo: não tem UI de diagnóstico,
-/// aguarda que o jogador selecione o modo (1 ou 2 sensores) antes de iniciar
-/// o tracking, e garante que o motor da Base Station é parado em segurança ao sair.
-///
-/// Fluxo:
-///   1. Serviço Ommo arranca → AoServicoPronto() → mensagem de espera
-///   2. OmmoCalibracaoManager chama IniciarTracking() após seleção de modo
-///   3. DeviceManager.StartTracking() → sensores ficam disponíveis
+/// Fluxo de inicialização:
+///   1. App inicia → PainelALigar oculto; serviço Ommo lança em background
+///   2. OmmoCalibracaoManager chama IniciarTracking(n) após seleção de modo
+///   3. PainelALigar aparece com "A aguardar N sensor(es)..."
+///   4. Motor da Base Station arranca (imediato se já detetada, ou no próximo poll)
+///   5. Quando N sensores conectados → PainelALigar esconde-se automaticamente
 /// </summary>
 public class OmmoSensorManager : MonoBehaviour
 {
@@ -22,7 +20,7 @@ public class OmmoSensorManager : MonoBehaviour
     public OmmoHardwareMonitor HardwareMonitor;
 
     [Header("UI de Ligação (opcional)")]
-    [Tooltip("Canvas exibido enquanto o serviço Ommo não está pronto. Pode ser null.")]
+    [Tooltip("Canvas exibido enquanto os sensores não estão prontos. Pode ser null.")]
     public Canvas PainelALigar;
     [Tooltip("Texto de estado dentro do PainelALigar. Pode ser null.")]
     public TextMeshProUGUI TextoEstado;
@@ -40,28 +38,24 @@ public class OmmoSensorManager : MonoBehaviour
 
     // ── Eventos para o jogo ───────────────────────────────────────────
 
-    /// <summary>
-    /// Emitido quando o número de sensores conectados muda.
-    /// Parâmetro: novo número de sensores.
-    /// </summary>
+    /// <summary>Emitido quando o número de sensores conectados muda.</summary>
     public event System.Action<int> OnNumeroDeSensoresMudou;
 
     // ── Privado ───────────────────────────────────────────────────────
 
     private bool _trackingIniciado  = false;
-    private bool _motorEmInicio     = false; // evita chamar IniciarMotorBaseStation duas vezes
-    private bool _trackerSolicitado = false; // IniciarTracking() foi pedido antes do serviço estar pronto
+    private bool _motorEmInicio     = false;
+    private bool _trackerSolicitado = false;
+    private int  _sensoresNecessarios = 0; // definido pelo modo selecionado
 
     // ── Unity ─────────────────────────────────────────────────────────
 
     void Start()
     {
-        MostrarPainelALigar("A iniciar serviço Ommo...");
+        // Painel oculto até o jogador selecionar o modo
+        if (PainelALigar) PainelALigar.gameObject.SetActive(false);
 
-        if (OmmoServiceLauncher.ServiceReady)
-            AoServicoPronto();
-        else
-            OmmoServiceLauncher.OnServiceReady += AoServicoPronto;
+        OmmoServiceLauncher.OnServiceReady += AoServicoPronto;
 
         if (HardwareMonitor)
             HardwareMonitor.OnHardwareUpdated += AoHardwareAtualizado;
@@ -69,7 +63,6 @@ public class OmmoSensorManager : MonoBehaviour
 
     void Update()
     {
-        // Atualiza contagem de sensores activos em tempo real
         var devices = System.Array.FindAll(
             FindObjectsOfType<OmmoDevice>(),
             d => d.gameObject.activeInHierarchy);
@@ -80,6 +73,12 @@ public class OmmoSensorManager : MonoBehaviour
             NumeroSensores     = contagem;
             SensoresConectados = contagem > 0;
             OnNumeroDeSensoresMudou?.Invoke(contagem);
+
+            // Esconde o painel de espera quando o número de sensores esperados está ligado
+            if (_sensoresNecessarios > 0 && contagem >= _sensoresNecessarios)
+                OcultarPainelALigar();
+            else if (_trackingIniciado && contagem < _sensoresNecessarios)
+                MostrarPainelALigar(MensagemEspera());
         }
     }
 
@@ -93,37 +92,34 @@ public class OmmoSensorManager : MonoBehaviour
         PararHardware();
     }
 
-    void OnApplicationQuit()
-    {
-        PararHardware();
-    }
+    void OnApplicationQuit() => PararHardware();
 
     // ── Hardware ──────────────────────────────────────────────────────
 
     void AoServicoPronto()
     {
         OmmoServiceLauncher.OnServiceReady -= AoServicoPronto;
-        Debug.Log("[OmmoSensorManager] Serviço pronto — a aguardar seleção de modo.");
-        MostrarPainelALigar("Serviço pronto. Seleciona o modo de sensor...");
+        Debug.Log("[OmmoSensorManager] Serviço pronto.");
 
-        // Se o jogador já escolheu o modo antes do serviço arrancar, inicia agora
         if (_trackerSolicitado)
             IniciarTrackingInterno();
     }
 
     /// <summary>
-    /// Inicia o tracking de sensores.
-    /// Chamado pelo OmmoCalibracaoManager após o jogador selecionar 1 ou 2 sensores.
-    /// Se o serviço ainda não estiver pronto, aguarda e inicia assim que estiver.
+    /// Inicia o tracking após o jogador selecionar o modo.
+    /// numSensores: 1 ou 2 — quantos sensores se espera receber.
     /// </summary>
-    public void IniciarTracking()
+    public void IniciarTracking(int numSensores = 1)
     {
         if (_trackingIniciado) return;
+
+        _sensoresNecessarios = numSensores;
+        MostrarPainelALigar(MensagemEspera());
 
         if (OmmoServiceLauncher.ServiceReady)
             IniciarTrackingInterno();
         else
-            _trackerSolicitado = true; // inicia quando AoServicoPronto() for chamado
+            _trackerSolicitado = true;
     }
 
     void IniciarTrackingInterno()
@@ -132,18 +128,28 @@ public class OmmoSensorManager : MonoBehaviour
         _trackingIniciado  = true;
         _trackerSolicitado = false;
 
-        Debug.Log("[OmmoSensorManager] A iniciar tracking...");
-        OcultarPainelALigar();
+        Debug.Log($"[OmmoSensorManager] A iniciar tracking ({_sensoresNecessarios} sensor(es))...");
 
         if (DeviceManager)
             DeviceManager.StartTracking();
+
+        // Se a base station já está detetada, arranca o motor imediatamente
+        // sem esperar pelo próximo poll do HardwareMonitor (1.5s)
+        if (HardwareMonitor != null && !_motorEmInicio)
+        {
+            foreach (var d in HardwareMonitor.CurrentInfo.Connected)
+            {
+                if (d.IsBaseStation && !d.IsRunning)
+                {
+                    _motorEmInicio = true;
+                    Debug.Log("[OmmoSensorManager] Base Station já detetada — a iniciar motor...");
+                    IniciarMotorBaseStation(d.UUID);
+                    break;
+                }
+            }
+        }
     }
 
-    /// <summary>
-    /// Para o motor da Base Station via gRPC e o tracking de dispositivos.
-    /// Chamado automaticamente em OnDestroy e OnApplicationQuit.
-    /// Pode também ser chamado manualmente (ex: ao terminar uma sessão de jogo).
-    /// </summary>
     public void PararHardware()
     {
         PararMotorBaseStation();
@@ -159,11 +165,10 @@ public class OmmoSensorManager : MonoBehaviour
     {
         if (HardwareMonitor == null) return;
 
-        foreach (var dispositivo in HardwareMonitor.CurrentInfo.Connected)
+        foreach (var d in HardwareMonitor.CurrentInfo.Connected)
         {
-            if (!dispositivo.IsBaseStation) continue;
-
-            string uuid = dispositivo.UUID;
+            if (!d.IsBaseStation) continue;
+            string uuid = d.UUID;
             Task.Run(() =>
             {
                 try
@@ -171,10 +176,9 @@ public class OmmoSensorManager : MonoBehaviour
                     var handler = new Cysharp.Net.Http.YetAnotherHttpHandler { Http2Only = true };
                     var channel = Grpc.Net.Client.GrpcChannel.ForAddress("http://localhost:50051",
                                       new Grpc.Net.Client.GrpcChannelOptions { HttpHandler = handler });
-                    var client = new Ommo.CoreService.CoreServiceClient(channel);
+                    var client  = new Ommo.CoreService.CoreServiceClient(channel);
                     client.SetBaseStationMotorRunning(false);
                     channel.ShutdownAsync().Wait();
-
                     UnityMainThreadDispatcher.Enqueue(() =>
                         HardwareMonitor?.SetMotorRunningState(uuid, false));
                 }
@@ -190,25 +194,16 @@ public class OmmoSensorManager : MonoBehaviour
 
     void AoHardwareAtualizado(OmmoHardwareMonitor.ServiceInfo info)
     {
-        // Actualiza o texto do painel de ligação se ainda estiver visível
-        if (PainelALigar != null && PainelALigar.gameObject.activeSelf && TextoEstado != null)
-        {
-            TextoEstado.text = info.IsConnected
-                ? "Hardware conectado. A aguardar sensores..."
-                : "A aguardar serviço Ommo...";
-        }
-
-        // Inicia o motor da Base Station automaticamente quando o tracking está ativo
-        // e a base station aparece conectada mas ainda não a girar.
+        // Inicia motor quando tracking estiver ativo e base station ainda não a girar
         if (_trackingIniciado && !_motorEmInicio)
         {
-            foreach (var dispositivo in info.Connected)
+            foreach (var d in info.Connected)
             {
-                if (dispositivo.IsBaseStation && !dispositivo.IsRunning)
+                if (d.IsBaseStation && !d.IsRunning)
                 {
                     _motorEmInicio = true;
-                    Debug.Log("[OmmoSensorManager] Base Station detetada — a iniciar motor automaticamente...");
-                    IniciarMotorBaseStation(dispositivo.UUID);
+                    Debug.Log("[OmmoSensorManager] Base Station detetada (poll) — a iniciar motor...");
+                    IniciarMotorBaseStation(d.UUID);
                     break;
                 }
             }
@@ -220,28 +215,26 @@ public class OmmoSensorManager : MonoBehaviour
         Task.Run(() =>
         {
             System.Threading.Thread.Sleep(1000);
-
             try
             {
                 var handler = new Cysharp.Net.Http.YetAnotherHttpHandler { Http2Only = true };
                 var channel = Grpc.Net.Client.GrpcChannel.ForAddress("http://localhost:50051",
                                   new Grpc.Net.Client.GrpcChannelOptions { HttpHandler = handler });
-                var client = new Ommo.CoreService.CoreServiceClient(channel);
+                var client  = new Ommo.CoreService.CoreServiceClient(channel);
                 bool ok = client.SetBaseStationMotorRunning(true);
                 channel.ShutdownAsync().Wait();
 
                 UnityMainThreadDispatcher.Enqueue(() =>
                 {
                     _motorEmInicio = false;
-
                     if (ok)
                     {
-                        Debug.Log("[OmmoSensorManager] ✅ Motor da Base Station iniciado — posições dos sensores a caminho.");
+                        Debug.Log("[OmmoSensorManager] ✅ Motor iniciado.");
                         HardwareMonitor?.SetMotorRunningState(uuid, true);
                     }
                     else
                     {
-                        Debug.LogWarning("[OmmoSensorManager] Motor recusou arranque (success=False) — nova tentativa em ~1.5s...");
+                        Debug.LogWarning("[OmmoSensorManager] Motor recusou — nova tentativa em ~1.5s...");
                     }
                 });
             }
@@ -256,7 +249,12 @@ public class OmmoSensorManager : MonoBehaviour
         });
     }
 
-    // ── UI de ligação (mínima, opcional) ─────────────────────────────
+    // ── UI ────────────────────────────────────────────────────────────
+
+    string MensagemEspera()
+        => _sensoresNecessarios == 1
+            ? "A aguardar 1 sensor..."
+            : "A aguardar 2 sensores...";
 
     void MostrarPainelALigar(string mensagem)
     {
