@@ -146,9 +146,17 @@ public class PrevenGameManager : MonoBehaviour
             Debug.LogWarning("[PrevenGame] ComprimentoBraco = 0 — usando fallback 44 cm.");
         }
 
-        // Abdução no plano frontal: arco de 0° (braço em baixo) a 90° (braço horizontal)
-        // 5 waypoints a cada 22.5° — ida sobe, volta desce
-        float lateral = BracoDireito ? 1f : -1f;
+        // Eixo lateral baseado na direção frontal calibrada (ombro→palma estendida)
+        // O paciente estica o braço para a frente na calibração → essa direção define o plano
+        // O eixo lateral é perpendicular à frente e à gravidade
+        Vector3 dirFrente = Esqueleto.DirecaoFrente;
+        if (dirFrente == Vector3.zero) dirFrente = Vector3.forward;
+
+        // Cross(frente, cima) → lateral para a direita do paciente
+        Vector3 eixoLateral = Vector3.Cross(dirFrente, Vector3.up).normalized;
+        if (!BracoDireito) eixoLateral = -eixoLateral;
+
+        // 5 waypoints em arco: 0° (braço em baixo) → 90° (braço horizontal ao lado)
         float[] angulos = { 0f, 22.5f, 45f, 67.5f, 90f };
 
         _posicoes = new Vector3[angulos.Length];
@@ -156,9 +164,11 @@ public class PrevenGameManager : MonoBehaviour
         {
             float rad = angulos[i] * Mathf.Deg2Rad;
             _posicoes[i] = posOmbro
-                + Vector3.right * (lateral * Mathf.Sin(rad) * L)
-                + Vector3.down  * (Mathf.Cos(rad) * L);
+                + eixoLateral  * (Mathf.Sin(rad) * L)
+                + Vector3.down * (Mathf.Cos(rad) * L);
         }
+
+        Debug.Log($"[PrevenGame] DirFrente={dirFrente} | EixoLateral={eixoLateral} | BracoDireito={BracoDireito}");
 
         // Cria (ou recria) os GameObjects dos waypoints
         if (_waypoints != null)

@@ -63,10 +63,32 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     public Vector3 PosOmbroBase { get; private set; }
     public float   ComprimentoBraco { get; private set; }
 
+    /// <summary>
+    /// Direção horizontal do braço estendido para a frente (calibrada).
+    /// Usada para orientar o exercício e o hint do cotovelo.
+    /// </summary>
+    public Vector3 DirecaoFrente { get; private set; } = Vector3.forward;
+
     public void DefinirComprimentoBraco(float comprimento)
     {
         ComprimentoBraco = comprimento;
         Debug.Log($"[OmmoEsqueleto] ComprimentoBraco = {comprimento:F2} units = {comprimento * 10f:F1} cm");
+    }
+
+    /// <summary>
+    /// Guarda a direção frontal do paciente a partir da posição da palma
+    /// quando o braço está estendido para a frente (passo BracoEstendido).
+    /// Projeta no plano horizontal para eliminar componente vertical.
+    /// </summary>
+    public void DefinirDirecaoFrente(Vector3 posPalmaEstendida)
+    {
+        Vector3 dir = posPalmaEstendida - PosOmbroBase;
+        Vector3 horizontal = new Vector3(dir.x, 0f, dir.z);
+        if (horizontal.magnitude > 0.05f)
+        {
+            DirecaoFrente = horizontal.normalized;
+            Debug.Log($"[OmmoEsqueleto] DirecaoFrente = {DirecaoFrente}");
+        }
     }
 
     // ── Propriedades públicas — estado ────────────────────────────────
@@ -168,7 +190,8 @@ public class OmmoEsqueletoJogador : MonoBehaviour
             : _posOmbroBase;
 
         // IK de 2 elos: cotovelo calculado por lei dos cossenos
-        Vector3 posCotovelo = CalcularPosCotovelo(posOmbro, posPalma, ComprimentoBraco);
+        // Hint: cotovelo aponta para trás relativamente à direção frontal calibrada
+        Vector3 posCotovelo = CalcularPosCotovelo(posOmbro, posPalma, ComprimentoBraco, -DirecaoFrente);
 
         if (_goCotovelo) _goCotovelo.transform.position = posCotovelo;
         if (_goOmbro)    _goOmbro.transform.position    = posOmbro;
@@ -200,7 +223,7 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     ///
     /// Hint = Vector3.back → cotovelo aponta para longe da base station (atrás do player).
     /// </summary>
-    private static Vector3 CalcularPosCotovelo(Vector3 ombro, Vector3 palma, float comprimentoBraco)
+    private static Vector3 CalcularPosCotovelo(Vector3 ombro, Vector3 palma, float comprimentoBraco, Vector3 hint)
     {
         // Fallback se comprimento não calibrado
         float bracoTotal = comprimentoBraco > 0.05f ? comprimentoBraco : 0.44f;
@@ -230,10 +253,11 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
         if (h < 0.001f) return pontoBase; // braço esticado — cotovelo no eixo
 
-        // Vetor hint: cotovelo aponta para trás (longe da base station que está à frente)
-        Vector3 hint = Vector3.back;
+        // Normaliza o hint; fallback se paralelo ao eixo do braço
+        if (hint.magnitude < 0.01f) hint = Vector3.back;
+        hint = hint.normalized;
         if (Mathf.Abs(Vector3.Dot(dirNorm, hint)) > 0.98f)
-            hint = Vector3.right; // fallback se braço paralelo ao hint
+            hint = Vector3.right;
 
         // Componente do hint perpendicular ao eixo do braço
         Vector3 perpHint = (hint - Vector3.Dot(hint, dirNorm) * dirNorm).normalized;

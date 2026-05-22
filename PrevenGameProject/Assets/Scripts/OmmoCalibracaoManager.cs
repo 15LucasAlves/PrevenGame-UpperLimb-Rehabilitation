@@ -211,13 +211,14 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 break;
 
             case EstadoCalibracao.BracoEstendido:
-                // Mede comprimento real do braço (palma → ombro)
+                // Mede comprimento do braço e guarda a direção frontal do paciente
                 if (Esqueleto != null)
                 {
                     Vector3 posOmbro = _deviceOmbro != null
                         ? _deviceOmbro.ObterPosicaoSensor(0)
-                        : Esqueleto.PosOmbroBase; // fixo do passo Ombro (1 sensor)
+                        : Esqueleto.PosOmbroBase;
                     Esqueleto.DefinirComprimentoBraco(Vector3.Distance(posicao, posOmbro));
+                    Esqueleto.DefinirDirecaoFrente(posicao); // direção ombro→palma estendida
                 }
                 break;
 
