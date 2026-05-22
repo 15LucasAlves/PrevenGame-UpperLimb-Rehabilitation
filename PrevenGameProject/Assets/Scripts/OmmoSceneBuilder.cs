@@ -372,6 +372,7 @@ public class OmmoSceneBuilder : EditorWindow
         var gameScaler = gameCanvasGO.AddComponent<CanvasScaler>();
         gameScaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         gameScaler.referenceResolution = new Vector2(1920, 1080);
+        gameCanvasGO.AddComponent<GraphicRaycaster>();
 
         // ── HUDJogo (ativo durante o exercício) ───────────────────────
         var hudJogo = new GameObject("HUDJogo");
