@@ -640,29 +640,30 @@ public class OmmoSceneBuilder : EditorWindow
 
     static void ClearExisting()
     {
-        string[] names = { "AppManager", "BaseStation", "MainCanvas", "HUDCanvas", "GridCamera",
-                           "TrackedDevicePrefab_TEMP", "DeviceRowPrefab_TEMP" };
-        foreach (var n in names)
-        {
-            var go = GameObject.Find(n);
-            if (go != null) Object.DestroyImmediate(go);
-        }
+        DestroyRootsByName(
+            "AppManager", "BaseStation", "MainCanvas", "HUDCanvas", "GridCamera",
+            "TrackedDevicePrefab_TEMP", "DeviceRowPrefab_TEMP");
     }
 
     static void ClearExistingJogo()
     {
-        // Limpa objetos do jogo E eventuais restos da cena de diagnóstico
-        string[] names = {
+        DestroyRootsByName(
             "AppManager", "BaseStation", "Piso", "LuzDirecional",
             "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
             "PainelALigar_TEMP", "CalibracaoCanvas", "EsqueletoJogador", "PrevenGameCanvas",
             // restos da cena de diagnóstico
-            "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP"
-        };
-        foreach (var n in names)
+            "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP");
+    }
+
+    // GameObject.Find() ignora objetos inativos (ex: TrackedDevicePrefab_TEMP).
+    // GetRootGameObjects() devolve todos — ativos e inativos — como snapshot seguro.
+    static void DestroyRootsByName(params string[] names)
+    {
+        var nameSet = new System.Collections.Generic.HashSet<string>(names);
+        foreach (var go in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
         {
-            var go = GameObject.Find(n);
-            if (go != null) Object.DestroyImmediate(go);
+            if (nameSet.Contains(go.name))
+                Object.DestroyImmediate(go);
         }
     }
 
