@@ -80,6 +80,10 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         _devicePalma = devicePalma;
         _deviceOmbro = deviceOmbro;
 
+        // Cor do cubo da palma (azul) e do ombro (laranja) para distinção visual
+        ColorirSensor(devicePalma, new Color(0.3f, 0.7f, 1f));    // azul
+        ColorirSensor(deviceOmbro, new Color(1f, 0.55f, 0.1f));   // laranja
+
         // Cria hierarquia de objetos sob este transform
         _goCotovelo = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));   // verde-limão
         _matOmbro       = CriarMaterial(new Color(1f, 0.55f, 0.1f));        // laranja
@@ -231,5 +235,25 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     private static void SetAtivo(GameObject go, bool ativo)
     {
         if (go != null) go.SetActive(ativo);
+    }
+
+    /// <summary>
+    /// Aplica uma cor a todos os Renderers dos sensores filhos de um OmmoDevice.
+    /// Cria um novo Material para não partilhar com outros dispositivos.
+    /// </summary>
+    private static void ColorirSensor(OmmoDevice device, Color cor)
+    {
+        if (device == null) return;
+        for (int i = 0; i < device.NumeroSensores; i++)
+        {
+            var t = device.ObterTransformSensor(i);
+            if (t == null) continue;
+            var renderers = t.GetComponentsInChildren<Renderer>(true);
+            var mat = new Material(Shader.Find("Standard")) { color = cor };
+            mat.SetFloat("_Metallic",    0.05f);
+            mat.SetFloat("_Glossiness",  0.5f);
+            foreach (var r in renderers)
+                r.material = mat;
+        }
     }
 }

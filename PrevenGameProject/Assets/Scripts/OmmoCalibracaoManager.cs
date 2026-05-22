@@ -13,8 +13,9 @@ using System.Collections.Generic;
 ///   OmmoDevice com nome menor alfabeticamente → Sensor A (palma)
 ///   OmmoDevice com nome maior alfabeticamente → Sensor B (ombro)
 ///
-/// Auto-captura por estabilidade:
-///   Janela deslizante de 10 amostras; se variação < 1.5 cm por 2.5 s → captura.
+/// Captura:
+///   - Auto: janela deslizante de 10 amostras; variação < 4 cm por 1 s → captura.
+///   - Manual: premir Enter/Return captura a posição imediatamente.
 /// </summary>
 public class OmmoCalibracaoManager : MonoBehaviour
 {
@@ -44,9 +45,9 @@ public class OmmoCalibracaoManager : MonoBehaviour
     // ── Parâmetros de estabilidade ────────────────────────────────────
     [Header("Parâmetros")]
     [Tooltip("Tempo necessário de estabilidade para capturar (segundos).")]
-    public float TempoEstabilidade = 2.5f;
-    [Tooltip("Variação máxima permitida para considerar estável (Unity units = cm/10).")]
-    public float LimiarMovimento = 0.015f; // 1.5 cm
+    public float TempoEstabilidade = 1.0f;
+    [Tooltip("Variação máxima permitida para considerar estável (Unity units). 0.04 = 4 cm.")]
+    public float LimiarMovimento = 0.04f; // 4 cm — tolerante ao tremor natural
     [Tooltip("Número de amostras na janela deslizante.")]
     public int NumAmostras = 10;
 
@@ -73,10 +74,10 @@ public class OmmoCalibracaoManager : MonoBehaviour
     private static readonly string[] _subtextos = new[]
     {
         "Liga o sensor da palma e o sensor do ombro.",
-        "Fica parado 3 segundos quando estiveres pronto...",
-        "Mantém o sensor da palma completamente estável...",
-        "Mantém o sensor quieto no peito...",
-        "Mantém o sensor quieto na cabeça...",
+        "Fica parado ou prime Enter quando estiveres pronto.",
+        "Mantém estável ou prime Enter para capturar.",
+        "Toca no peito e prime Enter, ou mantém quieto.",
+        "Toca na cabeça e prime Enter, ou mantém quieto.",
         "O esqueleto está ativo e a seguir os teus movimentos."
     };
 
@@ -113,6 +114,18 @@ public class OmmoCalibracaoManager : MonoBehaviour
         if (deviceAtivo == null || deviceAtivo.NumeroSensores == 0) return;
 
         Vector3 posAtual = deviceAtivo.ObterPosicaoSensor(0);
+
+        // ── Captura manual com Enter ──────────────────────────────────
+        if (!_capturando &&
+            (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+        {
+            _capturando = true;
+            Debug.Log("[OmmoCalibracao] Captura manual (Enter).");
+            CapturarEstado(posAtual);
+            return;
+        }
+
+        // ── Auto-captura por estabilidade ─────────────────────────────
 
         // Janela deslizante de posições
         _historicoPos.Enqueue(posAtual);
