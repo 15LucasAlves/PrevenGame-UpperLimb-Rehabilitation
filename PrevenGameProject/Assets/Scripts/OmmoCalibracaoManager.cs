@@ -79,6 +79,16 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
         SensorManager.OnNumeroDeSensoresMudou += AoNumeroDeSensoresMudou;
 
+        // AddListener em editor scripts não é serializado na cena —
+        // os botões precisam de ser ligados em runtime no Start().
+        if (PainelModoSensor != null)
+        {
+            var btn1 = PainelModoSensor.transform.Find("Botao1Sensor")?.GetComponent<Button>();
+            var btn2 = PainelModoSensor.transform.Find("Botao2Sensores")?.GetComponent<Button>();
+            if (btn1) btn1.onClick.AddListener(EscolherModo1Sensor);
+            if (btn2) btn2.onClick.AddListener(EscolherModo2Sensores);
+        }
+
         AtualizarUI();
     }
 

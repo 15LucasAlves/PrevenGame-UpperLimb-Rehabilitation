@@ -81,6 +81,10 @@ public class PrevenGameManager : MonoBehaviour
         if (Esqueleto == null)
             Esqueleto = FindObjectOfType<OmmoEsqueletoJogador>();
 
+        // AddListener em editor scripts não é serializado — ligar em runtime
+        if (BotaoRepetir != null)
+            BotaoRepetir.onClick.AddListener(RepetirExercicio);
+
         // Esconde UI de jogo até a calibração terminar
         if (HUDJogo)    HUDJogo.SetActive(false);
         if (PainelFim)  PainelFim.SetActive(false);
