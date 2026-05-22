@@ -543,9 +543,9 @@ public class OmmoSceneBuilder : EditorWindow
             mainCam.farClipPlane    = 200f;
 
             // Posição definida em edit-time E garantida em runtime pelo OmmoCameraSetup
-            // Câmara frontal: vista de frente, mesma direção que a base station olha para o player
-            mainCam.transform.position = new Vector3(0f, 11f, -8f);
-            mainCam.transform.LookAt(new Vector3(0f, 10f, 2f));
+            // Câmara lateral (90° à esquerda da frontal): mostra o arco sagital de perfil
+            mainCam.transform.position = new Vector3(-10f, 10f, 2f);
+            mainCam.transform.LookAt(new Vector3(0f, 9f, 4f));
 
             // Componente runtime — garante posição correta em cada Play independentemente do editor
             if (mainCam.gameObject.GetComponent<OmmoCameraSetup>() == null)
