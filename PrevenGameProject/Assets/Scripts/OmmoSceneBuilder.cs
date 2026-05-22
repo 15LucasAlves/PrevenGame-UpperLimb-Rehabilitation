@@ -29,6 +29,16 @@ public class OmmoSceneBuilder : EditorWindow
         Debug.Log("[OmmoBuilder] A construir mundo 3D do jogo...");
         ClearExistingJogo();
 
+        // ── EventSystem ───────────────────────────────────────────────
+        // Obrigatório para qualquer input de UI (botões, sliders, etc.)
+        // Sem este componente os botões renderizam mas nunca disparam onClick.
+        if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        {
+            var esGO = CreateEmpty("EventSystem");
+            esGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            esGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        }
+
         // ── Materiais ─────────────────────────────────────────────────
         // Sensor — cápsula branca (representa o membro a reabilitar)
         Material sensorMat = new Material(Shader.Find("Standard"));
@@ -649,7 +659,7 @@ public class OmmoSceneBuilder : EditorWindow
     {
         DestroyRootsByName(
             "AppManager", "BaseStation", "Piso", "LuzDirecional",
-            "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
+            "EventSystem", "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
             "PainelALigar_TEMP", "CalibracaoCanvas", "EsqueletoJogador", "PrevenGameCanvas",
             // restos da cena de diagnóstico
             "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP");
