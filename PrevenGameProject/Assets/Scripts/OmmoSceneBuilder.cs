@@ -266,6 +266,163 @@ public class OmmoSceneBuilder : EditorWindow
         calibManager.TextoSub            = textoSub;
         calibManager.BarraProgressoImagem = barraFillImg;
 
+        // ── PrevenGameCanvas ──────────────────────────────────────────
+        // sortingOrder 40 — abaixo da calibração (50) e do painel de ligação (99)
+        var gameCanvasGO = new GameObject("PrevenGameCanvas");
+        Undo.RegisterCreatedObjectUndo(gameCanvasGO, "Create PrevenGameCanvas");
+        var gameCanvas = gameCanvasGO.AddComponent<Canvas>();
+        gameCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        gameCanvas.sortingOrder = 40;
+        var gameScaler = gameCanvasGO.AddComponent<CanvasScaler>();
+        gameScaler.uiScaleMode        = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        gameScaler.referenceResolution = new Vector2(1920, 1080);
+
+        // ── HUDJogo (ativo durante o exercício) ───────────────────────
+        var hudJogo = new GameObject("HUDJogo");
+        hudJogo.transform.SetParent(gameCanvasGO.transform, false);
+        hudJogo.AddComponent<RectTransform>();
+
+        // TextoRepeticao — canto superior esquerdo
+        var textoRepGO = new GameObject("TextoRepeticao");
+        textoRepGO.transform.SetParent(hudJogo.transform, false);
+        var textoRepRect = textoRepGO.AddComponent<RectTransform>();
+        textoRepRect.anchorMin        = new Vector2(0f, 1f);
+        textoRepRect.anchorMax        = new Vector2(0f, 1f);
+        textoRepRect.pivot            = new Vector2(0f, 1f);
+        textoRepRect.anchoredPosition = new Vector2(20f, -20f);
+        textoRepRect.sizeDelta        = new Vector2(380f, 40f);
+        var textoRep = textoRepGO.AddComponent<TextMeshProUGUI>();
+        textoRep.text      = "Repetição 1 / 3  ↓";
+        textoRep.fontSize  = 22;
+        textoRep.color     = new Color(0.9f, 0.9f, 0.9f);
+        textoRep.fontStyle = FontStyles.Bold;
+
+        // TextoTempo — centro superior
+        var textoTempoGO = new GameObject("TextoTempo");
+        textoTempoGO.transform.SetParent(hudJogo.transform, false);
+        var textoTempoRect = textoTempoGO.AddComponent<RectTransform>();
+        textoTempoRect.anchorMin        = new Vector2(0.5f, 1f);
+        textoTempoRect.anchorMax        = new Vector2(0.5f, 1f);
+        textoTempoRect.pivot            = new Vector2(0.5f, 1f);
+        textoTempoRect.anchoredPosition = new Vector2(0f, -18f);
+        textoTempoRect.sizeDelta        = new Vector2(200f, 50f);
+        var textoTempo = textoTempoGO.AddComponent<TextMeshProUGUI>();
+        textoTempo.text      = "00s";
+        textoTempo.fontSize  = 34;
+        textoTempo.color     = Color.white;
+        textoTempo.fontStyle = FontStyles.Bold;
+        textoTempo.alignment = TextAlignmentOptions.Center;
+
+        // TextoCompensacao — canto superior direito
+        var textoCompGO = new GameObject("TextoCompensacao");
+        textoCompGO.transform.SetParent(hudJogo.transform, false);
+        var textoCompRect = textoCompGO.AddComponent<RectTransform>();
+        textoCompRect.anchorMin        = new Vector2(1f, 1f);
+        textoCompRect.anchorMax        = new Vector2(1f, 1f);
+        textoCompRect.pivot            = new Vector2(1f, 1f);
+        textoCompRect.anchoredPosition = new Vector2(-20f, -20f);
+        textoCompRect.sizeDelta        = new Vector2(280f, 40f);
+        var textoComp = textoCompGO.AddComponent<TextMeshProUGUI>();
+        textoComp.text      = "Compensações: 0";
+        textoComp.fontSize  = 20;
+        textoComp.color     = new Color(0.9f, 0.9f, 0.9f);
+        textoComp.alignment = TextAlignmentOptions.Right;
+
+        hudJogo.SetActive(false); // escondido até calibração terminar
+
+        // ── PainelFim ─────────────────────────────────────────────────
+        var painelFimGO = new GameObject("PainelFim");
+        painelFimGO.transform.SetParent(gameCanvasGO.transform, false);
+        var painelFimImg = painelFimGO.AddComponent<Image>();
+        painelFimImg.color = new Color(0f, 0f, 0f, 0.7f);
+        var painelFimRect = painelFimGO.GetComponent<RectTransform>();
+        painelFimRect.anchorMin        = new Vector2(0.5f, 0.5f);
+        painelFimRect.anchorMax        = new Vector2(0.5f, 0.5f);
+        painelFimRect.pivot            = new Vector2(0.5f, 0.5f);
+        painelFimRect.anchoredPosition = Vector2.zero;
+        painelFimRect.sizeDelta        = new Vector2(700f, 260f);
+
+        // TextoResultado
+        var textoResultGO = new GameObject("TextoResultado");
+        textoResultGO.transform.SetParent(painelFimGO.transform, false);
+        var textoResultRect = textoResultGO.AddComponent<RectTransform>();
+        textoResultRect.anchorMin        = new Vector2(0.05f, 1f);
+        textoResultRect.anchorMax        = new Vector2(0.95f, 1f);
+        textoResultRect.pivot            = new Vector2(0.5f, 1f);
+        textoResultRect.anchoredPosition = new Vector2(0f, -24f);
+        textoResultRect.sizeDelta        = new Vector2(0f, 60f);
+        var textoResult = textoResultGO.AddComponent<TextMeshProUGUI>();
+        textoResult.text      = "✅ Exercício concluído!";
+        textoResult.fontSize  = 30;
+        textoResult.color     = Color.white;
+        textoResult.fontStyle = FontStyles.Bold;
+        textoResult.alignment = TextAlignmentOptions.Center;
+
+        // TextoEstatisticas
+        var textoEstatGO = new GameObject("TextoEstatisticas");
+        textoEstatGO.transform.SetParent(painelFimGO.transform, false);
+        var textoEstatRect = textoEstatGO.AddComponent<RectTransform>();
+        textoEstatRect.anchorMin        = new Vector2(0.05f, 0.5f);
+        textoEstatRect.anchorMax        = new Vector2(0.95f, 0.5f);
+        textoEstatRect.pivot            = new Vector2(0.5f, 0.5f);
+        textoEstatRect.anchoredPosition = new Vector2(0f, 10f);
+        textoEstatRect.sizeDelta        = new Vector2(0f, 40f);
+        var textoEstat = textoEstatGO.AddComponent<TextMeshProUGUI>();
+        textoEstat.text      = "Tempo: --   |   Repetições: --   |   Compensações: --";
+        textoEstat.fontSize  = 20;
+        textoEstat.color     = new Color(0.85f, 0.85f, 0.85f);
+        textoEstat.alignment = TextAlignmentOptions.Center;
+
+        // BotaoRepetir
+        var botaoRepGO = new GameObject("BotaoRepetir");
+        botaoRepGO.transform.SetParent(painelFimGO.transform, false);
+        var botaoRepRect = botaoRepGO.AddComponent<RectTransform>();
+        botaoRepRect.anchorMin        = new Vector2(0.5f, 0f);
+        botaoRepRect.anchorMax        = new Vector2(0.5f, 0f);
+        botaoRepRect.pivot            = new Vector2(0.5f, 0f);
+        botaoRepRect.anchoredPosition = new Vector2(0f, 28f);
+        botaoRepRect.sizeDelta        = new Vector2(200f, 48f);
+        var botaoRepImg = botaoRepGO.AddComponent<Image>();
+        botaoRepImg.color = new Color(0.2f, 0.7f, 0.3f);
+        var botaoRepBtn = botaoRepGO.AddComponent<Button>();
+        var botaoRepColors = botaoRepBtn.colors;
+        botaoRepColors.highlightedColor = new Color(0.25f, 0.85f, 0.35f);
+        botaoRepColors.pressedColor     = new Color(0.15f, 0.55f, 0.2f);
+        botaoRepBtn.colors = botaoRepColors;
+
+        var botaoRepLabelGO = new GameObject("Label");
+        botaoRepLabelGO.transform.SetParent(botaoRepGO.transform, false);
+        var botaoRepLabelRect = botaoRepLabelGO.AddComponent<RectTransform>();
+        botaoRepLabelRect.anchorMin = Vector2.zero;
+        botaoRepLabelRect.anchorMax = Vector2.one;
+        botaoRepLabelRect.offsetMin = Vector2.zero;
+        botaoRepLabelRect.offsetMax = Vector2.zero;
+        var botaoRepLabel = botaoRepLabelGO.AddComponent<TextMeshProUGUI>();
+        botaoRepLabel.text      = "Repetir";
+        botaoRepLabel.fontSize  = 22;
+        botaoRepLabel.color     = Color.white;
+        botaoRepLabel.fontStyle = FontStyles.Bold;
+        botaoRepLabel.alignment = TextAlignmentOptions.Center;
+
+        painelFimGO.SetActive(false);
+
+        // ── PrevenGameManager ─────────────────────────────────────────
+        var gameManager = appManager.AddComponent<PrevenGameManager>();
+        gameManager.Esqueleto          = esqueleto;
+        gameManager.CalibracaoManager  = calibManager;
+        gameManager.CanvasJogo         = gameCanvas;
+        gameManager.HUDJogo            = hudJogo;
+        gameManager.TextoRepeticao     = textoRep;
+        gameManager.TextoTempo         = textoTempo;
+        gameManager.TextoCompensacao   = textoComp;
+        gameManager.PainelFim          = painelFimGO;
+        gameManager.TextoResultado     = textoResult;
+        gameManager.TextoEstatisticas  = textoEstat;
+        gameManager.BotaoRepetir       = botaoRepBtn;
+
+        // Liga o botão Repetir ao método do manager
+        botaoRepBtn.onClick.AddListener(gameManager.RepetirExercicio);
+
         // ── Iluminação ────────────────────────────────────────────────
         // Luz direcional suave vinda de cima
         var luzObj = new GameObject("LuzDirecional");
@@ -310,7 +467,8 @@ public class OmmoSceneBuilder : EditorWindow
             "• Ecrã 'A ligar ao sensor Ommo...' aparece ao arrancar\n" +
             "• Após ~2.5s o mundo 3D é revelado automaticamente\n" +
             "• Painel de calibração aparece quando os 2 sensores ligam\n" +
-            "• Após calibração o esqueleto do membro superior fica ativo\n" +
+            "• Após calibração o esqueleto e o jogo iniciam automaticamente\n" +
+            "• Waypoints verdes marcam o percurso do braço ao lado\n" +
             "• BaseStation (azul) = origem do espaço de tracking\n\n" +
             "Guarda a cena (Ctrl+S) e carrega Play para testar.",
             "OK");
@@ -412,7 +570,7 @@ public class OmmoSceneBuilder : EditorWindow
         string[] names = {
             "AppManager", "BaseStation", "Piso", "LuzDirecional",
             "TrackedDevicePrefab_TEMP", "ObjetoControlado", "CuboSensor",
-            "PainelALigar_TEMP", "CalibracaoCanvas", "EsqueletoJogador",
+            "PainelALigar_TEMP", "CalibracaoCanvas", "EsqueletoJogador", "PrevenGameCanvas",
             // restos da cena de diagnóstico
             "MainCanvas", "HUDCanvas", "GridCamera", "DeviceRowPrefab_TEMP"
         };

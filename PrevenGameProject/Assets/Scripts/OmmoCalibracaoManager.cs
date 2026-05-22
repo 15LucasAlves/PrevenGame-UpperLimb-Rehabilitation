@@ -196,8 +196,13 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 break;
 
             case EstadoCalibracao.BracoEstendido:
-                // A posição da palma estendida fica guardada no Esqueleto
-                // via live tracking — não é necessário guardar aqui
+                // Mede o comprimento real do braço (palma→ombro) neste instante.
+                // Usado pelo PrevenGameManager para calcular waypoints à escala do utilizador.
+                if (Esqueleto != null && _deviceOmbro != null)
+                {
+                    Vector3 posOmbro = _deviceOmbro.ObterPosicaoSensor(0);
+                    Esqueleto.DefinirComprimentoBraco(Vector3.Distance(posicao, posOmbro));
+                }
                 break;
 
             case EstadoCalibracao.Peito:

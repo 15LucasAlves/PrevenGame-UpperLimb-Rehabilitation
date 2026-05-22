@@ -61,13 +61,50 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     private Material _matOmbro;
     private Material _matOmbroAlerta;
 
-    // ── Propriedade pública ───────────────────────────────────────────
+    // ── Propriedades públicas — calibração ────────────────────────────
+
+    /// <summary>Posição do peito capturada na calibração (Unity units).</summary>
+    public Vector3 PosPeito { get; private set; }
+
+    /// <summary>Posição da cabeça capturada na calibração (Unity units).</summary>
+    public Vector3 PosCabeca { get; private set; }
+
+    /// <summary>Posição de repouso do ombro gravada no fim da calibração.</summary>
+    public Vector3 PosOmbroBase { get; private set; }
+
+    /// <summary>
+    /// Distância palma→ombro medida no passo "Braço Estendido" da calibração (Unity units).
+    /// 1 Unity unit = 10 cm. Definido pelo OmmoCalibracaoManager.
+    /// </summary>
+    public float ComprimentoBraco { get; private set; }
+
+    /// <summary>Define o comprimento do braço medido durante a calibração.</summary>
+    public void DefinirComprimentoBraco(float comprimento)
+    {
+        ComprimentoBraco = comprimento;
+        Debug.Log($"[OmmoEsqueleto] ComprimentoBraco = {comprimento:F2} units = {comprimento * 10f:F1} cm");
+    }
+
+    // ── Propriedades públicas — estado de jogo ────────────────────────
 
     /// <summary>Distância do ombro à posição base (em Unity units). 0.02 = 2 cm.</summary>
     public float CompensacaoOmbro { get; private set; }
 
     /// <summary>True quando o ombro ultrapassou o limiar de compensação postural.</summary>
     public bool OmbroCompensando => CompensacaoOmbro > LIMIAR_COMPENSACAO;
+
+    /// <summary>True quando a calibração está completa e o esqueleto está ativo.</summary>
+    public bool Calibrado => _calibrado;
+
+    // ── Métodos de acesso à posição live ─────────────────────────────
+
+    /// <summary>Posição live da palma (Sensor A) em espaço Unity.</summary>
+    public Vector3 ObterPosPalmaAtual()
+        => _devicePalma != null ? _devicePalma.ObterPosicaoSensor(0) : Vector3.zero;
+
+    /// <summary>Posição live do ombro (Sensor B) em espaço Unity.</summary>
+    public Vector3 ObterPosOmbroAtual()
+        => _deviceOmbro != null ? _deviceOmbro.ObterPosicaoSensor(0) : Vector3.zero;
 
     // ── Inicialização ─────────────────────────────────────────────────
 
@@ -113,11 +150,13 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         {
             case "Peito":
                 _posPeito = posicao;
+                PosPeito  = posicao; // propriedade pública
                 if (_goPeito) _goPeito.transform.position = posicao;
                 Debug.Log($"[OmmoEsqueleto] Peito definido: {posicao}");
                 break;
             case "Cabeca":
                 _posCabeca = posicao;
+                PosCabeca  = posicao; // propriedade pública
                 if (_goCabeca) _goCabeca.transform.position = posicao;
                 Debug.Log($"[OmmoEsqueleto] Cabeça definida: {posicao}");
                 break;
@@ -142,6 +181,7 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         {
             // Guarda a posição base do ombro para deteção de compensação
             _posOmbroBase = _deviceOmbro.ObterPosicaoSensor(0);
+            PosOmbroBase  = _posOmbroBase; // propriedade pública
             Debug.Log($"[OmmoEsqueleto] ✅ Esqueleto ativo | Ombro base: {_posOmbroBase}");
         }
     }
