@@ -229,6 +229,37 @@ public class OmmoSceneBuilder : EditorWindow
         textoSub.color     = new Color(0.75f, 0.75f, 0.75f);
         textoSub.alignment = TextAlignmentOptions.Center;
 
+        // ── PainelModoSensor — botões 1 Sensor / 2 Sensores ──────────
+        // Posicionado abaixo da instrução principal, escondido após seleção
+        var painelModoGO = new GameObject("PainelModoSensor");
+        painelModoGO.transform.SetParent(painelCalib.transform, false);
+        var painelModoRect = painelModoGO.AddComponent<RectTransform>();
+        painelModoRect.anchorMin        = new Vector2(0.05f, 0f);
+        painelModoRect.anchorMax        = new Vector2(0.95f, 0f);
+        painelModoRect.pivot            = new Vector2(0.5f, 0f);
+        painelModoRect.anchoredPosition = new Vector2(0f, 20f);
+        painelModoRect.sizeDelta        = new Vector2(0f, 56f);
+        var painelModoLayout = painelModoGO.AddComponent<HorizontalLayoutGroup>();
+        painelModoLayout.spacing               = 24f;
+        painelModoLayout.childAlignment        = TextAnchor.MiddleCenter;
+        painelModoLayout.childControlHeight    = true;
+        painelModoLayout.childControlWidth     = false;
+        painelModoLayout.childForceExpandWidth = false;
+
+        // Botão "1 Sensor"
+        var btn1GO = CreateButton("Botao1Sensor", painelModoGO.transform, "1 Sensor", 200);
+        StyleButton(btn1GO, new Color(0.2f, 0.55f, 0.85f), Color.white);
+        AddLayoutElement(btn1GO, 200, 48, false);
+
+        // Botão "2 Sensores"
+        var btn2GO = CreateButton("Botao2Sensores", painelModoGO.transform, "2 Sensores", 200);
+        StyleButton(btn2GO, new Color(0.2f, 0.65f, 0.35f), Color.white);
+        AddLayoutElement(btn2GO, 200, 48, false);
+
+        // ── Atualiza instrução inicial para EscolherModo ──────────────
+        textoInstr.text = "Quantos sensores tens?";
+        textoSub.text   = "Escolhe o modo de rastreamento.";
+
         // BarraProgresso — fill horizontal (verde, 500×20 px)
         var barraGO = new GameObject("BarraProgresso");
         barraGO.transform.SetParent(painelCalib.transform, false);
@@ -258,13 +289,18 @@ public class OmmoSceneBuilder : EditorWindow
 
         // ── OmmoCalibracaoManager ─────────────────────────────────────
         var calibManager = appManager.AddComponent<OmmoCalibracaoManager>();
-        calibManager.SensorManager       = sensorMgr;
-        calibManager.Esqueleto           = esqueleto;
-        calibManager.PainelCalibracao    = painelCalib;
-        calibManager.TextoInstrucao      = textoInstr;
-        calibManager.TextoPasso          = textoPasso;
-        calibManager.TextoSub            = textoSub;
+        calibManager.SensorManager        = sensorMgr;
+        calibManager.Esqueleto            = esqueleto;
+        calibManager.PainelCalibracao     = painelCalib;
+        calibManager.TextoInstrucao       = textoInstr;
+        calibManager.TextoPasso           = textoPasso;
+        calibManager.TextoSub             = textoSub;
         calibManager.BarraProgressoImagem = barraFillImg;
+        calibManager.PainelModoSensor     = painelModoGO;
+
+        // Liga os botões de modo ao manager (AddListener necessita do manager já criado)
+        btn1GO.GetComponent<Button>().onClick.AddListener(calibManager.EscolherModo1Sensor);
+        btn2GO.GetComponent<Button>().onClick.AddListener(calibManager.EscolherModo2Sensores);
 
         // ── PrevenGameCanvas ──────────────────────────────────────────
         // sortingOrder 40 — abaixo da calibração (50) e do painel de ligação (99)

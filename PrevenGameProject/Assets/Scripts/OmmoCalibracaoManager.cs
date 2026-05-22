@@ -6,27 +6,34 @@ using System.Collections.Generic;
 /// <summary>
 /// OmmoCalibracaoManager — Máquina de estados da calibração do esqueleto.
 ///
-/// Fluxo:
-///   AguardarSensores → AtribuirSensores → BracoEstendido → Peito → Cabeca → Completo
+/// Modos:
+///   1 Sensor (palma) — ombro capturado manualmente num passo extra
+///   2 Sensores (palma + ombro) — ombro tracked em tempo real
 ///
-/// Atribuição de sensores (determinística por nome/UUID):
-///   OmmoDevice com nome menor alfabeticamente → Sensor A (palma)
-///   OmmoDevice com nome maior alfabeticamente → Sensor B (ombro)
+/// Fluxo 1 sensor:
+///   EscolherModo → AguardarSensores → AtribuirSensores
+///     → Ombro → BracoEstendido → Peito → Cabeca → Completo
+///
+/// Fluxo 2 sensores:
+///   EscolherModo → AguardarSensores → AtribuirSensores
+///     → BracoEstendido → Peito → Cabeca → Completo
 ///
 /// Captura:
-///   - Auto: janela deslizante de 10 amostras; variação < 4 cm por 1 s → captura.
-///   - Manual: premir Enter/Return captura a posição imediatamente.
+///   Auto: janela deslizante de 10 amostras, variação < 4 cm por 1 s.
+///   Manual: premir Enter/Return captura imediatamente.
 /// </summary>
 public class OmmoCalibracaoManager : MonoBehaviour
 {
     // ── Estados ───────────────────────────────────────────────────────
     public enum EstadoCalibracao
     {
-        AguardarSensores,   // espera 2 OmmoDevices activos
-        AtribuirSensores,   // instrução sobre onde colocar cada sensor
-        BracoEstendido,     // Sensor A: captura palma estendida
-        Peito,              // Sensor A: captura peito
-        Cabeca,             // Sensor A: captura cabeça
+        EscolherModo,       // seleção 1/2 sensores (botões)
+        AguardarSensores,   // espera 1 ou 2 OmmoDevices
+        AtribuirSensores,   // instrução de colocação dos sensores
+        Ombro,              // só modo 1 sensor: toca no ombro com a palma
+        BracoEstendido,     // Sensor A: braço estendido (mede comprimento)
+        Peito,              // Sensor A: toca no peito
+        Cabeca,             // Sensor A: toca na cabeça
         Completo
     }
 
@@ -36,55 +43,32 @@ public class OmmoCalibracaoManager : MonoBehaviour
     public OmmoEsqueletoJogador Esqueleto;
 
     [Header("UI de Calibração")]
-    public GameObject PainelCalibracao;
-    public TextMeshProUGUI TextoInstrucao;
-    public TextMeshProUGUI TextoPasso;
-    public TextMeshProUGUI TextoSub;
-    public Image BarraProgressoImagem;
+    public GameObject        PainelCalibracao;
+    public TextMeshProUGUI   TextoInstrucao;
+    public TextMeshProUGUI   TextoPasso;
+    public TextMeshProUGUI   TextoSub;
+    public Image             BarraProgressoImagem;
+    public GameObject        PainelModoSensor;   // painel com os 2 botões de seleção
 
     // ── Parâmetros de estabilidade ────────────────────────────────────
     [Header("Parâmetros")]
     [Tooltip("Tempo necessário de estabilidade para capturar (segundos).")]
     public float TempoEstabilidade = 1.0f;
     [Tooltip("Variação máxima permitida para considerar estável (Unity units). 0.04 = 4 cm.")]
-    public float LimiarMovimento = 0.04f; // 4 cm — tolerante ao tremor natural
+    public float LimiarMovimento = 0.04f;
     [Tooltip("Número de amostras na janela deslizante.")]
     public int NumAmostras = 10;
 
     // ── Estado interno ────────────────────────────────────────────────
-    private EstadoCalibracao _estado = EstadoCalibracao.AguardarSensores;
+    private EstadoCalibracao _estado = EstadoCalibracao.EscolherModo;
+    private bool _modoUmSensor = false;
+
     private OmmoDevice _devicePalma;
-    private OmmoDevice _deviceOmbro;
+    private OmmoDevice _deviceOmbro; // null em modo 1 sensor
 
     private Queue<Vector3> _historicoPos = new Queue<Vector3>();
     private float _tempoEstavel = 0f;
-    private bool _capturando = false;
-
-    // ── Textos por estado ─────────────────────────────────────────────
-    private static readonly string[] _instrucoes = new[]
-    {
-        "A aguardar 2 sensores...",          // AguardarSensores
-        "Coloca o sensor 1 na palma\ne o sensor 2 no ombro",  // AtribuirSensores
-        "Estica o braço para a frente\nparalelo ao chão",     // BracoEstendido
-        "Toca no peito\ncom o sensor da palma",               // Peito
-        "Toca na cabeça\ncom o sensor da palma",              // Cabeca
-        "✅ Calibração concluída!"           // Completo
-    };
-
-    private static readonly string[] _subtextos = new[]
-    {
-        "Liga o sensor da palma e o sensor do ombro.",
-        "Fica parado ou prime Enter quando estiveres pronto.",
-        "Mantém estável ou prime Enter para capturar.",
-        "Toca no peito e prime Enter, ou mantém quieto.",
-        "Toca na cabeça e prime Enter, ou mantém quieto.",
-        "O esqueleto está ativo e a seguir os teus movimentos."
-    };
-
-    private static readonly string[] _passos = new[]
-    {
-        "", "", "Passo 1 / 3", "Passo 2 / 3", "Passo 3 / 3", ""
-    };
+    private bool  _capturando   = false;
 
     // ── Unity ─────────────────────────────────────────────────────────
 
@@ -106,10 +90,11 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     void Update()
     {
-        if (_estado == EstadoCalibracao.AguardarSensores ||
+        // Sem processamento enquanto aguarda modo/sensores ou após conclusão
+        if (_estado == EstadoCalibracao.EscolherModo   ||
+            _estado == EstadoCalibracao.AguardarSensores ||
             _estado == EstadoCalibracao.Completo) return;
 
-        // Sensor ativo para o estado atual
         OmmoDevice deviceAtivo = SensorParaEstadoAtual();
         if (deviceAtivo == null || deviceAtivo.NumeroSensores == 0) return;
 
@@ -126,15 +111,12 @@ public class OmmoCalibracaoManager : MonoBehaviour
         }
 
         // ── Auto-captura por estabilidade ─────────────────────────────
-
-        // Janela deslizante de posições
         _historicoPos.Enqueue(posAtual);
         if (_historicoPos.Count > NumAmostras)
             _historicoPos.Dequeue();
 
         if (_historicoPos.Count < NumAmostras) return;
 
-        // Calcula variação máxima na janela
         float variacaoMax = 0f;
         foreach (var pos in _historicoPos)
             variacaoMax = Mathf.Max(variacaoMax, Vector3.Distance(pos, posAtual));
@@ -144,11 +126,9 @@ public class OmmoCalibracaoManager : MonoBehaviour
         else
             _tempoEstavel = 0f;
 
-        // Atualiza barra de progresso
         float progresso = Mathf.Clamp01(_tempoEstavel / TempoEstabilidade);
         if (BarraProgressoImagem) BarraProgressoImagem.fillAmount = progresso;
 
-        // Captura quando estável tempo suficiente
         if (!_capturando && _tempoEstavel >= TempoEstabilidade)
         {
             _capturando = true;
@@ -156,31 +136,50 @@ public class OmmoCalibracaoManager : MonoBehaviour
         }
     }
 
+    // ── Seleção de modo (chamada pelos botões da UI) ──────────────────
+
+    /// <summary>Selecionado pelo botão "1 Sensor" na UI.</summary>
+    public void EscolherModo1Sensor()
+    {
+        _modoUmSensor = true;
+        Debug.Log("[OmmoCalibracao] Modo: 1 sensor");
+        AvancarEstado(); // → AguardarSensores
+    }
+
+    /// <summary>Selecionado pelo botão "2 Sensores" na UI.</summary>
+    public void EscolherModo2Sensores()
+    {
+        _modoUmSensor = false;
+        Debug.Log("[OmmoCalibracao] Modo: 2 sensores");
+        AvancarEstado(); // → AguardarSensores
+    }
+
     // ── Deteção de sensores ───────────────────────────────────────────
 
     void AoNumeroDeSensoresMudou(int count)
     {
-        if (count >= 2 && _estado == EstadoCalibracao.AguardarSensores)
-        {
-            // Ordena por nome (que contém UUID) → atribuição determinística
-            var devices = new List<OmmoDevice>(FindObjectsOfType<OmmoDevice>());
-            if (devices.Count < 2) return;
+        if (_estado != EstadoCalibracao.AguardarSensores) return;
 
-            devices.Sort((a, b) => string.Compare(a.name, b.name,
-                System.StringComparison.Ordinal));
+        int sensoresNecessarios = _modoUmSensor ? 1 : 2;
+        if (count < sensoresNecessarios) return;
 
-            _devicePalma = devices[0];
-            _deviceOmbro = devices[1];
+        var devices = new List<OmmoDevice>(FindObjectsOfType<OmmoDevice>());
+        if (devices.Count < sensoresNecessarios) return;
 
-            Debug.Log($"[OmmoCalibracao] Sensores atribuídos:" +
-                      $"\n  Palma → {_devicePalma.name}" +
-                      $"\n  Ombro → {_deviceOmbro.name}");
+        devices.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
 
-            if (Esqueleto)
-                Esqueleto.Inicializar(_devicePalma, _deviceOmbro);
+        _devicePalma = devices[0];
+        _deviceOmbro = _modoUmSensor ? null : devices[1];
 
-            AvancarEstado(); // → AtribuirSensores
-        }
+        if (_modoUmSensor)
+            Debug.Log($"[OmmoCalibracao] 1 sensor | Palma → {_devicePalma.name}");
+        else
+            Debug.Log($"[OmmoCalibracao] 2 sensores | Palma → {_devicePalma.name} | Ombro → {_deviceOmbro.name}");
+
+        if (Esqueleto)
+            Esqueleto.Inicializar(_devicePalma, _deviceOmbro);
+
+        AvancarEstado(); // → AtribuirSensores
     }
 
     // ── Captura de posições ───────────────────────────────────────────
@@ -192,15 +191,20 @@ public class OmmoCalibracaoManager : MonoBehaviour
         switch (_estado)
         {
             case EstadoCalibracao.AtribuirSensores:
-                // Sem captura de posição — apenas confirma posicionamento
+                break; // apenas confirmação de posicionamento
+
+            case EstadoCalibracao.Ombro:
+                // Modo 1 sensor: guarda posição fixa do ombro
+                if (Esqueleto) Esqueleto.DefinirPosicaoFixa("Ombro", posicao);
                 break;
 
             case EstadoCalibracao.BracoEstendido:
-                // Mede o comprimento real do braço (palma→ombro) neste instante.
-                // Usado pelo PrevenGameManager para calcular waypoints à escala do utilizador.
-                if (Esqueleto != null && _deviceOmbro != null)
+                // Mede comprimento real do braço (palma → ombro)
+                if (Esqueleto != null)
                 {
-                    Vector3 posOmbro = _deviceOmbro.ObterPosicaoSensor(0);
+                    Vector3 posOmbro = _deviceOmbro != null
+                        ? _deviceOmbro.ObterPosicaoSensor(0)
+                        : Esqueleto.PosOmbroBase; // fixo do passo Ombro (1 sensor)
                     Esqueleto.DefinirComprimentoBraco(Vector3.Distance(posicao, posOmbro));
                 }
                 break;
@@ -217,7 +221,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
         AvancarEstado();
     }
 
-    // ── Máquina de estados ────────────────────────────────────────────
+    // ── Máquina de estados (transições explícitas) ────────────────────
 
     void AvancarEstado()
     {
@@ -227,7 +231,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
         if (BarraProgressoImagem) BarraProgressoImagem.fillAmount = 0f;
 
-        _estado = (EstadoCalibracao)((int)_estado + 1);
+        _estado = ProximoEstado();
 
         if (_estado == EstadoCalibracao.Completo)
             ConcluirCalibracao();
@@ -236,13 +240,28 @@ public class OmmoCalibracaoManager : MonoBehaviour
         Debug.Log($"[OmmoCalibracao] → {_estado}");
     }
 
+    EstadoCalibracao ProximoEstado()
+    {
+        switch (_estado)
+        {
+            case EstadoCalibracao.EscolherModo:     return EstadoCalibracao.AguardarSensores;
+            case EstadoCalibracao.AguardarSensores: return EstadoCalibracao.AtribuirSensores;
+            case EstadoCalibracao.AtribuirSensores:
+                return _modoUmSensor
+                    ? EstadoCalibracao.Ombro
+                    : EstadoCalibracao.BracoEstendido;
+            case EstadoCalibracao.Ombro:            return EstadoCalibracao.BracoEstendido;
+            case EstadoCalibracao.BracoEstendido:   return EstadoCalibracao.Peito;
+            case EstadoCalibracao.Peito:            return EstadoCalibracao.Cabeca;
+            case EstadoCalibracao.Cabeca:           return EstadoCalibracao.Completo;
+            default:                                return EstadoCalibracao.Completo;
+        }
+    }
+
     void ConcluirCalibracao()
     {
         if (Esqueleto) Esqueleto.AtivacaoEsqueleto(true);
-
-        // Esconde o painel após 3 segundos
         Invoke(nameof(EsconderPainel), 3f);
-
         Debug.Log("[OmmoCalibracao] ✅ Calibração concluída — esqueleto ativo.");
     }
 
@@ -255,31 +274,102 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     void AtualizarUI()
     {
-        int idx = (int)_estado;
-        if (idx < 0 || idx >= _instrucoes.Length) return;
+        // Painel de seleção de modo — só visível no estado inicial
+        if (PainelModoSensor)
+            PainelModoSensor.SetActive(_estado == EstadoCalibracao.EscolherModo);
 
-        if (TextoInstrucao) TextoInstrucao.text = _instrucoes[idx];
-        if (TextoSub)       TextoSub.text       = _subtextos[idx];
-        if (TextoPasso)     TextoPasso.text      = _passos[idx];
+        // Barra de progresso — escondida em estados sem captura
         if (BarraProgressoImagem)
         {
-            // Esconde a barra nos estados sem captura
-            bool mostrarBarra = _estado != EstadoCalibracao.AguardarSensores &&
+            bool mostrarBarra = _estado != EstadoCalibracao.EscolherModo    &&
+                                _estado != EstadoCalibracao.AguardarSensores &&
                                 _estado != EstadoCalibracao.Completo;
             BarraProgressoImagem.gameObject.SetActive(mostrarBarra);
+        }
+
+        if (TextoInstrucao) TextoInstrucao.text = InstrucaoParaEstado();
+        if (TextoSub)       TextoSub.text       = SubtextoParaEstado();
+        if (TextoPasso)     TextoPasso.text      = PassoParaEstado();
+    }
+
+    string InstrucaoParaEstado()
+    {
+        switch (_estado)
+        {
+            case EstadoCalibracao.EscolherModo:
+                return "Quantos sensores tens?";
+            case EstadoCalibracao.AguardarSensores:
+                return _modoUmSensor
+                    ? "A aguardar 1 sensor..."
+                    : "A aguardar 2 sensores...";
+            case EstadoCalibracao.AtribuirSensores:
+                return _modoUmSensor
+                    ? "Coloca o sensor na palma\nda mão"
+                    : "Coloca o sensor 1 na palma\ne o sensor 2 no ombro";
+            case EstadoCalibracao.Ombro:
+                return "Toca no ombro\ncom o sensor da palma";
+            case EstadoCalibracao.BracoEstendido:
+                return "Estica o braço para a frente\nparalelo ao chão";
+            case EstadoCalibracao.Peito:
+                return "Toca no peito\ncom o sensor da palma";
+            case EstadoCalibracao.Cabeca:
+                return "Toca na cabeça\ncom o sensor da palma";
+            case EstadoCalibracao.Completo:
+                return "✅ Calibração concluída!";
+            default:
+                return "";
+        }
+    }
+
+    string SubtextoParaEstado()
+    {
+        switch (_estado)
+        {
+            case EstadoCalibracao.EscolherModo:
+                return "Escolhe o modo de rastreamento.";
+            case EstadoCalibracao.AguardarSensores:
+                return _modoUmSensor
+                    ? "Liga o sensor da palma."
+                    : "Liga o sensor da palma e o sensor do ombro.";
+            case EstadoCalibracao.AtribuirSensores:
+                return "Fica parado ou prime Enter quando estiveres pronto.";
+            case EstadoCalibracao.Ombro:
+                return "Toca no ombro e prime Enter, ou mantém quieto.";
+            case EstadoCalibracao.BracoEstendido:
+                return "Mantém estável ou prime Enter para capturar.";
+            case EstadoCalibracao.Peito:
+                return "Toca no peito e prime Enter, ou mantém quieto.";
+            case EstadoCalibracao.Cabeca:
+                return "Toca na cabeça e prime Enter, ou mantém quieto.";
+            case EstadoCalibracao.Completo:
+                return "O esqueleto está ativo e a seguir os teus movimentos.";
+            default:
+                return "";
+        }
+    }
+
+    string PassoParaEstado()
+    {
+        // Número total de passos varia com o modo
+        int total = _modoUmSensor ? 4 : 3;
+        switch (_estado)
+        {
+            case EstadoCalibracao.Ombro:         return $"Passo 1 / {total}";
+            case EstadoCalibracao.BracoEstendido: return _modoUmSensor ? "Passo 2 / 4" : "Passo 1 / 3";
+            case EstadoCalibracao.Peito:          return _modoUmSensor ? "Passo 3 / 4" : "Passo 2 / 3";
+            case EstadoCalibracao.Cabeca:         return _modoUmSensor ? "Passo 4 / 4" : "Passo 3 / 3";
+            default:                              return "";
         }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
 
-    /// <summary>Devolve o sensor ativo para o estado atual de calibração.</summary>
     OmmoDevice SensorParaEstadoAtual()
     {
         switch (_estado)
         {
             case EstadoCalibracao.AtribuirSensores:
-                // Ambos os sensores têm de estar parados → usar palma como referência
-                return _devicePalma;
+            case EstadoCalibracao.Ombro:
             case EstadoCalibracao.BracoEstendido:
             case EstadoCalibracao.Peito:
             case EstadoCalibracao.Cabeca:
@@ -289,11 +379,14 @@ public class OmmoCalibracaoManager : MonoBehaviour
         }
     }
 
-    // ── Propriedade pública ───────────────────────────────────────────
+    // ── Propriedades públicas ─────────────────────────────────────────
 
     /// <summary>Estado atual da calibração.</summary>
     public EstadoCalibracao Estado => _estado;
 
     /// <summary>True quando a calibração está completa.</summary>
     public bool Calibrado => _estado == EstadoCalibracao.Completo;
+
+    /// <summary>True quando o modo de 1 sensor está ativo.</summary>
+    public bool ModoUmSensor => _modoUmSensor;
 }

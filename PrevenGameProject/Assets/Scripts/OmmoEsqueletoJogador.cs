@@ -102,9 +102,13 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     public Vector3 ObterPosPalmaAtual()
         => _devicePalma != null ? _devicePalma.ObterPosicaoSensor(0) : Vector3.zero;
 
-    /// <summary>Posição live do ombro (Sensor B) em espaço Unity.</summary>
+    /// <summary>
+    /// Posição do ombro em espaço Unity.
+    /// Com 2 sensores: posição live do Sensor B.
+    /// Com 1 sensor: posição fixa capturada na calibração.
+    /// </summary>
     public Vector3 ObterPosOmbroAtual()
-        => _deviceOmbro != null ? _deviceOmbro.ObterPosicaoSensor(0) : Vector3.zero;
+        => _deviceOmbro != null ? _deviceOmbro.ObterPosicaoSensor(0) : _posOmbroBase;
 
     // ── Inicialização ─────────────────────────────────────────────────
 
@@ -117,9 +121,10 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         _devicePalma = devicePalma;
         _deviceOmbro = deviceOmbro;
 
-        // Cor do cubo da palma (azul) e do ombro (laranja) para distinção visual
-        ColorirSensor(devicePalma, new Color(0.3f, 0.7f, 1f));    // azul
-        ColorirSensor(deviceOmbro, new Color(1f, 0.55f, 0.1f));   // laranja
+        // Cor do cubo da palma (azul); ombro (laranja) só se existir sensor físico
+        ColorirSensor(devicePalma, new Color(0.3f, 0.7f, 1f));
+        if (deviceOmbro != null)
+            ColorirSensor(deviceOmbro, new Color(1f, 0.55f, 0.1f));
 
         // Cria hierarquia de objetos sob este transform
         _goCotovelo = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));   // verde-limão
@@ -148,15 +153,22 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     {
         switch (nome)
         {
+            case "Ombro":
+                // Modo 1 sensor: posição fixa do ombro capturada na calibração
+                _posOmbroBase = posicao;
+                PosOmbroBase  = posicao;
+                if (_goOmbro) _goOmbro.transform.position = posicao;
+                Debug.Log($"[OmmoEsqueleto] Ombro fixo definido: {posicao}");
+                break;
             case "Peito":
                 _posPeito = posicao;
-                PosPeito  = posicao; // propriedade pública
+                PosPeito  = posicao;
                 if (_goPeito) _goPeito.transform.position = posicao;
                 Debug.Log($"[OmmoEsqueleto] Peito definido: {posicao}");
                 break;
             case "Cabeca":
                 _posCabeca = posicao;
-                PosCabeca  = posicao; // propriedade pública
+                PosCabeca  = posicao;
                 if (_goCabeca) _goCabeca.transform.position = posicao;
                 Debug.Log($"[OmmoEsqueleto] Cabeça definida: {posicao}");
                 break;
@@ -190,11 +202,13 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
     void Update()
     {
-        if (!_calibrado || _devicePalma == null || _deviceOmbro == null) return;
+        if (!_calibrado || _devicePalma == null) return;
 
-        // Posições live dos sensores
+        // Posições dos sensores — ombro live (2 sensores) ou fixo (1 sensor)
         Vector3 posPalma = _devicePalma.ObterPosicaoSensor(0);
-        Vector3 posOmbro = _deviceOmbro.ObterPosicaoSensor(0);
+        Vector3 posOmbro = _deviceOmbro != null
+            ? _deviceOmbro.ObterPosicaoSensor(0)
+            : _posOmbroBase;
 
         // Cotovelo: proporção científica — 57.7% da palma até ao ombro
         Vector3 posCotovelo = posPalma + (posOmbro - posPalma) * PROPORCAO_COTOVELO;
