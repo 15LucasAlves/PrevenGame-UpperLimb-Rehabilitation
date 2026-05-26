@@ -21,6 +21,9 @@ public class OmmoDevice : MonoBehaviour
     private bool _primeirosDadosRecebidos = false;
     private string _nomeCache; // cache seguro para acesso em background threads
 
+    // Filtros de posição — um por sensor (descarta zeros, throttle, jump filter)
+    private OmmoSensorFilter[] _filtros;
+
     [Tooltip("Scale for 1 Unity value in centimeters.")]
     private float _unityScaleInCM;
     // [Header("Device Settings")]
@@ -113,8 +116,13 @@ public class OmmoDevice : MonoBehaviour
             _sensors.Add(Instantiate(SensorPrefab, _basePosition, Quaternion.identity, gameObject.transform));
         }
 
-        _sensorPositions = new Vector3[sensorCount];
+        _sensorPositions    = new Vector3[sensorCount];
         _sensorOrientations = new Quaternion[sensorCount];
+
+        // Inicializa um filtro por sensor
+        _filtros = new OmmoSensorFilter[sensorCount];
+        for (int i = 0; i < sensorCount; i++)
+            _filtros[i] = new OmmoSensorFilter();
 
         _siuUuid = _device.SiuUuid;
         _portId = _device.PortId;
@@ -226,11 +234,24 @@ public class OmmoDevice : MonoBehaviour
             for (int i = 0; i < _sensorPositions.Length && i < mes.Positions.Count; i++)
             {
                 //Debug.Log("ProcessTrackingDeviceData - for " + i);
-                // Swap Z and Y axes to match Ommo Base station coordinate frame to Unity coordinate frame
-                _sensorPositions[i] = new Vector3(mes.Positions[i].X, mes.Positions[i].Z, mes.Positions[i].Y);
-                
-                // Divide by scale so position shows up correctly in Unity
-                _sensorPositions[i] /= _unityScaleInCM;
+                // Converte eixos (Ommo → Unity) e normaliza para Unity units
+                Vector3 rawPos = new Vector3(
+                    mes.Positions[i].X,
+                    mes.Positions[i].Z,
+                    mes.Positions[i].Y) / _unityScaleInCM;
+
+                // Filtra: descarta (0,0,0), throttle, jump filter, lag 1 amostra
+                if (_filtros != null && i < _filtros.Length)
+                {
+                    if (_filtros[i].TentarAtualizar(rawPos))
+                        _sensorPositions[i] = _filtros[i].PosicaoFiltrada;
+                    // Se false → _sensorPositions[i] mantém o último valor válido
+                }
+                else
+                {
+                    // Fallback sem filtro (caso _filtros não esteja inicializado)
+                    _sensorPositions[i] = rawPos;
+                }
 
                 // Simple conversion into Unity rotation
                 // Quaternion from service is to rotate from sensor frame into base station frame
