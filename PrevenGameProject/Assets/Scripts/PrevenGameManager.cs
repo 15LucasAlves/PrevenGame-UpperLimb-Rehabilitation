@@ -6,91 +6,140 @@ using System.Collections.Generic;
 /// <summary>
 /// PrevenGameManager — Orquestrador do jogo de reabilitação pós-calibração.
 ///
-/// Exercício: Braço ao Lado
-///   Palma parte do ombro, desce completamente ao lado do corpo e regressa.
-///   Repete N vezes (configurável).
+/// Fluxo geral:
+///   1. AguardarCalibracao  — polling até CalibracaoManager.Calibrado ser true
+///   2. AguardarSelecao     — mostra ecrã de seleção de exercícios
+///   3. EmJogo              — executa a fila de exercícios em sequência
+///   4. Concluido           — painel de resultados; "Nova Sessão" volta à seleção
 ///
-/// Waypoints gerados a partir da calibração:
-///   WP0 → junto ao ombro (PosOmbroBase)
-///   WP1 → meio do braço  (PosOmbroBase - Vector3.up * L * 0.5)
-///   WP2 → braço estendido (PosOmbroBase - Vector3.up * L)
-///   Volta percorre WP2 → WP1 → WP0
-///
-/// Linha guia (LineRenderer) liga todos os waypoints da direção atual.
-/// HUD mostra repetição atual, cronómetro e contador de compensações.
-/// Painel de conclusão mostra estatísticas finais.
+/// Sistema de pontuação (anéis concêntricos):
+///   A palma ENTRA na zona externa → rastreia a menor distância atingida.
+///   Quando SAI da zona → score determinado pelo ponto mais próximo atingido.
+///   Zona interior (100 %) → anel médio (75 %) → anel exterior (50 %).
 /// </summary>
 public class PrevenGameManager : MonoBehaviour
 {
+    // ── Tipos ─────────────────────────────────────────────────────────
+
+    public enum TipoExercicio { FlexaoBraco = 0, Exercicio2 = 1, Exercicio3 = 2, Exercicio4 = 3 }
+
+    [System.Serializable]
+    public struct ExercicioConfig
+    {
+        public TipoExercicio Tipo;
+        public int           NumRepeticoes;
+    }
+
     // ── Referências (ligadas pelo OmmoSceneBuilder) ───────────────────
     [Header("Referências")]
-    public OmmoEsqueletoJogador Esqueleto;
+    public OmmoEsqueletoJogador  Esqueleto;
     public OmmoCalibracaoManager CalibracaoManager;
 
+    // ── UI de Jogo ────────────────────────────────────────────────────
     [Header("UI de Jogo")]
-    public Canvas       CanvasJogo;
-    public GameObject   HUDJogo;
-    public TextMeshProUGUI TextoRepeticao;
-    public TextMeshProUGUI TextoTempo;
-    public TextMeshProUGUI TextoCompensacao;
-    public GameObject   PainelFim;
-    public TextMeshProUGUI TextoResultado;
-    public TextMeshProUGUI TextoEstatisticas;
-    public Button       BotaoRepetir;
+    public Canvas            CanvasJogo;
+    public GameObject        HUDJogo;
+    public TextMeshProUGUI   TextoRepeticao;
+    public TextMeshProUGUI   TextoTempo;
+    public TextMeshProUGUI   TextoCompensacao;
+    public GameObject        PainelFim;
+    public TextMeshProUGUI   TextoResultado;
+    public TextMeshProUGUI   TextoEstatisticas;
+    public Button            BotaoNovaSessao; // antigo BotaoRepetir → volta à seleção
+
+    // ── UI — Seleção de Exercícios ────────────────────────────────────
+    [Header("UI — Seleção de Exercícios")]
+    public GameObject        PainelSelecaoExercicio;
+    public Button[]          BotoesToggleExercicio;  // [4] toggle por exercício
+    public TextMeshProUGUI[] TextosRepsExercicio;    // [4] contador de reps
+    public Button[]          BotoesMenos;            // [4] botão "─"
+    public Button[]          BotoesMais;             // [4] botão "+"
+    public Button            BotaoIniciarSessao;
 
     // ── Configuração do exercício ──────────────────────────────────────
-    [Header("Exercício — Abdução do Braço")]
-    [Tooltip("Número de repetições completas (ida + volta = 1 rep).")]
-    public int   NumRepeticoes  = 3;
-    [Tooltip("Raio de deteção do toque nos waypoints (Unity units). 0.30 = 30 cm.")]
-    public float RaioWaypoint   = 0.30f;
-    [Tooltip("Escala visual da esfera-waypoint (diâmetro em Unity units).")]
-    public float EscalaEsfera   = 0.45f;
-    [Tooltip("Braço direito (+X) ou esquerdo (-X).")]
-    public bool  BracoDireito   = true;
+    [Header("Exercício")]
+    [Tooltip("Número de repetições (sobrescrito pela seleção de exercícios).")]
+    public int   NumRepeticoes = 3;
+    [Tooltip("Escala visual da esfera-waypoint central (diâmetro em Unity units).")]
+    public float EscalaEsfera  = 0.45f;
+
+    // ── Zonas de Pontuação ────────────────────────────────────────────
+    [Header("Zonas de Pontuação")]
+    [Tooltip("Raios das zonas de pontuação, interior→exterior (Unity units).")]
+    public float[] RaiosZonas      = { 0.20f, 0.35f, 0.50f };
+    [Tooltip("Score de cada zona, interior→exterior (0–1).")]
+    public float[] PontuacoesZonas = { 1.00f, 0.75f, 0.50f };
+    [Tooltip("Cores das zonas (índice 0=interior=verde, …=exterior=laranja).")]
+    public Color[] CoresZonas      =
+    {
+        new Color(0.2f, 0.9f, 0.3f),  // 100 % — verde
+        new Color(1.0f, 0.85f, 0.0f), // 75 %  — amarelo
+        new Color(1.0f, 0.4f,  0.1f)  // 50 %  — laranja
+    };
 
     [Header("Cores")]
-    public Color CorLinha       = new Color(0.2f, 0.9f, 0.3f, 0.6f);
+    public Color CorLinha = new Color(0.2f, 0.9f, 0.3f, 0.6f);
 
-    // ── Estado interno ─────────────────────────────────────────────────
-    private enum EstadoJogo { AguardarCalibracao, EmJogo, Concluido }
+    // ── Estado da máquina de jogo ──────────────────────────────────────
+    private enum EstadoJogo { AguardarCalibracao, AguardarSelecao, EmJogo, Concluido }
     private EstadoJogo _estado = EstadoJogo.AguardarCalibracao;
 
-    // Waypoints da sequência atual
+    // ── Fila de exercícios ─────────────────────────────────────────────
+    private Queue<ExercicioConfig> _filaExercicios = new Queue<ExercicioConfig>();
+
+    // ── Seleção ────────────────────────────────────────────────────────
+    private bool[] _selecionados   = { true, false, false, false }; // Exercício 1 pré-selecionado
+    private int[]  _repsEscolhidas = { 3, 3, 3, 3 };
+
+    // ── Waypoints da sequência atual ───────────────────────────────────
     private PrevenGameWaypoint[] _waypoints;
-    private int  _wpAtual    = 0;
-    private bool _emVolta    = false; // false = ida (topo→baixo), true = volta (baixo→topo)
-    private int  _repAtual   = 0;     // 0-indexed
+    private int  _wpAtual  = 0;
+    private bool _emVolta  = false;
+    private int  _repAtual = 0;
 
-    // Estatísticas
-    private float _tempoTotal       = 0f;
-    private int   _contCompensacoes = 0;
-    private bool  _ombroCompsLast   = false; // evita contar o mesmo evento várias vezes
+    // ── Estatísticas da sessão ─────────────────────────────────────────
+    private float _tempoTotal          = 0f;
+    private int   _contCompensacoes    = 0;
+    private bool  _ombroCompsLast      = false;
+    private float _pontuacaoAcumulada  = 0f;
+    private int   _waypointsAtingidos  = 0;
+    private int   _totalRepsRealizadas = 0;
 
-    // Linha guia
+    // ── Linha guia ─────────────────────────────────────────────────────
     private LineRenderer _linhaGuia;
 
-    // Posições dos waypoints (calculadas da calibração)
-    // Arco de abdução: [0]=braço baixo … [4]=braço horizontal ao lado
+    // ── Posições dos waypoints ─────────────────────────────────────────
     private Vector3[] _posicoes;
 
-    // ── Unity ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Unity
+    // ─────────────────────────────────────────────────────────────────
 
     void Start()
     {
-        // Garante referências por Find se o builder não ligou
         if (CalibracaoManager == null)
             CalibracaoManager = FindObjectOfType<OmmoCalibracaoManager>();
         if (Esqueleto == null)
             Esqueleto = FindObjectOfType<OmmoEsqueletoJogador>();
 
-        // AddListener em editor scripts não é serializado — ligar em runtime
-        if (BotaoRepetir != null)
-            BotaoRepetir.onClick.AddListener(RepetirExercicio);
+        // Wiring de todos os listeners em runtime (onClick não é serializado)
+        BotaoNovaSessao?.onClick.AddListener(MostrarSelecao);
+        BotaoIniciarSessao?.onClick.AddListener(IniciarSessaoSelecionada);
 
-        // Esconde UI de jogo até a calibração terminar
-        if (HUDJogo)    HUDJogo.SetActive(false);
-        if (PainelFim)  PainelFim.SetActive(false);
+        for (int i = 0; i < 4; i++)
+        {
+            int idx = i;
+            if (BotoesToggleExercicio != null && idx < BotoesToggleExercicio.Length)
+                BotoesToggleExercicio[idx]?.onClick.AddListener(() => ToggleExercicio(idx));
+            if (BotoesMenos != null && idx < BotoesMenos.Length)
+                BotoesMenos[idx]?.onClick.AddListener(() => AlterarReps(idx, -1));
+            if (BotoesMais != null && idx < BotoesMais.Length)
+                BotoesMais[idx]?.onClick.AddListener(() => AlterarReps(idx, +1));
+        }
+
+        if (HUDJogo)                HUDJogo.SetActive(false);
+        if (PainelFim)              PainelFim.SetActive(false);
+        if (PainelSelecaoExercicio) PainelSelecaoExercicio.SetActive(false);
     }
 
     void Update()
@@ -98,9 +147,8 @@ public class PrevenGameManager : MonoBehaviour
         switch (_estado)
         {
             case EstadoJogo.AguardarCalibracao:
-                // Polling — inicia jogo quando calibração concluída
                 if (CalibracaoManager != null && CalibracaoManager.Calibrado)
-                    IniciarJogo();
+                    MostrarSelecao();
                 break;
 
             case EstadoJogo.EmJogo:
@@ -109,16 +157,134 @@ public class PrevenGameManager : MonoBehaviour
         }
     }
 
-    // ── Inicialização do jogo ──────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Ecrã de seleção de exercícios
+    // ─────────────────────────────────────────────────────────────────
+
+    void MostrarSelecao()
+    {
+        _estado = EstadoJogo.AguardarSelecao;
+
+        if (HUDJogo)                HUDJogo.SetActive(false);
+        if (PainelFim)              PainelFim.SetActive(false);
+        if (PainelSelecaoExercicio) PainelSelecaoExercicio.SetActive(true);
+
+        // Limpa waypoints e linha da sessão anterior (se existirem)
+        if (_waypoints != null)
+        {
+            foreach (var wp in _waypoints)
+                if (wp != null) Destroy(wp.gameObject);
+            _waypoints = null;
+        }
+        if (_linhaGuia) _linhaGuia.gameObject.SetActive(false);
+
+        AtualizarUISelecao();
+        Debug.Log("[PrevenGame] Ecrã de seleção ativo.");
+    }
+
+    void AtualizarUISelecao()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            bool sel = _selecionados[i];
+
+            if (BotoesToggleExercicio != null && i < BotoesToggleExercicio.Length
+                && BotoesToggleExercicio[i] != null)
+            {
+                var img = BotoesToggleExercicio[i].GetComponent<Image>();
+                if (img)
+                    img.color = sel
+                        ? new Color(0.2f, 0.7f, 0.3f)
+                        : new Color(0.35f, 0.35f, 0.35f);
+            }
+
+            if (TextosRepsExercicio != null && i < TextosRepsExercicio.Length
+                && TextosRepsExercicio[i] != null)
+                TextosRepsExercicio[i].text = _repsEscolhidas[i].ToString();
+        }
+    }
+
+    void ToggleExercicio(int idx)
+    {
+        // Apenas os exercícios implementados (índice 0) podem ser toggleados
+        if (idx != 0) return;
+        _selecionados[idx] = !_selecionados[idx];
+        AtualizarUISelecao();
+    }
+
+    void AlterarReps(int idx, int delta)
+    {
+        if (!_selecionados[idx]) return;
+        _repsEscolhidas[idx] = Mathf.Clamp(_repsEscolhidas[idx] + delta, 1, 20);
+        AtualizarUISelecao();
+    }
+
+    void IniciarSessaoSelecionada()
+    {
+        bool algumSelecionado = false;
+        for (int i = 0; i < 4; i++)
+            if (_selecionados[i]) { algumSelecionado = true; break; }
+
+        if (!algumSelecionado)
+        {
+            Debug.LogWarning("[PrevenGame] Nenhum exercício selecionado.");
+            return;
+        }
+
+        _filaExercicios.Clear();
+        for (int i = 0; i < 4; i++)
+        {
+            if (_selecionados[i])
+                _filaExercicios.Enqueue(new ExercicioConfig
+                {
+                    Tipo          = (TipoExercicio)i,
+                    NumRepeticoes = _repsEscolhidas[i]
+                });
+        }
+
+        // Reseta estatísticas de sessão
+        _pontuacaoAcumulada  = 0f;
+        _waypointsAtingidos  = 0;
+        _totalRepsRealizadas = 0;
+        _tempoTotal          = 0f;
+        _contCompensacoes    = 0;
+        _ombroCompsLast      = false;
+
+        if (PainelSelecaoExercicio) PainelSelecaoExercicio.SetActive(false);
+
+        AvancarFila();
+    }
+
+    void AvancarFila()
+    {
+        if (_filaExercicios.Count > 0)
+        {
+            var config = _filaExercicios.Dequeue();
+            IniciarExercicio(config);
+        }
+        else
+        {
+            ConcluirSessao();
+        }
+    }
+
+    void IniciarExercicio(ExercicioConfig config)
+    {
+        NumRepeticoes = config.NumRepeticoes;
+        Debug.Log($"[PrevenGame] Iniciar: {config.Tipo} × {config.NumRepeticoes} reps");
+        IniciarJogo();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Inicialização do exercício corrente
+    // ─────────────────────────────────────────────────────────────────
 
     void IniciarJogo()
     {
-        _estado = EstadoJogo.EmJogo;
-        _repAtual   = 0;
-        _emVolta    = false;
-        _wpAtual    = 0;
-        _tempoTotal = 0f;
-        _contCompensacoes = 0;
+        _estado   = EstadoJogo.EmJogo;
+        _repAtual = 0;
+        _emVolta  = false;
+        _wpAtual  = 0;
 
         GerarWaypointsBracoAoLado();
         CriarLinhaGuia();
@@ -128,12 +294,13 @@ public class PrevenGameManager : MonoBehaviour
         if (PainelFim) PainelFim.SetActive(false);
         AtualizarHUD();
 
-        Debug.Log($"[PrevenGame] Jogo iniciado | {NumRepeticoes} repetições | " +
-                  $"ComprimentoBraco={Esqueleto.ComprimentoBraco:F2} units " +
-                  $"({Esqueleto.ComprimentoBraco * 10f:F1} cm)");
+        Debug.Log($"[PrevenGame] Jogo iniciado | {NumRepeticoes} reps | " +
+                  $"Braço={Esqueleto.ComprimentoBraco:F2} u ({Esqueleto.ComprimentoBraco * 10f:F1} cm)");
     }
 
-    // ── Cálculo de waypoints ───────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Cálculo de waypoints — arco sagital
+    // ─────────────────────────────────────────────────────────────────
 
     void GerarWaypointsBracoAoLado()
     {
@@ -146,12 +313,10 @@ public class PrevenGameManager : MonoBehaviour
             Debug.LogWarning("[PrevenGame] ComprimentoBraco = 0 — usando fallback 44 cm.");
         }
 
-        // Arco de flexão sagital: braço vai de baixo (0°) até à frente (90°)
-        // A direção frontal vem da calibração (ombro→palma estendida projetada no plano horizontal)
         Vector3 dirFrente = Esqueleto.DirecaoFrente;
         if (dirFrente == Vector3.zero) dirFrente = Vector3.forward;
 
-        // 5 waypoints no plano sagital: braço em baixo → braço horizontal para a frente
+        // 5 waypoints: braço em baixo (0°) → braço horizontal à frente (90°)
         float[] angulos = { 0f, 22.5f, 45f, 67.5f, 90f };
 
         _posicoes = new Vector3[angulos.Length];
@@ -159,13 +324,11 @@ public class PrevenGameManager : MonoBehaviour
         {
             float rad = angulos[i] * Mathf.Deg2Rad;
             _posicoes[i] = posOmbro
-                + dirFrente    * (Mathf.Sin(rad) * L)   // componente frontal
-                + Vector3.down * (Mathf.Cos(rad) * L);  // componente vertical
+                + dirFrente    * (Mathf.Sin(rad) * L)
+                + Vector3.down * (Mathf.Cos(rad) * L);
         }
 
-        Debug.Log($"[PrevenGame] DirFrente={dirFrente} | arco sagital 0°→90°");
-
-        // Cria (ou recria) os GameObjects dos waypoints
+        // Cria (ou recria) GameObjects dos waypoints
         if (_waypoints != null)
             foreach (var wp in _waypoints)
                 if (wp != null) Destroy(wp.gameObject);
@@ -180,15 +343,16 @@ public class PrevenGameManager : MonoBehaviour
             Destroy(go.GetComponent<SphereCollider>());
 
             var wp = go.AddComponent<PrevenGameWaypoint>();
-            wp.Raio = RaioWaypoint;
+            wp.ConfigurarZonas(RaiosZonas, PontuacoesZonas, CoresZonas, EscalaEsfera);
             _waypoints[i] = wp;
         }
 
-        Debug.Log($"[PrevenGame] Waypoints gerados: " +
-                  $"Ombro={_posicoes[0]:F2} | Meio={_posicoes[1]:F2} | Baixo={_posicoes[2]:F2}");
+        Debug.Log($"[PrevenGame] DirFrente={dirFrente} | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
     }
 
-    // ── Linha guia ─────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Linha guia
+    // ─────────────────────────────────────────────────────────────────
 
     void CriarLinhaGuia()
     {
@@ -196,13 +360,13 @@ public class PrevenGameManager : MonoBehaviour
         {
             var go = new GameObject("LinhaGuia");
             _linhaGuia = go.AddComponent<LineRenderer>();
-            _linhaGuia.material            = new Material(Shader.Find("Sprites/Default"));
-            _linhaGuia.startWidth          = 0.025f;
-            _linhaGuia.endWidth            = 0.025f;
-            _linhaGuia.useWorldSpace       = true;
-            _linhaGuia.positionCount       = _posicoes.Length;
+            _linhaGuia.material      = new Material(Shader.Find("Sprites/Default"));
+            _linhaGuia.startWidth    = 0.025f;
+            _linhaGuia.endWidth      = 0.025f;
+            _linhaGuia.useWorldSpace = true;
         }
 
+        _linhaGuia.gameObject.SetActive(true);
         _linhaGuia.startColor = CorLinha;
         _linhaGuia.endColor   = CorLinha;
         AtualizarLinhaGuia();
@@ -211,67 +375,62 @@ public class PrevenGameManager : MonoBehaviour
     void AtualizarLinhaGuia()
     {
         if (_linhaGuia == null || _posicoes == null) return;
-        // Linha sempre exibe a sequência da direção atual (ida ou volta)
         _linhaGuia.positionCount = _posicoes.Length;
         if (_emVolta)
-        {
             for (int i = 0; i < _posicoes.Length; i++)
                 _linhaGuia.SetPosition(i, _posicoes[_posicoes.Length - 1 - i]);
-        }
         else
-        {
             for (int i = 0; i < _posicoes.Length; i++)
                 _linhaGuia.SetPosition(i, _posicoes[i]);
-        }
     }
 
-    // ── Máquina de estado do exercício ────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Máquina de estado do exercício
+    // ─────────────────────────────────────────────────────────────────
 
-    /// <summary>Prepara a sequência de waypoints para a direção atual (ida ou volta).</summary>
     void IniciarDirecao()
     {
         _wpAtual = 0;
-
-        // Repõe todos os waypoints
         foreach (var wp in _waypoints) wp.Repor();
 
-        // Ativa o primeiro da direção atual
         int idxAtual = IndiceWaypointAtual();
         _waypoints[idxAtual].SetEstado(PrevenGameWaypoint.EstadoWaypoint.Ativo);
-
         AtualizarLinhaGuia();
 
         string dir = _emVolta ? "Volta" : "Ida";
         Debug.Log($"[PrevenGame] Rep {_repAtual + 1}/{NumRepeticoes} — {dir} — WP {idxAtual}");
     }
 
-    /// <summary>Converte o índice lógico (_wpAtual) em índice real do array (considera inversão).</summary>
     int IndiceWaypointAtual()
-    {
-        return _emVolta
-            ? (_posicoes.Length - 1 - _wpAtual)
-            : _wpAtual;
-    }
+        => _emVolta ? (_posicoes.Length - 1 - _wpAtual) : _wpAtual;
 
-    // ── Update do jogo ─────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Update do jogo
+    // ─────────────────────────────────────────────────────────────────
 
     void AtualizarJogo()
     {
         _tempoTotal += Time.deltaTime;
 
-        // Deteção de compensação postural (conta eventos, não frames)
         bool compensando = Esqueleto != null && Esqueleto.OmbroCompensando;
-        if (compensando && !_ombroCompsLast)
-            _contCompensacoes++;
+        if (compensando && !_ombroCompsLast) _contCompensacoes++;
         _ombroCompsLast = compensando;
 
-        // Verifica toque no waypoint atual
         if (Esqueleto == null || _waypoints == null) return;
-        Vector3 posPalma = Esqueleto.ObterPosPalmaAtual();
 
-        int idx = IndiceWaypointAtual();
+        Vector3 posPalma = Esqueleto.ObterPosPalmaAtual();
+        int     idx      = IndiceWaypointAtual();
+
         if (_waypoints[idx].VerificarToque(posPalma))
+        {
+            _pontuacaoAcumulada += _waypoints[idx].UltimaPontuacao;
+            _waypointsAtingidos++;
+
+            float pctWp = _waypoints[idx].UltimaPontuacao * 100f;
+            Debug.Log($"[PrevenGame] WP {idx} concluído — {pctWp:F0} %");
+
             AvancarWaypoint();
+        }
 
         AtualizarHUD();
     }
@@ -282,12 +441,10 @@ public class PrevenGameManager : MonoBehaviour
 
         if (_wpAtual >= _posicoes.Length)
         {
-            // Completou todos os waypoints desta direção
             ConcluirDirecao();
         }
         else
         {
-            // Ativa próximo waypoint
             int idxProx = IndiceWaypointAtual();
             _waypoints[idxProx].SetEstado(PrevenGameWaypoint.EstadoWaypoint.Ativo);
             Debug.Log($"[PrevenGame] → WP {idxProx}");
@@ -298,28 +455,36 @@ public class PrevenGameManager : MonoBehaviour
     {
         if (!_emVolta)
         {
-            // Completou a ida → inicia volta
             _emVolta = true;
             _wpAtual = 0;
             foreach (var wp in _waypoints) wp.Repor();
-            int idxInicio = IndiceWaypointAtual(); // último índice = topo da volta
+            int idxInicio = IndiceWaypointAtual();
             _waypoints[idxInicio].SetEstado(PrevenGameWaypoint.EstadoWaypoint.Ativo);
             AtualizarLinhaGuia();
-            Debug.Log($"[PrevenGame] Ida concluída — a iniciar volta");
+            Debug.Log("[PrevenGame] Ida concluída → a iniciar volta");
         }
         else
         {
-            // Completou a volta → fim de repetição
             _repAtual++;
-            Debug.Log($"[PrevenGame] Repetição {_repAtual}/{NumRepeticoes} concluída");
+            _totalRepsRealizadas++;
+            Debug.Log($"[PrevenGame] Rep {_repAtual}/{NumRepeticoes} concluída");
 
             if (_repAtual >= NumRepeticoes)
             {
-                ConcluirExercicio();
+                EsconderWaypointsAtivos();
+
+                if (_filaExercicios.Count > 0)
+                {
+                    Debug.Log("[PrevenGame] → Próximo exercício na fila…");
+                    AvancarFila();
+                }
+                else
+                {
+                    ConcluirSessao();
+                }
             }
             else
             {
-                // Nova repetição — começa de novo na ida
                 _emVolta = false;
                 _wpAtual = 0;
                 IniciarDirecao();
@@ -327,63 +492,63 @@ public class PrevenGameManager : MonoBehaviour
         }
     }
 
-    // ── Conclusão ──────────────────────────────────────────────────────
+    void EsconderWaypointsAtivos()
+    {
+        if (_waypoints != null)
+            foreach (var wp in _waypoints)
+                if (wp != null) wp.gameObject.SetActive(false);
+        if (_linhaGuia) _linhaGuia.gameObject.SetActive(false);
+    }
 
-    void ConcluirExercicio()
+    // ─────────────────────────────────────────────────────────────────
+    // Conclusão da sessão completa
+    // ─────────────────────────────────────────────────────────────────
+
+    void ConcluirSessao()
     {
         _estado = EstadoJogo.Concluido;
 
-        // Esconde waypoints e linha
-        foreach (var wp in _waypoints) wp.gameObject.SetActive(false);
-        if (_linhaGuia) _linhaGuia.gameObject.SetActive(false);
-        if (HUDJogo)    HUDJogo.SetActive(false);
-
-        // Mostra painel de resultados
+        EsconderWaypointsAtivos();
+        if (HUDJogo)   HUDJogo.SetActive(false);
         if (PainelFim) PainelFim.SetActive(true);
 
-        int   minutos   = Mathf.FloorToInt(_tempoTotal / 60f);
-        int   segundos  = Mathf.FloorToInt(_tempoTotal % 60f);
-        string tempoStr = minutos > 0
-            ? $"{minutos}m {segundos:00}s"
-            : $"{segundos}s";
+        int    min      = Mathf.FloorToInt(_tempoTotal / 60f);
+        int    seg      = Mathf.FloorToInt(_tempoTotal % 60f);
+        string tempoStr = min > 0 ? $"{min}m {seg:00}s" : $"{seg}s";
+
+        float pct = _waypointsAtingidos > 0
+            ? (_pontuacaoAcumulada / _waypointsAtingidos) * 100f
+            : 0f;
 
         if (TextoResultado)
-            TextoResultado.text = "✅ Exercício concluído!";
+            TextoResultado.text = "✅ Sessão concluída!";
 
         if (TextoEstatisticas)
             TextoEstatisticas.text =
-                $"Tempo: {tempoStr}   |   Repetições: {NumRepeticoes}   |   Compensações: {_contCompensacoes}";
+                $"Tempo: {tempoStr}   |   Reps: {_totalRepsRealizadas}   |   " +
+                $"Compensações: {_contCompensacoes}   |   Score: {pct:F0} %";
 
-        Debug.Log($"[PrevenGame] ✅ Exercício concluído! " +
-                  $"Tempo={tempoStr} | Reps={NumRepeticoes} | Comps={_contCompensacoes}");
+        Debug.Log($"[PrevenGame] ✅ Sessão concluída! Tempo={tempoStr} | " +
+                  $"Reps={_totalRepsRealizadas} | Comps={_contCompensacoes} | Score={pct:F0}%");
     }
 
-    // ── Botão Repetir ──────────────────────────────────────────────────
-
-    /// <summary>Chamado pelo botão "Repetir" no painel de conclusão.</summary>
-    public void RepetirExercicio()
-    {
-        if (_linhaGuia) _linhaGuia.gameObject.SetActive(true);
-        if (PainelFim)  PainelFim.SetActive(false);
-        IniciarJogo();
-    }
-
-    // ── HUD ────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // HUD
+    // ─────────────────────────────────────────────────────────────────
 
     void AtualizarHUD()
     {
         if (TextoRepeticao)
         {
-            // Ida = braço sobe (abdução ↑), Volta = braço desce (adução ↓)
             string dir = _emVolta ? "↓ Descer" : "↑ Subir";
             TextoRepeticao.text = $"Rep {_repAtual + 1} / {NumRepeticoes}  {dir}";
         }
 
         if (TextoTempo)
         {
-            int min = Mathf.FloorToInt(_tempoTotal / 60f);
-            int seg = Mathf.FloorToInt(_tempoTotal % 60f);
-            TextoTempo.text = min > 0 ? $"{min}:{seg:00}" : $"{seg:00}s";
+            int m = Mathf.FloorToInt(_tempoTotal / 60f);
+            int s = Mathf.FloorToInt(_tempoTotal % 60f);
+            TextoTempo.text = m > 0 ? $"{m}:{s:00}" : $"{s:00}s";
         }
 
         if (TextoCompensacao)
