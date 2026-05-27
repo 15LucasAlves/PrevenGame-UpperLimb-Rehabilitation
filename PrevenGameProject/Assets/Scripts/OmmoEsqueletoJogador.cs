@@ -38,7 +38,9 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     private Vector3 _posOmbroBase;
 
     // ── Estado ────────────────────────────────────────────────────────
-    private bool _calibrado = false;
+    private bool _calibrado  = false;
+    // True se o passo Peito foi calibrado (opcional — apenas visual)
+    private bool _temPeito   = false;
 
     // ── GameObjects das articulações ──────────────────────────────────
     private GameObject _goCotovelo;
@@ -145,6 +147,7 @@ public class OmmoEsqueletoJogador : MonoBehaviour
             case "Peito":
                 _posPeito = posicao;
                 PosPeito  = posicao;
+                _temPeito = true;
                 if (_goPeito) _goPeito.transform.position = posicao;
                 Debug.Log($"[OmmoEsqueleto] Peito: {posicao}");
                 break;
@@ -163,12 +166,13 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
         SetAtivo(_goCotovelo,        ativo);
         SetAtivo(_goOmbro,           ativo);
-        SetAtivo(_goPeito,           ativo);
-        SetAtivo(_goCabeca,          ativo);
         SetAtivo(_ossoPalmaCotovelo, ativo);
         SetAtivo(_ossoCotoveloOmbro, ativo);
-        SetAtivo(_ossoOmbroPeito,    ativo);
-        SetAtivo(_ossoPeitoCabeca,   ativo);
+        // Peito/Cabeça só ativados se o passo de calibração correspondente foi feito
+        SetAtivo(_goPeito,           ativo && _temPeito);
+        SetAtivo(_goCabeca,          ativo && _temPeito);
+        SetAtivo(_ossoOmbroPeito,    ativo && _temPeito);
+        SetAtivo(_ossoPeitoCabeca,   ativo && _temPeito);
 
         if (ativo && _deviceOmbro != null)
         {
@@ -198,8 +202,11 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
         AtualizarCilindro(_ossoPalmaCotovelo, posPalma,    posCotovelo);
         AtualizarCilindro(_ossoCotoveloOmbro, posCotovelo, posOmbro);
-        AtualizarCilindro(_ossoOmbroPeito,    posOmbro,    _posPeito);
-        AtualizarCilindro(_ossoPeitoCabeca,   _posPeito,   _posCabeca);
+        if (_temPeito)
+        {
+            AtualizarCilindro(_ossoOmbroPeito,  posOmbro,  _posPeito);
+            AtualizarCilindro(_ossoPeitoCabeca, _posPeito, _posCabeca);
+        }
 
         // Compensação postural (só com 2 sensores — ombro live)
         if (_deviceOmbro != null)

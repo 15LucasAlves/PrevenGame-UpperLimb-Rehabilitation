@@ -66,15 +66,30 @@ public class PrevenGameManager : MonoBehaviour
     // ── Zonas de Pontuação ────────────────────────────────────────────
     [Header("Zonas de Pontuação")]
     [Tooltip("Raios das zonas de pontuação, interior→exterior (Unity units).")]
-    public float[] RaiosZonas      = { 0.20f, 0.35f, 0.50f };
+    public float[] RaiosZonas      =
+    {
+        0.50f, 0.70f, 0.90f, 1.10f, 1.30f,
+        1.50f, 1.70f, 1.90f, 2.10f, 2.30f
+    };
     [Tooltip("Score de cada zona, interior→exterior (0–1).")]
-    public float[] PontuacoesZonas = { 1.00f, 0.75f, 0.50f };
-    [Tooltip("Cores das zonas (índice 0=interior=verde, …=exterior=laranja).")]
+    public float[] PontuacoesZonas =
+    {
+        1.00f, 0.90f, 0.80f, 0.70f, 0.60f,
+        0.50f, 0.40f, 0.30f, 0.20f, 0.10f
+    };
+    [Tooltip("Cores das zonas (índice 0=interior=verde, …=exterior=vermelho).")]
     public Color[] CoresZonas      =
     {
-        new Color(0.2f, 0.9f, 0.3f),  // 100 % — verde
-        new Color(1.0f, 0.85f, 0.0f), // 75 %  — amarelo
-        new Color(1.0f, 0.4f,  0.1f)  // 50 %  — laranja
+        new Color(0.15f, 0.90f, 0.20f),  // 100 % — verde
+        new Color(0.40f, 0.90f, 0.10f),  // 90 %
+        new Color(0.65f, 0.90f, 0.05f),  // 80 %
+        new Color(0.90f, 0.85f, 0.00f),  // 70 %  — amarelo
+        new Color(1.00f, 0.70f, 0.00f),  // 60 %
+        new Color(1.00f, 0.50f, 0.00f),  // 50 %  — laranja
+        new Color(1.00f, 0.30f, 0.05f),  // 40 %
+        new Color(1.00f, 0.15f, 0.05f),  // 30 %
+        new Color(0.90f, 0.05f, 0.05f),  // 20 %  — vermelho
+        new Color(0.60f, 0.00f, 0.00f),  // 10 %  — vermelho escuro
     };
 
     [Header("Cores")]

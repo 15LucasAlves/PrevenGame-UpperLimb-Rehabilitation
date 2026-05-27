@@ -25,8 +25,6 @@ public class OmmoCalibracaoManager : MonoBehaviour
         AtribuirSensores,   // instrução de colocação do sensor
         Ombro,              // toca no ombro com a palma (define PosOmbroBase)
         BracoEstendido,     // braço estendido (mede comprimento + direção frontal)
-        Peito,              // toca no peito
-        Cabeca,             // toca na cabeça
         Completo
     }
 
@@ -178,14 +176,6 @@ public class OmmoCalibracaoManager : MonoBehaviour
                     Esqueleto.DefinirDirecaoFrente(posicao);
                 }
                 break;
-
-            case EstadoCalibracao.Peito:
-                if (Esqueleto) Esqueleto.DefinirPosicaoFixa("Peito", posicao);
-                break;
-
-            case EstadoCalibracao.Cabeca:
-                if (Esqueleto) Esqueleto.DefinirPosicaoFixa("Cabeca", posicao);
-                break;
         }
 
         AvancarEstado();
@@ -217,9 +207,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
             case EstadoCalibracao.AguardarSensores:  return EstadoCalibracao.AtribuirSensores;
             case EstadoCalibracao.AtribuirSensores:  return EstadoCalibracao.Ombro;
             case EstadoCalibracao.Ombro:             return EstadoCalibracao.BracoEstendido;
-            case EstadoCalibracao.BracoEstendido:    return EstadoCalibracao.Peito;
-            case EstadoCalibracao.Peito:             return EstadoCalibracao.Cabeca;
-            case EstadoCalibracao.Cabeca:            return EstadoCalibracao.Completo;
+            case EstadoCalibracao.BracoEstendido:    return EstadoCalibracao.Completo;
             default:                                 return EstadoCalibracao.Completo;
         }
     }
@@ -265,10 +253,6 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 return "Toca no ombro\ncom o sensor da palma";
             case EstadoCalibracao.BracoEstendido:
                 return "Estica o braço para a frente\nparalelo ao chão";
-            case EstadoCalibracao.Peito:
-                return "Toca no peito\ncom o sensor da palma";
-            case EstadoCalibracao.Cabeca:
-                return "Toca na cabeça\ncom o sensor da palma";
             case EstadoCalibracao.Completo:
                 return "✅ Calibração concluída!";
             default:
@@ -288,10 +272,6 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 return "Toca no ombro e prime Enter, ou mantém quieto.";
             case EstadoCalibracao.BracoEstendido:
                 return "Mantém estável ou prime Enter para capturar.";
-            case EstadoCalibracao.Peito:
-                return "Toca no peito e prime Enter, ou mantém quieto.";
-            case EstadoCalibracao.Cabeca:
-                return "Toca na cabeça e prime Enter, ou mantém quieto.";
             case EstadoCalibracao.Completo:
                 return "O esqueleto está ativo e a seguir os teus movimentos.";
             default:
@@ -301,13 +281,11 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     string PassoParaEstado()
     {
-        // 4 passos fixos (modo 1 sensor): Ombro, BracoEstendido, Peito, Cabeca
+        // 2 passos: Ombro, BracoEstendido
         switch (_estado)
         {
-            case EstadoCalibracao.Ombro:          return "Passo 1 / 4";
-            case EstadoCalibracao.BracoEstendido: return "Passo 2 / 4";
-            case EstadoCalibracao.Peito:          return "Passo 3 / 4";
-            case EstadoCalibracao.Cabeca:         return "Passo 4 / 4";
+            case EstadoCalibracao.Ombro:          return "Passo 1 / 2";
+            case EstadoCalibracao.BracoEstendido: return "Passo 2 / 2";
             default:                              return "";
         }
     }
