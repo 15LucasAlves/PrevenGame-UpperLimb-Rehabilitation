@@ -299,8 +299,6 @@ public class OmmoCalibracaoManager : MonoBehaviour
             case EstadoCalibracao.AtribuirSensores:
             case EstadoCalibracao.Ombro:
             case EstadoCalibracao.BracoEstendido:
-            case EstadoCalibracao.Peito:
-            case EstadoCalibracao.Cabeca:
                 return _devicePalma;
             default:
                 return null;
