@@ -147,7 +147,11 @@ public class PrevenGameManager : MonoBehaviour
         switch (_estado)
         {
             case EstadoJogo.AguardarCalibracao:
-                if (CalibracaoManager != null && CalibracaoManager.Calibrado)
+                // Aguarda que o painel de calibração esteja escondido (Invoke 3 s)
+                // para evitar sobreposição com o ecrã de seleção.
+                if (CalibracaoManager != null && CalibracaoManager.Calibrado &&
+                    (CalibracaoManager.PainelCalibracao == null ||
+                     !CalibracaoManager.PainelCalibracao.activeSelf))
                     MostrarSelecao();
                 break;
 

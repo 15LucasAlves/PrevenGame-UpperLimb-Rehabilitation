@@ -31,10 +31,10 @@ public class OmmoSensorFilter
 
     /// <summary>
     /// Velocidade máxima esperada do sensor em Unity units/s.
-    /// 1 Unity unit = 10 cm. Predefinição: 5.0 u/s ≈ 50 cm/s ≈ 3 m/s
-    /// (valor conservador para braços em reabilitação).
+    /// 1 Unity unit = 10 cm. Predefinição: 20.0 u/s ≈ 200 cm/s ≈ 2 m/s
+    /// (cobre movimentos rápidos de braço em reabilitação).
     /// </summary>
-    public float MaxVelocidade = 5.0f;
+    public float MaxVelocidade = 20.0f;
 
     /// <summary>
     /// Taxa de aceitação alvo (amostras/segundo).
@@ -49,6 +49,11 @@ public class OmmoSensorFilter
     private Vector3 _posPendente;         // última leitura aceite (ainda não promovida)
     private bool    _inicializado = false;
     private long    _ultimaAmostraTicks = 0L;
+
+    // Mecanismo de escape: se o jump filter rejeitar N amostras consecutivas,
+    // reseta a âncora — impede travamento permanente por leitura inicial errada.
+    private int _rejeicoesConsecutivas = 0;
+    private const int _limiteRejeicoes = 4;
 
     // ── Propriedades públicas ─────────────────────────────────────────
 
@@ -101,7 +106,18 @@ public class OmmoSensorFilter
         // Distância máxima admissível entre duas amostras consecutivas
         float maxSalto = MaxVelocidade / AmostrasPorSegundo;
         if (Vector3.Distance(novaPosicao, _posPendente) > maxSalto)
-            return false; // deslocamento impossível — descarta
+        {
+            _rejeicoesConsecutivas++;
+            if (_rejeicoesConsecutivas >= _limiteRejeicoes)
+            {
+                // Escape: âncora travada por leitura inicial errada —
+                // reseta _posPendente para a posição atual e recomeça.
+                _posPendente           = novaPosicao;
+                _rejeicoesConsecutivas = 0;
+            }
+            return false; // descarta (mesmo após reset, aguarda próxima amostra)
+        }
+        _rejeicoesConsecutivas = 0;
 
         // ── 5. Promove (lag de 1 amostra) ─────────────────────────────
         // Ao devolver _posConfirmada (a anterior), um spike de exatamente
@@ -115,9 +131,10 @@ public class OmmoSensorFilter
     /// <summary>Repõe o filtro ao estado inicial (útil após reconexão do sensor).</summary>
     public void Reset()
     {
-        _inicializado       = false;
-        _posConfirmada      = Vector3.zero;
-        _posPendente        = Vector3.zero;
-        _ultimaAmostraTicks = 0L;
+        _inicializado          = false;
+        _posConfirmada         = Vector3.zero;
+        _posPendente           = Vector3.zero;
+        _ultimaAmostraTicks    = 0L;
+        _rejeicoesConsecutivas = 0;
     }
 }
