@@ -241,84 +241,9 @@ public class OmmoSceneBuilder : EditorWindow
         textoSub.color     = new Color(0.75f, 0.75f, 0.75f);
         textoSub.alignment = TextAlignmentOptions.Center;
 
-        // ── PainelModoSensor — botões 1 Sensor / 2 Sensores ──────────
-        // Container simples sem layout group — botões posicionados manualmente
-        var painelModoGO = new GameObject("PainelModoSensor");
-        painelModoGO.transform.SetParent(painelCalib.transform, false);
-        var painelModoRect = painelModoGO.AddComponent<RectTransform>();
-        painelModoRect.anchorMin        = new Vector2(0f, 0f);
-        painelModoRect.anchorMax        = new Vector2(1f, 0f);
-        painelModoRect.pivot            = new Vector2(0.5f, 0f);
-        painelModoRect.anchoredPosition = new Vector2(0f, 24f);
-        painelModoRect.sizeDelta        = new Vector2(0f, 60f);
-
-        // Botão "1 Sensor" — lado esquerdo do centro
-        var btn1GO = new GameObject("Botao1Sensor");
-        btn1GO.transform.SetParent(painelModoGO.transform, false);
-        var btn1Rect = btn1GO.AddComponent<RectTransform>();
-        btn1Rect.anchorMin        = new Vector2(0.5f, 0.5f);
-        btn1Rect.anchorMax        = new Vector2(0.5f, 0.5f);
-        btn1Rect.pivot            = new Vector2(1f, 0.5f);
-        btn1Rect.anchoredPosition = new Vector2(-16f, 0f);
-        btn1Rect.sizeDelta        = new Vector2(220f, 54f);
-        var btn1Img = btn1GO.AddComponent<Image>();
-        btn1Img.color = new Color(0.18f, 0.5f, 0.82f);
-        var btn1Btn = btn1GO.AddComponent<Button>();
-        var btn1Colors = btn1Btn.colors;
-        btn1Colors.highlightedColor = new Color(0.25f, 0.65f, 1f);
-        btn1Colors.pressedColor     = new Color(0.12f, 0.38f, 0.65f);
-        btn1Btn.colors = btn1Colors;
-
-        var btn1LabelGO = new GameObject("Label");
-        btn1LabelGO.transform.SetParent(btn1GO.transform, false);
-        var btn1LabelRect = btn1LabelGO.AddComponent<RectTransform>();
-        btn1LabelRect.anchorMin = Vector2.zero;
-        btn1LabelRect.anchorMax = Vector2.one;
-        btn1LabelRect.offsetMin = Vector2.zero;
-        btn1LabelRect.offsetMax = Vector2.zero;
-        var btn1Label = btn1LabelGO.AddComponent<TextMeshProUGUI>();
-        btn1Label.text      = "1 Sensor";
-        btn1Label.fontSize  = 22;
-        btn1Label.color     = Color.white;
-        btn1Label.fontStyle = FontStyles.Bold;
-        btn1Label.alignment = TextAlignmentOptions.Center;
-        btn1Label.raycastTarget = false;
-
-        // Botão "2 Sensores" — lado direito do centro
-        var btn2GO = new GameObject("Botao2Sensores");
-        btn2GO.transform.SetParent(painelModoGO.transform, false);
-        var btn2Rect = btn2GO.AddComponent<RectTransform>();
-        btn2Rect.anchorMin        = new Vector2(0.5f, 0.5f);
-        btn2Rect.anchorMax        = new Vector2(0.5f, 0.5f);
-        btn2Rect.pivot            = new Vector2(0f, 0.5f);
-        btn2Rect.anchoredPosition = new Vector2(16f, 0f);
-        btn2Rect.sizeDelta        = new Vector2(220f, 54f);
-        var btn2Img = btn2GO.AddComponent<Image>();
-        btn2Img.color = new Color(0.15f, 0.6f, 0.3f);
-        var btn2Btn = btn2GO.AddComponent<Button>();
-        var btn2Colors = btn2Btn.colors;
-        btn2Colors.highlightedColor = new Color(0.2f, 0.8f, 0.4f);
-        btn2Colors.pressedColor     = new Color(0.1f, 0.45f, 0.22f);
-        btn2Btn.colors = btn2Colors;
-
-        var btn2LabelGO = new GameObject("Label");
-        btn2LabelGO.transform.SetParent(btn2GO.transform, false);
-        var btn2LabelRect = btn2LabelGO.AddComponent<RectTransform>();
-        btn2LabelRect.anchorMin = Vector2.zero;
-        btn2LabelRect.anchorMax = Vector2.one;
-        btn2LabelRect.offsetMin = Vector2.zero;
-        btn2LabelRect.offsetMax = Vector2.zero;
-        var btn2Label = btn2LabelGO.AddComponent<TextMeshProUGUI>();
-        btn2Label.text      = "2 Sensores";
-        btn2Label.fontSize  = 22;
-        btn2Label.color     = Color.white;
-        btn2Label.fontStyle = FontStyles.Bold;
-        btn2Label.alignment = TextAlignmentOptions.Center;
-        btn2Label.raycastTarget = false;
-
-        // ── Atualiza instrução inicial para EscolherModo ──────────────
-        textoInstr.text = "Quantos sensores tens?";
-        textoSub.text   = "Escolhe o modo de rastreamento.";
+        // Texto inicial (sobrescrito pelo AtualizarUI() do manager em runtime)
+        textoInstr.text = "A aguardar sensor...";
+        textoSub.text   = "Liga o sensor da palma.";
 
         // BarraProgresso — fill horizontal (verde, 500×20 px)
         var barraGO = new GameObject("BarraProgresso");
@@ -356,11 +281,6 @@ public class OmmoSceneBuilder : EditorWindow
         calibManager.TextoPasso           = textoPasso;
         calibManager.TextoSub             = textoSub;
         calibManager.BarraProgressoImagem = barraFillImg;
-        calibManager.PainelModoSensor     = painelModoGO;
-
-        // Liga os botões de modo ao manager (AddListener necessita do manager já criado)
-        btn1GO.GetComponent<Button>().onClick.AddListener(calibManager.EscolherModo1Sensor);
-        btn2GO.GetComponent<Button>().onClick.AddListener(calibManager.EscolherModo2Sensores);
 
         // ── PrevenGameCanvas ──────────────────────────────────────────
         // sortingOrder 40 — abaixo da calibração (50) e do painel de ligação (99)
