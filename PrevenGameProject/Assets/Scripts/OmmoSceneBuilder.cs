@@ -435,7 +435,7 @@ public class OmmoSceneBuilder : EditorWindow
         painelSelRect.anchorMax        = new Vector2(0.5f, 0.5f);
         painelSelRect.pivot            = new Vector2(0.5f, 0.5f);
         painelSelRect.anchoredPosition = Vector2.zero;
-        painelSelRect.sizeDelta        = new Vector2(820f, 520f);
+        painelSelRect.sizeDelta        = new Vector2(1560f, 620f);
 
         // Título
         var tituloSelGO = new GameObject("TituloSelecao");
@@ -453,132 +453,174 @@ public class OmmoSceneBuilder : EditorWindow
         tituloSelTMP.fontStyle = FontStyles.Bold;
         tituloSelTMP.alignment = TextAlignmentOptions.Center;
 
-        // Nomes e disponibilidade dos 4 exercícios
-        string[] nomesExercicios  = { "Flexão do Braço", "Exercício 2", "Exercício 3", "Exercício 4" };
-        bool[]   disponiveis      = { true, false, false, false };
-        float[]  rowOffsets       = { -105f, -185f, -265f, -345f }; // Y ancorado no topo
+        // ── Seleção de braço (Direito / Esquerdo) ────────────────────
+        var selBracoGO   = new GameObject("SelecaoBraco");
+        selBracoGO.transform.SetParent(painelSelGO.transform, false);
+        var selBracoRect = selBracoGO.AddComponent<RectTransform>();
+        selBracoRect.anchorMin        = new Vector2(0.5f, 1f);
+        selBracoRect.anchorMax        = new Vector2(0.5f, 1f);
+        selBracoRect.pivot            = new Vector2(0.5f, 1f);
+        selBracoRect.anchoredPosition = new Vector2(0f, -84f);
+        selBracoRect.sizeDelta        = new Vector2(540f, 46f);
 
-        var botoesToggle      = new Button[4];
-        var textoRepsArr      = new TextMeshProUGUI[4];
-        var botoesMenosArr    = new Button[4];
-        var botoesMaisArr     = new Button[4];
+        var btnBracoDirBtn = CriarBotaoSimples("BotaoBracoDireito", selBracoGO.transform,
+            "Braço Direito", new Color(0.2f, 0.7f, 0.3f),
+            new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+            new Vector2(0f, 0f), new Vector2(250f, 0f)).GetComponent<Button>();
+
+        var btnBracoEsqBtn = CriarBotaoSimples("BotaoBracoEsquerdo", selBracoGO.transform,
+            "Braço Esquerdo", new Color(0.35f, 0.35f, 0.35f),
+            new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f),
+            new Vector2(0f, 0f), new Vector2(250f, 0f)).GetComponent<Button>();
+
+        // Nomes e disponibilidade dos 4 exercícios
+        string[] nomesExercicios = { "Flexão do Braço", "Elevação Total", "Abdução Lateral", "Flexão do Cotovelo" };
+        bool[]   disponiveis     = { true, true, true, true };
+        // Posições X dos 4 cards (centradas no painel de 1560 px, cards de 360 px, gap de 20 px)
+        float[]  cardX           = { -570f, -190f, 190f, 570f };
+
+        var botoesToggle   = new Button[4];
+        var textoRepsArr   = new TextMeshProUGUI[4];
+        var botoesMenosArr = new Button[4];
+        var botoesMaisArr  = new Button[4];
+        var imagensExArr   = new Image[4];
 
         for (int i = 0; i < 4; i++)
         {
-            bool disp    = disponiveis[i];
-            float rowY   = rowOffsets[i];
-            string nomeEx = disp ? nomesExercicios[i] : nomesExercicios[i] + " (em breve)";
-            Color  corEx  = disp ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.32f, 0.32f, 0.32f);
+            bool   disp   = disponiveis[i];
+            string nomeEx = nomesExercicios[i];
+            Color  corCard = disp ? new Color(0.18f, 0.55f, 0.25f) : new Color(0.25f, 0.25f, 0.25f);
 
-            // ── BotaoToggle ───────────────────────────────────────────
-            var toggleGO = new GameObject($"BotaoToggle_{i}");
-            toggleGO.transform.SetParent(painelSelGO.transform, false);
-            var toggleRect = toggleGO.AddComponent<RectTransform>();
-            toggleRect.anchorMin        = new Vector2(0.5f, 1f);
-            toggleRect.anchorMax        = new Vector2(0.5f, 1f);
-            toggleRect.pivot            = new Vector2(0.5f, 1f);
-            toggleRect.anchoredPosition = new Vector2(-200f, rowY);
-            toggleRect.sizeDelta        = new Vector2(340f, 52f);
-            var toggleImg = toggleGO.AddComponent<Image>();
-            toggleImg.color = corEx;
-            var toggleBtn = toggleGO.AddComponent<Button>();
-            toggleBtn.interactable = disp;
-            var toggleColors = toggleBtn.colors;
-            toggleColors.highlightedColor = disp ? new Color(0.25f, 0.85f, 0.38f) : new Color(0.32f, 0.32f, 0.32f);
-            toggleColors.pressedColor     = disp ? new Color(0.15f, 0.5f,  0.2f)  : new Color(0.32f, 0.32f, 0.32f);
-            toggleColors.disabledColor    = new Color(0.32f, 0.32f, 0.32f, 0.7f);
-            toggleBtn.colors = toggleColors;
+            // ── Raiz do card (= BotaoToggle_i) — clique → toggle ──────
+            var cardGO   = new GameObject($"BotaoToggle_{i}");
+            cardGO.transform.SetParent(painelSelGO.transform, false);
+            var cardRect = cardGO.AddComponent<RectTransform>();
+            cardRect.anchorMin        = new Vector2(0.5f, 1f);
+            cardRect.anchorMax        = new Vector2(0.5f, 1f);
+            cardRect.pivot            = new Vector2(0.5f, 1f);
+            cardRect.anchoredPosition = new Vector2(cardX[i], -152f);
+            cardRect.sizeDelta        = new Vector2(360f, 380f);
+            var cardImg = cardGO.AddComponent<Image>();
+            cardImg.color = corCard;
+            var cardBtn = cardGO.AddComponent<Button>();
+            cardBtn.interactable = disp;
+            var cardColors = cardBtn.colors;
+            cardColors.highlightedColor = disp ? new Color(0.22f, 0.68f, 0.30f) : new Color(0.25f, 0.25f, 0.25f);
+            cardColors.pressedColor     = disp ? new Color(0.12f, 0.40f, 0.18f) : new Color(0.25f, 0.25f, 0.25f);
+            cardColors.disabledColor    = new Color(0.22f, 0.22f, 0.22f, 0.7f);
+            cardBtn.colors  = cardColors;
+            botoesToggle[i] = cardBtn;
 
-            var toggleLblGO   = new GameObject("Label");
-            toggleLblGO.transform.SetParent(toggleGO.transform, false);
-            var toggleLblRect = toggleLblGO.AddComponent<RectTransform>();
-            toggleLblRect.anchorMin = Vector2.zero;
-            toggleLblRect.anchorMax = Vector2.one;
-            toggleLblRect.offsetMin = Vector2.zero;
-            toggleLblRect.offsetMax = Vector2.zero;
-            var toggleLbl = toggleLblGO.AddComponent<TextMeshProUGUI>();
-            toggleLbl.text          = (disp ? "✓ " : "  ") + nomeEx;
-            toggleLbl.fontSize      = 20;
-            toggleLbl.color         = disp ? Color.white : new Color(0.6f, 0.6f, 0.6f);
-            toggleLbl.fontStyle     = FontStyles.Bold;
-            toggleLbl.alignment     = TextAlignmentOptions.Center;
-            toggleLbl.raycastTarget = false;
-            botoesToggle[i]         = toggleBtn;
+            // ── Nome do exercício ─────────────────────────────────────
+            var nomeGO   = new GameObject("NomeExercicio");
+            nomeGO.transform.SetParent(cardGO.transform, false);
+            var nomeRect = nomeGO.AddComponent<RectTransform>();
+            nomeRect.anchorMin        = new Vector2(0f, 1f);
+            nomeRect.anchorMax        = new Vector2(1f, 1f);
+            nomeRect.pivot            = new Vector2(0.5f, 1f);
+            nomeRect.anchoredPosition = new Vector2(0f, -8f);
+            nomeRect.sizeDelta        = new Vector2(-32f, 40f);
+            var nomeTMP = nomeGO.AddComponent<TextMeshProUGUI>();
+            nomeTMP.text           = nomeEx;
+            nomeTMP.fontSize       = 18;
+            nomeTMP.color          = Color.white;
+            nomeTMP.fontStyle      = FontStyles.Bold;
+            nomeTMP.alignment      = TextAlignmentOptions.Center;
+            nomeTMP.raycastTarget  = false;
 
-            // ── Botão Menos ───────────────────────────────────────────
-            var menosGO   = new GameObject($"BotaoMenos_{i}");
-            menosGO.transform.SetParent(painelSelGO.transform, false);
-            var menosRect = menosGO.AddComponent<RectTransform>();
-            menosRect.anchorMin        = new Vector2(0.5f, 1f);
-            menosRect.anchorMax        = new Vector2(0.5f, 1f);
-            menosRect.pivot            = new Vector2(0.5f, 1f);
-            menosRect.anchoredPosition = new Vector2(185f, rowY);
-            menosRect.sizeDelta        = new Vector2(48f, 52f);
-            var menosImg = menosGO.AddComponent<Image>();
-            menosImg.color = new Color(0.25f, 0.25f, 0.25f);
-            var menosBtn = menosGO.AddComponent<Button>();
-            menosBtn.interactable = disp;
-            var menosLblGO   = new GameObject("Label");
-            menosLblGO.transform.SetParent(menosGO.transform, false);
-            var menosLblRect = menosLblGO.AddComponent<RectTransform>();
-            menosLblRect.anchorMin = Vector2.zero;
-            menosLblRect.anchorMax = Vector2.one;
-            menosLblRect.offsetMin = Vector2.zero;
-            menosLblRect.offsetMax = Vector2.zero;
-            var menosLbl = menosLblGO.AddComponent<TextMeshProUGUI>();
-            menosLbl.text          = "─";
-            menosLbl.fontSize      = 24;
-            menosLbl.color         = Color.white;
-            menosLbl.fontStyle     = FontStyles.Bold;
-            menosLbl.alignment     = TextAlignmentOptions.Center;
-            menosLbl.raycastTarget = false;
-            botoesMenosArr[i]      = menosBtn;
+            // ── Imagem do exercício ───────────────────────────────────
+            var imgGO   = new GameObject("ImagemExercicio");
+            imgGO.transform.SetParent(cardGO.transform, false);
+            var imgRect = imgGO.AddComponent<RectTransform>();
+            imgRect.anchorMin        = new Vector2(0.5f, 1f);
+            imgRect.anchorMax        = new Vector2(0.5f, 1f);
+            imgRect.pivot            = new Vector2(0.5f, 1f);
+            imgRect.anchoredPosition = new Vector2(0f, -56f);
+            imgRect.sizeDelta        = new Vector2(328f, 252f);
+            var imgComp = imgGO.AddComponent<Image>();
+            imgComp.raycastTarget = false;
+            string spritePath = $"Assets/Execercises/ex{i + 1}/1.png";
+            // Garantir que o PNG está importado como Sprite antes de o carregar
+            var texImporter = AssetImporter.GetAtPath(spritePath) as TextureImporter;
+            if (texImporter != null && texImporter.textureType != TextureImporterType.Sprite)
+            {
+                texImporter.textureType    = TextureImporterType.Sprite;
+                texImporter.spriteImportMode = SpriteImportMode.Single;
+                AssetDatabase.ImportAsset(spritePath, ImportAssetOptions.ForceUpdate);
+            }
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            if (sprite != null)
+            {
+                imgComp.sprite         = sprite;
+                imgComp.preserveAspect = true;
+                imgComp.color          = Color.white;
+            }
+            else
+            {
+                imgComp.color = new Color(0.10f, 0.10f, 0.12f);
+            }
+            imagensExArr[i] = imgComp; // guarda referência para espelhar com seleção de braço
 
-            // ── Texto de Reps ─────────────────────────────────────────
+            // ── Animação hover — carrega todos os sprites do exercício ──
+            var spritesEx = new System.Collections.Generic.List<Sprite>();
+            for (int s = 1; s <= 5; s++)
+            {
+                string sPath = $"Assets/Execercises/ex{i + 1}/{s}.png";
+                var sImporter = AssetImporter.GetAtPath(sPath) as TextureImporter;
+                if (sImporter != null && sImporter.textureType != TextureImporterType.Sprite)
+                {
+                    sImporter.textureType    = TextureImporterType.Sprite;
+                    sImporter.spriteImportMode = SpriteImportMode.Single;
+                    AssetDatabase.ImportAsset(sPath, ImportAssetOptions.ForceUpdate);
+                }
+                var sp = AssetDatabase.LoadAssetAtPath<Sprite>(sPath);
+                if (sp != null) spritesEx.Add(sp);
+            }
+            var animHover = cardGO.AddComponent<CardAnimacaoHover>();
+            animHover.ImagemAlvo         = imgComp;
+            animHover.Sprites            = spritesEx.ToArray();
+            animHover.IntervaloSegundos  = 0.35f;
+
+            // ── Barra +/nº/- ──────────────────────────────────────────
+            var barraRepsGO   = new GameObject("BarraReps");
+            barraRepsGO.transform.SetParent(cardGO.transform, false);
+            var barraRepsRect = barraRepsGO.AddComponent<RectTransform>();
+            barraRepsRect.anchorMin        = new Vector2(0f, 0f);
+            barraRepsRect.anchorMax        = new Vector2(1f, 0f);
+            barraRepsRect.pivot            = new Vector2(0.5f, 0f);
+            barraRepsRect.anchoredPosition = new Vector2(0f, 8f);
+            barraRepsRect.sizeDelta        = new Vector2(-32f, 52f);
+
+            // Botão Menos
+            var menosGO  = CriarBotaoSimples($"BotaoMenos_{i}", barraRepsGO.transform,
+                "─", new Color(0.20f, 0.20f, 0.22f),
+                new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(8f, 0f), new Vector2(60f, 0f));
+            botoesMenosArr[i] = menosGO.GetComponent<Button>();
+
+            // Texto reps
             var repsGO   = new GameObject($"TextoReps_{i}");
-            repsGO.transform.SetParent(painelSelGO.transform, false);
+            repsGO.transform.SetParent(barraRepsGO.transform, false);
             var repsRect = repsGO.AddComponent<RectTransform>();
-            repsRect.anchorMin        = new Vector2(0.5f, 1f);
+            repsRect.anchorMin        = new Vector2(0.5f, 0f);
             repsRect.anchorMax        = new Vector2(0.5f, 1f);
-            repsRect.pivot            = new Vector2(0.5f, 1f);
-            repsRect.anchoredPosition = new Vector2(248f, rowY);
-            repsRect.sizeDelta        = new Vector2(60f, 52f);
+            repsRect.pivot            = new Vector2(0.5f, 0.5f);
+            repsRect.anchoredPosition = Vector2.zero;
+            repsRect.sizeDelta        = new Vector2(80f, 0f);
             var repsTMP = repsGO.AddComponent<TextMeshProUGUI>();
-            repsTMP.text      = "3";
+            repsTMP.text      = "1";
             repsTMP.fontSize  = 26;
             repsTMP.color     = Color.white;
             repsTMP.fontStyle = FontStyles.Bold;
             repsTMP.alignment = TextAlignmentOptions.Center;
             textoRepsArr[i]   = repsTMP;
 
-            // ── Botão Mais ────────────────────────────────────────────
-            var maisGO   = new GameObject($"BotaoMais_{i}");
-            maisGO.transform.SetParent(painelSelGO.transform, false);
-            var maisRect = maisGO.AddComponent<RectTransform>();
-            maisRect.anchorMin        = new Vector2(0.5f, 1f);
-            maisRect.anchorMax        = new Vector2(0.5f, 1f);
-            maisRect.pivot            = new Vector2(0.5f, 1f);
-            maisRect.anchoredPosition = new Vector2(312f, rowY);
-            maisRect.sizeDelta        = new Vector2(48f, 52f);
-            var maisImg = maisGO.AddComponent<Image>();
-            maisImg.color = new Color(0.25f, 0.25f, 0.25f);
-            var maisBtn = maisGO.AddComponent<Button>();
-            maisBtn.interactable = disp;
-            var maisLblGO   = new GameObject("Label");
-            maisLblGO.transform.SetParent(maisGO.transform, false);
-            var maisLblRect = maisLblGO.AddComponent<RectTransform>();
-            maisLblRect.anchorMin = Vector2.zero;
-            maisLblRect.anchorMax = Vector2.one;
-            maisLblRect.offsetMin = Vector2.zero;
-            maisLblRect.offsetMax = Vector2.zero;
-            var maisLbl = maisLblGO.AddComponent<TextMeshProUGUI>();
-            maisLbl.text          = "+";
-            maisLbl.fontSize      = 24;
-            maisLbl.color         = Color.white;
-            maisLbl.fontStyle     = FontStyles.Bold;
-            maisLbl.alignment     = TextAlignmentOptions.Center;
-            maisLbl.raycastTarget = false;
-            botoesMaisArr[i]      = maisBtn;
+            // Botão Mais
+            var maisGO   = CriarBotaoSimples($"BotaoMais_{i}", barraRepsGO.transform,
+                "+", new Color(0.20f, 0.20f, 0.22f),
+                new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f),
+                new Vector2(-8f, 0f), new Vector2(60f, 0f));
+            botoesMaisArr[i] = maisGO.GetComponent<Button>();
         }
 
         // ── Botão Iniciar Sessão ──────────────────────────────────────
@@ -634,6 +676,9 @@ public class OmmoSceneBuilder : EditorWindow
         gameManager.BotoesMenos             = botoesMenosArr;
         gameManager.BotoesMais              = botoesMaisArr;
         gameManager.BotaoIniciarSessao      = btnIniciarBtn;
+        gameManager.BotaoBracoDireito       = btnBracoDirBtn;
+        gameManager.BotaoBracoEsquerdo      = btnBracoEsqBtn;
+        gameManager.ImagensExercicio        = imagensExArr;
         // Listeners adicionados em runtime pelo Start() do PrevenGameManager
 
         // ── Iluminação ────────────────────────────────────────────────
@@ -660,9 +705,9 @@ public class OmmoSceneBuilder : EditorWindow
             mainCam.farClipPlane    = 200f;
 
             // Posição definida em edit-time E garantida em runtime pelo OmmoCameraSetup
-            // Câmara lateral (90° à esquerda da frontal): mostra o arco sagital de perfil
-            mainCam.transform.position = new Vector3(-10f, 10f, 2f);
-            mainCam.transform.LookAt(new Vector3(0f, 9f, 4f));
+            // Câmara lateral levantada: cobre o arco completo desde braço em baixo até vertical
+            mainCam.transform.position = new Vector3(-10f, 18f, 2f);
+            mainCam.transform.LookAt(new Vector3(0f, 13f, 4f));
 
             // Componente runtime — garante posição correta em cada Play independentemente do editor
             if (mainCam.gameObject.GetComponent<OmmoCameraSetup>() == null)
@@ -1370,5 +1415,43 @@ public class OmmoSceneBuilder : EditorWindow
         foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
             if (t.name == name) return t;
         return null;
+    }
+
+    /// <summary>
+    /// Cria um botão simples (Image + Button + Label TextMeshPro) como filho de <paramref name="pai"/>.
+    /// Usado pelos cards de seleção de exercícios para os botões +/─.
+    /// </summary>
+    static GameObject CriarBotaoSimples(
+        string nome, Transform pai, string label, Color cor,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot,
+        Vector2 anchoredPos, Vector2 sizeDelta)
+    {
+        var go   = new GameObject(nome);
+        go.transform.SetParent(pai, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin        = anchorMin;
+        rect.anchorMax        = anchorMax;
+        rect.pivot            = pivot;
+        rect.anchoredPosition = anchoredPos;
+        rect.sizeDelta        = sizeDelta;
+        var img = go.AddComponent<Image>();
+        img.color = cor;
+        go.AddComponent<Button>();
+
+        var lblGO = new GameObject("Label");
+        lblGO.transform.SetParent(go.transform, false);
+        var lblRect = lblGO.AddComponent<RectTransform>();
+        lblRect.anchorMin = Vector2.zero;
+        lblRect.anchorMax = Vector2.one;
+        lblRect.sizeDelta = Vector2.zero;
+        var tmp = lblGO.AddComponent<TextMeshProUGUI>();
+        tmp.text          = label;
+        tmp.fontSize      = 24;
+        tmp.color         = Color.white;
+        tmp.fontStyle     = FontStyles.Bold;
+        tmp.alignment     = TextAlignmentOptions.Center;
+        tmp.raycastTarget = false;
+
+        return go;
     }
 }

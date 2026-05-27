@@ -7,10 +7,10 @@ using UnityEngine;
 public class OmmoCameraSetup : MonoBehaviour
 {
     [Tooltip("Posição da câmara no espaço de tracking Ommo.")]
-    public Vector3 Posicao = new Vector3(-10f, 10f, 2f);
+    public Vector3 Posicao = new Vector3(-10f, 18f, 2f);
 
     [Tooltip("Ponto para onde a câmara aponta.")]
-    public Vector3 AlvoDeLook = new Vector3(0f, 9f, 4f);
+    public Vector3 AlvoDeLook = new Vector3(0f, 13f, 4f);
 
     void Awake()
     {

@@ -21,7 +21,7 @@ public class PrevenGameManager : MonoBehaviour
 {
     // ── Tipos ─────────────────────────────────────────────────────────
 
-    public enum TipoExercicio { FlexaoBraco = 0, Exercicio2 = 1, Exercicio3 = 2, Exercicio4 = 3 }
+    public enum TipoExercicio { FlexaoBraco = 0, ElevacaoTotal = 1, AbducaoLateral = 2, FlexaoCotovelo = 3 }
 
     [System.Serializable]
     public struct ExercicioConfig
@@ -55,6 +55,9 @@ public class PrevenGameManager : MonoBehaviour
     public Button[]          BotoesMenos;            // [4] botão "─"
     public Button[]          BotoesMais;             // [4] botão "+"
     public Button            BotaoIniciarSessao;
+    public Button            BotaoBracoDireito;
+    public Button            BotaoBracoEsquerdo;
+    public Image[]           ImagensExercicio;       // [4] imagem dentro de cada card
 
     // ── Configuração do exercício ──────────────────────────────────────
     [Header("Exercício")]
@@ -95,9 +98,11 @@ public class PrevenGameManager : MonoBehaviour
 
     // ── Waypoints da sequência atual ───────────────────────────────────
     private PrevenGameWaypoint[] _waypoints;
-    private int  _wpAtual  = 0;
-    private bool _emVolta  = false;
-    private int  _repAtual = 0;
+    private int           _wpAtual      = 0;
+    private bool          _emVolta      = false;
+    private int           _repAtual     = 0;
+    private TipoExercicio _tipoAtual    = TipoExercicio.FlexaoBraco;
+    private bool          _bracoDireito = true;
 
     // ── Estatísticas da sessão ─────────────────────────────────────────
     private float _tempoTotal          = 0f;
@@ -127,6 +132,8 @@ public class PrevenGameManager : MonoBehaviour
         // Wiring de todos os listeners em runtime (onClick não é serializado)
         BotaoNovaSessao?.onClick.AddListener(MostrarSelecao);
         BotaoIniciarSessao?.onClick.AddListener(IniciarSessaoSelecionada);
+        BotaoBracoDireito?.onClick.AddListener(() => ToggleBraco(true));
+        BotaoBracoEsquerdo?.onClick.AddListener(() => ToggleBraco(false));
 
         for (int i = 0; i < 4; i++)
         {
@@ -212,10 +219,30 @@ public class PrevenGameManager : MonoBehaviour
 
     void ToggleExercicio(int idx)
     {
-        // Apenas os exercícios implementados (índice 0) podem ser toggleados
-        if (idx != 0) return;
         _selecionados[idx] = !_selecionados[idx];
         AtualizarUISelecao();
+    }
+
+    void ToggleBraco(bool direito)
+    {
+        _bracoDireito = direito;
+
+        if (BotaoBracoDireito)
+            BotaoBracoDireito.GetComponent<Image>().color =
+                direito ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.35f, 0.35f, 0.35f);
+        if (BotaoBracoEsquerdo)
+            BotaoBracoEsquerdo.GetComponent<Image>().color =
+                direito ? new Color(0.35f, 0.35f, 0.35f) : new Color(0.2f, 0.7f, 0.3f);
+
+        // Espelhar imagens dos cards
+        if (ImagensExercicio != null)
+            foreach (var img in ImagensExercicio)
+                if (img != null)
+                {
+                    var s = img.rectTransform.localScale;
+                    s.x = direito ? 1f : -1f;
+                    img.rectTransform.localScale = s;
+                }
     }
 
     void AlterarReps(int idx, int delta)
@@ -276,6 +303,7 @@ public class PrevenGameManager : MonoBehaviour
 
     void IniciarExercicio(ExercicioConfig config)
     {
+        _tipoAtual    = config.Tipo;
         NumRepeticoes = config.NumRepeticoes;
         Debug.Log($"[PrevenGame] Iniciar: {config.Tipo} × {config.NumRepeticoes} reps");
         IniciarJogo();
@@ -292,7 +320,13 @@ public class PrevenGameManager : MonoBehaviour
         _emVolta  = false;
         _wpAtual  = 0;
 
-        GerarWaypointsBracoAoLado();
+        switch (_tipoAtual)
+        {
+            case TipoExercicio.FlexaoBraco:    GerarWaypointsBracoAoLado();    break;
+            case TipoExercicio.ElevacaoTotal:  GerarWaypointsElevacaoTotal();  break;
+            case TipoExercicio.AbducaoLateral: GerarWaypointsAbducaoLateral(); break;
+            case TipoExercicio.FlexaoCotovelo: GerarWaypointsFlexaoCotovelo(); break;
+        }
         CriarLinhaGuia();
         IniciarDirecao();
 
@@ -305,26 +339,53 @@ public class PrevenGameManager : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // Cálculo de waypoints — arco sagital
+    // Cálculo de waypoints
     // ─────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Direção lateral ajustada ao braço escolhido.
+    /// Direito → Cross(up, frente) = direita; Esquerdo → invertido.
+    /// </summary>
+    Vector3 ObterDirLateral(Vector3 dirFrente)
+    {
+        Vector3 d = Vector3.Cross(Vector3.up, dirFrente).normalized;
+        return _bracoDireito ? d : -d;
+    }
+
+    /// <summary>EX1 — Flexão do Braço: bicep curl com bícep horizontal para a frente (0°→144°).</summary>
     void GerarWaypointsBracoAoLado()
     {
-        Vector3 posOmbro = Esqueleto.PosOmbroBase;
-        float   L        = Esqueleto.ComprimentoBraco;
+        Vector3 posOmbro  = Esqueleto.ObterPosOmbroAtual();
+        float   L         = Esqueleto.ComprimentoBraco > 0.05f ? Esqueleto.ComprimentoBraco : 0.44f;
+        Vector3 dirFrente = Esqueleto.DirecaoFrente == Vector3.zero ? Vector3.forward : Esqueleto.DirecaoFrente;
 
-        if (L < 0.05f)
+        float Lu = L * (18.6f / 44.0f); // braço superior
+        float Lf = L * (14.6f / 44.0f); // antebraço
+
+        // bícep horizontal para a frente; cotovelo flete de 0° (estendido) a 144° (palm perto do ombro)
+        float[] angulos = { 0f, 36f, 72f, 108f, 144f };
+        _posicoes = new Vector3[angulos.Length];
+        for (int i = 0; i < angulos.Length; i++)
         {
-            L = 0.44f;
-            Debug.LogWarning("[PrevenGame] ComprimentoBraco = 0 — usando fallback 44 cm.");
+            float rad = angulos[i] * Mathf.Deg2Rad;
+            _posicoes[i] = posOmbro
+                + dirFrente  * (Lu + Lf * Mathf.Cos(rad))
+                + Vector3.up * (Lf * Mathf.Sin(rad));
         }
 
-        Vector3 dirFrente = Esqueleto.DirecaoFrente;
-        if (dirFrente == Vector3.zero) dirFrente = Vector3.forward;
+        InstanciarWaypoints();
+        Debug.Log($"[PrevenGame] EX1 bicep curl frontal | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
+    }
 
-        // 5 waypoints: braço em baixo (0°) → braço horizontal à frente (90°)
-        float[] angulos = { 0f, 22.5f, 45f, 67.5f, 90f };
+    /// <summary>EX2 — Elevação Total: plano sagital 15° → 165° (amplitude completa).</summary>
+    void GerarWaypointsElevacaoTotal()
+    {
+        Vector3 posOmbro  = Esqueleto.ObterPosOmbroAtual();
+        float   L         = Esqueleto.ComprimentoBraco > 0.05f ? Esqueleto.ComprimentoBraco : 0.44f;
+        Vector3 dirFrente = Esqueleto.DirecaoFrente == Vector3.zero ? Vector3.forward : Esqueleto.DirecaoFrente;
 
+        // 15° ≈ braço quase em baixo → 90° = horizontal → 180° = braço vertical acima
+        float[] angulos = { 15f, 56f, 90f, 135f, 180f };
         _posicoes = new Vector3[angulos.Length];
         for (int i = 0; i < angulos.Length; i++)
         {
@@ -334,7 +395,80 @@ public class PrevenGameManager : MonoBehaviour
                 + Vector3.down * (Mathf.Cos(rad) * L);
         }
 
-        // Cria (ou recria) GameObjects dos waypoints
+        InstanciarWaypoints();
+        Debug.Log($"[PrevenGame] EX2 elevação total | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
+    }
+
+    /// <summary>
+    /// EX3 — Abdução Lateral + Flexão do Cotovelo:
+    ///   Fase 1 (WP 0-2): abdução lateral 0°→90° (braço sobe para o lado até horizontal).
+    ///   Fase 2 (WP 3-4): cotovelo flete 45°→90° com bícep fixo horizontal lateral.
+    /// </summary>
+    void GerarWaypointsAbducaoLateral()
+    {
+        Vector3 posOmbro   = Esqueleto.ObterPosOmbroAtual();
+        float   L          = Esqueleto.ComprimentoBraco > 0.05f ? Esqueleto.ComprimentoBraco : 0.44f;
+        Vector3 dirFrente  = Esqueleto.DirecaoFrente == Vector3.zero ? Vector3.forward : Esqueleto.DirecaoFrente;
+        Vector3 dirLateral = ObterDirLateral(dirFrente);
+
+        float Lu = L * (18.6f / 44.0f);
+        float Lf = L * (14.6f / 44.0f);
+
+        _posicoes = new Vector3[5];
+
+        // Fase 1 — abdução 0°→90°
+        float[] angulosOmbro = { 0f, 45f, 90f };
+        for (int i = 0; i < 3; i++)
+        {
+            float rad = angulosOmbro[i] * Mathf.Deg2Rad;
+            _posicoes[i] = posOmbro
+                + dirLateral   * (Mathf.Sin(rad) * L)
+                + Vector3.down * (Mathf.Cos(rad) * L);
+        }
+
+        // Fase 2 — cotovelo flete para cima (bícep fixo horizontal lateral), igual a EX1 WP2/WP3
+        float[] angulosCotovelo = { 72f, 108f };
+        for (int i = 0; i < 2; i++)
+        {
+            float rad = angulosCotovelo[i] * Mathf.Deg2Rad;
+            _posicoes[3 + i] = posOmbro
+                + dirLateral * (Lu + Lf * Mathf.Cos(rad))
+                + Vector3.up * (Lf * Mathf.Sin(rad));
+        }
+
+        InstanciarWaypoints();
+        Debug.Log($"[PrevenGame] EX3 abdução+cotovelo | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
+    }
+
+    /// <summary>EX4 — Flexão do Cotovelo Lateral: bicep curl com bícep horizontal para o lado (0°→144°).</summary>
+    void GerarWaypointsFlexaoCotovelo()
+    {
+        Vector3 posOmbro   = Esqueleto.ObterPosOmbroAtual();
+        float   L          = Esqueleto.ComprimentoBraco > 0.05f ? Esqueleto.ComprimentoBraco : 0.44f;
+        Vector3 dirFrente  = Esqueleto.DirecaoFrente == Vector3.zero ? Vector3.forward : Esqueleto.DirecaoFrente;
+        Vector3 dirLateral = ObterDirLateral(dirFrente);
+
+        float Lu = L * (18.6f / 44.0f);
+        float Lf = L * (14.6f / 44.0f);
+
+        // bícep e antebraço sempre horizontais; cotovelo flete de 0° (estendido) a 144° no plano horizontal
+        float[] angulos = { 0f, 36f, 72f, 108f, 144f };
+        _posicoes = new Vector3[angulos.Length];
+        for (int i = 0; i < angulos.Length; i++)
+        {
+            float rad = angulos[i] * Mathf.Deg2Rad;
+            _posicoes[i] = posOmbro
+                + dirLateral * (Lu + Lf * Mathf.Cos(rad))
+                + dirFrente  * (Lf * Mathf.Sin(rad));
+        }
+
+        InstanciarWaypoints();
+        Debug.Log($"[PrevenGame] EX4 bicep curl lateral | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
+    }
+
+    /// <summary>Cria (ou recria) os GameObjects dos waypoints a partir de <see cref="_posicoes"/>.</summary>
+    void InstanciarWaypoints()
+    {
         if (_waypoints != null)
             foreach (var wp in _waypoints)
                 if (wp != null) Destroy(wp.gameObject);
@@ -352,8 +486,6 @@ public class PrevenGameManager : MonoBehaviour
             wp.ConfigurarZonas(RaiosZonas, PontuacoesZonas, CoresZonas, EscalaEsfera);
             _waypoints[i] = wp;
         }
-
-        Debug.Log($"[PrevenGame] DirFrente={dirFrente} | WP[0]={_posicoes[0]:F2} WP[4]={_posicoes[4]:F2}");
     }
 
     // ─────────────────────────────────────────────────────────────────
