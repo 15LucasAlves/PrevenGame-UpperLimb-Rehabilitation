@@ -65,31 +65,18 @@ public class PrevenGameManager : MonoBehaviour
 
     // ── Zonas de Pontuação ────────────────────────────────────────────
     [Header("Zonas de Pontuação")]
-    [Tooltip("Raios das zonas de pontuação, interior→exterior (Unity units).")]
-    public float[] RaiosZonas      =
-    {
-        0.50f, 0.70f, 0.90f, 1.10f, 1.30f,
-        1.50f, 1.70f, 1.90f, 2.10f, 2.30f
-    };
+    [Tooltip("Raios das zonas de pontuação, interior→exterior (Unity units). 1 zona interior + 4 anéis.")]
+    public float[] RaiosZonas      = { 0.50f, 0.80f, 1.10f, 1.40f, 1.70f };
     [Tooltip("Score de cada zona, interior→exterior (0–1).")]
-    public float[] PontuacoesZonas =
-    {
-        1.00f, 0.90f, 0.80f, 0.70f, 0.60f,
-        0.50f, 0.40f, 0.30f, 0.20f, 0.10f
-    };
+    public float[] PontuacoesZonas = { 1.00f, 0.75f, 0.50f, 0.25f, 0.10f };
     [Tooltip("Cores das zonas (índice 0=interior=verde, …=exterior=vermelho).")]
     public Color[] CoresZonas      =
     {
         new Color(0.15f, 0.90f, 0.20f),  // 100 % — verde
-        new Color(0.40f, 0.90f, 0.10f),  // 90 %
-        new Color(0.65f, 0.90f, 0.05f),  // 80 %
-        new Color(0.90f, 0.85f, 0.00f),  // 70 %  — amarelo
-        new Color(1.00f, 0.70f, 0.00f),  // 60 %
+        new Color(0.90f, 0.85f, 0.00f),  // 75 %  — amarelo
         new Color(1.00f, 0.50f, 0.00f),  // 50 %  — laranja
-        new Color(1.00f, 0.30f, 0.05f),  // 40 %
-        new Color(1.00f, 0.15f, 0.05f),  // 30 %
-        new Color(0.90f, 0.05f, 0.05f),  // 20 %  — vermelho
-        new Color(0.60f, 0.00f, 0.00f),  // 10 %  — vermelho escuro
+        new Color(1.00f, 0.15f, 0.05f),  // 25 %  — vermelho
+        new Color(0.55f, 0.00f, 0.00f),  // 10 %  — vermelho escuro
     };
 
     [Header("Cores")]
@@ -474,13 +461,14 @@ public class PrevenGameManager : MonoBehaviour
     {
         if (!_emVolta)
         {
+            // IDA concluída → VOLTA começa no penúltimo WP (salta o último visitado)
             _emVolta = true;
-            _wpAtual = 0;
+            _wpAtual = 1; // IndiceWaypointAtual() = (Length-1) - 1 = Length-2
             foreach (var wp in _waypoints) wp.Repor();
             int idxInicio = IndiceWaypointAtual();
             _waypoints[idxInicio].SetEstado(PrevenGameWaypoint.EstadoWaypoint.Ativo);
             AtualizarLinhaGuia();
-            Debug.Log("[PrevenGame] Ida concluída → a iniciar volta");
+            Debug.Log("[PrevenGame] Ida concluída → volta a partir do WP " + idxInicio);
         }
         else
         {
@@ -504,9 +492,14 @@ public class PrevenGameManager : MonoBehaviour
             }
             else
             {
+                // VOLTA concluída → nova IDA começa no WP 1 (salta o WP 0 recém-visitado)
                 _emVolta = false;
-                _wpAtual = 0;
-                IniciarDirecao();
+                _wpAtual = 1; // salta WP[0] que foi o último waypoint da volta
+                foreach (var wp in _waypoints) wp.Repor();
+                int idxInicio = IndiceWaypointAtual(); // = 1
+                _waypoints[idxInicio].SetEstado(PrevenGameWaypoint.EstadoWaypoint.Ativo);
+                AtualizarLinhaGuia();
+                Debug.Log($"[PrevenGame] Rep {_repAtual + 1}/{NumRepeticoes} — Ida a partir do WP {idxInicio}");
             }
         }
     }
