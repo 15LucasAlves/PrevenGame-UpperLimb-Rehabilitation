@@ -59,7 +59,7 @@ public class PrevenGameManager : MonoBehaviour
     // ── Configuração do exercício ──────────────────────────────────────
     [Header("Exercício")]
     [Tooltip("Número de repetições (sobrescrito pela seleção de exercícios).")]
-    public int   NumRepeticoes = 3;
+    public int   NumRepeticoes = 1;
     [Tooltip("Escala visual da esfera-waypoint central (diâmetro em Unity units).")]
     public float EscalaEsfera  = 0.45f;
 
@@ -91,7 +91,7 @@ public class PrevenGameManager : MonoBehaviour
 
     // ── Seleção ────────────────────────────────────────────────────────
     private bool[] _selecionados   = { true, false, false, false }; // Exercício 1 pré-selecionado
-    private int[]  _repsEscolhidas = { 3, 3, 3, 3 };
+    private int[]  _repsEscolhidas = { 1, 1, 1, 1 };
 
     // ── Waypoints da sequência atual ───────────────────────────────────
     private PrevenGameWaypoint[] _waypoints;
