@@ -89,7 +89,13 @@ public class OmmoSensorManager : MonoBehaviour
         if (HardwareMonitor)
             HardwareMonitor.OnHardwareUpdated -= AoHardwareAtualizado;
 
-        PararHardware();
+        // Numa troca de cena NÃO paramos o motor da Base Station: mantê-lo a girar
+        // permite re-aquisição imediata dos sensores na cena seguinte (estabilidade).
+        // O motor só é parado em segurança no fecho da aplicação (OnApplicationQuit).
+        if (DeviceManager)
+            DeviceManager.StopTracking();
+        _trackingIniciado = false;
+        _motorEmInicio    = false;
     }
 
     void OnApplicationQuit() => PararHardware();

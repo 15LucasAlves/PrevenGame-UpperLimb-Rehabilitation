@@ -3,26 +3,37 @@ using UnityEngine;
 /// <summary>
 /// OmmoEsqueletoJogador — Visualização do esqueleto do membro superior em tempo real.
 ///
-/// Articulações:
-///   Palma    → cubo do sensor A (controlado pelo OmmoDevice)
-///   Cotovelo → esfera verde-limão (calculada por IK de 2 elos)
-///   Ombro    → esfera laranja (Sensor B live ou posição fixa)
-///   Peito    → esfera azul (posição fixa pós-calibração)
-///   Cabeça   → esfera branca (posição fixa pós-calibração)
+/// Modo de 1 sensor (palma). Articulações:
+///   Palma    → cubo do sensor (posição + orientação REAIS)
+///   Cotovelo → esfera verde-limão — derivada da ORIENTAÇÃO medida do antebraço
+///   Ombro    → esfera laranja translúcida (posição fixa pós-calibração, ESTIMADA)
+///   Peito    → esfera azul (posição fixa pós-calibração, opcional)
+///   Cabeça   → esfera branca (posição fixa pós-calibração, opcional)
 ///
-/// IK do cotovelo (2-link IK via lei dos cossenos):
-///   Lu = comprimentoBraco * (18.6 / 44.0)  → braço superior
-///   Lf = comprimentoBraco * (14.6 / 44.0)  → antebraço
-///   Elbow hint: Vector3.back (cotovelo aponta para trás, para longe da base station)
+/// Cotovelo (cinemática direta a partir do antebraço medido):
+///   Lf = ComprimentoBraco * (14.6 / 44.0)  → antebraço
+///   cotovelo = palma + (rotaçãoPalma * EixoAntebracoLocal) * Lf
+///   → sem palpites; correto em qualquer plano de exercício (sagital, lateral, abdução).
+///
+/// O braço superior (cotovelo→ombro) é apenas ligação visual estimada e é
+/// renderizado translúcido para não fingir precisão que não existe.
+///
+/// Compensação postural (proxy de 1 sensor): a palma não pode estar mais longe do
+/// ombro do que o comprimento do braço; se estiver, o tronco/ombro avançou (batota).
 /// </summary>
 public class OmmoEsqueletoJogador : MonoBehaviour
 {
     // ── Proporções (DIN 33402 / ISO 7250) ────────────────────────────
-    private const float FRACAO_BRACO_SUPERIOR = 18.6f / 44.0f; // braço superior
-    private const float FRACAO_ANTEBRACO      = 14.6f / 44.0f; // antebraço
+    private const float FRACAO_ANTEBRACO = 14.6f / 44.0f; // antebraço (cotovelo→palma)
 
     // ── Limiar de compensação postural ────────────────────────────────
-    private const float LIMIAR_COMPENSACAO = 0.02f; // 2 cm
+    // Excesso de alcance (palma além do comprimento do braço) que conta como batota.
+    private const float LIMIAR_COMPENSACAO = 0.05f; // 5 cm
+
+    // ── IK do antebraço ───────────────────────────────────────────────
+    [Tooltip("Eixo LOCAL do sensor da palma que aponta da palma para o cotovelo " +
+             "(ao longo do antebraço). Depende da montagem do sensor — confirmar em Play Mode.")]
+    public Vector3 EixoAntebracoLocal = Vector3.back;
 
     // ── Geometria ─────────────────────────────────────────────────────
     private const float RAIO_OSSO   = 0.02f;
@@ -30,7 +41,6 @@ public class OmmoEsqueletoJogador : MonoBehaviour
 
     // ── Dispositivos ──────────────────────────────────────────────────
     private OmmoDevice _devicePalma;
-    private OmmoDevice _deviceOmbro;
 
     // ── Posições fixas ────────────────────────────────────────────────
     private Vector3 _posPeito;
@@ -104,31 +114,32 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     public Vector3 ObterPosPalmaAtual()
         => _devicePalma != null ? _devicePalma.ObterPosicaoSensor(0) : Vector3.zero;
 
-    public Vector3 ObterPosOmbroAtual()
-        => _deviceOmbro != null ? _deviceOmbro.ObterPosicaoSensor(0) : _posOmbroBase;
+    public Vector3 ObterPosOmbroAtual() => _posOmbroBase;
 
     // ── Inicialização ─────────────────────────────────────────────────
 
-    public void Inicializar(OmmoDevice devicePalma, OmmoDevice deviceOmbro)
+    public void Inicializar(OmmoDevice devicePalma)
     {
         _devicePalma = devicePalma;
-        _deviceOmbro = deviceOmbro;
 
         ColorirSensor(devicePalma, new Color(0.3f, 0.7f, 1f));
-        if (deviceOmbro != null)
-            ColorirSensor(deviceOmbro, new Color(1f, 0.55f, 0.1f));
 
-        _goCotovelo = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));
-        _matOmbro       = CriarMaterial(new Color(1f, 0.55f, 0.1f));
-        _matOmbroAlerta = CriarMaterial(new Color(1f, 0.15f, 0.1f));
-        _goOmbro   = CriarEsfera("Ombro",  _matOmbro);
-        _goPeito   = CriarEsfera("Peito",  new Color(0.3f, 0.7f, 1f));
-        _goCabeca  = CriarEsfera("Cabeca", Color.white);
-
+        // Antebraço (palma→cotovelo) = MEDIDO → sólido e brilhante.
+        _goCotovelo        = CriarEsfera("Cotovelo", new Color(0.6f, 1f, 0.2f));
         _ossoPalmaCotovelo = CriarCilindro("Osso_Palma_Cotovelo", new Color(0.6f, 1f, 0.2f));
-        _ossoCotoveloOmbro = CriarCilindro("Osso_Cotovelo_Ombro", new Color(1f, 0.55f, 0.1f));
-        _ossoOmbroPeito    = CriarCilindro("Osso_Ombro_Peito",    new Color(0.3f, 0.7f, 1f));
-        _ossoPeitoCabeca   = CriarCilindro("Osso_Peito_Cabeca",   Color.white);
+
+        // Braço superior (cotovelo→ombro) e ombro = ESTIMADOS → translúcidos.
+        _matOmbro          = CriarMaterialTranslucido(new Color(1f, 0.55f, 0.1f), 0.45f);
+        _matOmbroAlerta    = CriarMaterial(new Color(1f, 0.15f, 0.1f)); // alerta opaco para destacar
+        _goOmbro           = CriarEsfera("Ombro", _matOmbro);
+        _ossoCotoveloOmbro = CriarCilindroMat("Osso_Cotovelo_Ombro",
+                                 CriarMaterialTranslucido(new Color(1f, 0.55f, 0.1f), 0.35f));
+
+        // Tronco (peito/cabeça) — apenas visual, fixo pós-calibração.
+        _goPeito         = CriarEsfera("Peito",  new Color(0.3f, 0.7f, 1f));
+        _goCabeca        = CriarEsfera("Cabeca", Color.white);
+        _ossoOmbroPeito  = CriarCilindro("Osso_Ombro_Peito",  new Color(0.3f, 0.7f, 1f));
+        _ossoPeitoCabeca = CriarCilindro("Osso_Peito_Cabeca", Color.white);
 
         AtivacaoEsqueleto(false);
         Debug.Log("[OmmoEsqueleto] Inicializado — aguarda calibração.");
@@ -174,12 +185,8 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         SetAtivo(_ossoOmbroPeito,    ativo && _temPeito);
         SetAtivo(_ossoPeitoCabeca,   ativo && _temPeito);
 
-        if (ativo && _deviceOmbro != null)
-        {
-            _posOmbroBase = _deviceOmbro.ObterPosicaoSensor(0);
-            PosOmbroBase  = _posOmbroBase;
+        if (ativo)
             Debug.Log($"[OmmoEsqueleto] ✅ Ativo | Ombro base: {_posOmbroBase}");
-        }
     }
 
     // ── Update ────────────────────────────────────────────────────────
@@ -189,87 +196,53 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         if (!_calibrado || _devicePalma == null) return;
 
         Vector3 posPalma = _devicePalma.ObterPosicaoSensor(0);
-        Vector3 posOmbro = _deviceOmbro != null
-            ? _deviceOmbro.ObterPosicaoSensor(0)
-            : _posOmbroBase;
+        Vector3 posOmbro = _posOmbroBase; // ombro sempre fixo (modo de 1 sensor)
 
-        // IK de 2 elos: cotovelo calculado por lei dos cossenos
-        // Hint: cotovelo aponta para trás relativamente à direção frontal calibrada
-        Vector3 posCotovelo = CalcularPosCotovelo(posOmbro, posPalma, ComprimentoBraco, -DirecaoFrente);
+        // Cotovelo a partir da ORIENTAÇÃO real do antebraço (sensor da palma),
+        // não de um palpite — correto em qualquer plano de exercício.
+        Vector3 posCotovelo = CalcularPosCotovelo(posPalma);
 
         if (_goCotovelo) _goCotovelo.transform.position = posCotovelo;
         if (_goOmbro)    _goOmbro.transform.position    = posOmbro;
 
-        AtualizarCilindro(_ossoPalmaCotovelo, posPalma,    posCotovelo);
-        AtualizarCilindro(_ossoCotoveloOmbro, posCotovelo, posOmbro);
+        AtualizarCilindro(_ossoPalmaCotovelo, posPalma,    posCotovelo); // medido
+        AtualizarCilindro(_ossoCotoveloOmbro, posCotovelo, posOmbro);    // estimado
         if (_temPeito)
         {
             AtualizarCilindro(_ossoOmbroPeito,  posOmbro,  _posPeito);
             AtualizarCilindro(_ossoPeitoCabeca, _posPeito, _posCabeca);
         }
 
-        // Compensação postural (só com 2 sensores — ombro live)
-        if (_deviceOmbro != null)
+        // Compensação postural (proxy de 1 sensor): a palma não pode estar mais
+        // longe do ombro do que o comprimento do braço. O excesso = avanço do tronco.
+        CompensacaoOmbro = Mathf.Max(0f, Vector3.Distance(posPalma, _posOmbroBase) - ComprimentoBraco);
+        if (_matOmbro && _matOmbroAlerta && _goOmbro)
         {
-            CompensacaoOmbro = Vector3.Distance(posOmbro, _posOmbroBase);
-            if (_matOmbro && _matOmbroAlerta && _goOmbro)
-            {
-                var r = _goOmbro.GetComponent<Renderer>();
-                if (r) r.material = OmbroCompensando ? _matOmbroAlerta : _matOmbro;
-            }
+            var r = _goOmbro.GetComponent<Renderer>();
+            if (r) r.material = OmbroCompensando ? _matOmbroAlerta : _matOmbro;
         }
     }
 
-    // ── IK do cotovelo ────────────────────────────────────────────────
+    // ── Cotovelo (cinemática direta a partir do antebraço medido) ─────
 
     /// <summary>
-    /// IK de 2 elos: calcula a posição do cotovelo dada a posição do ombro e da palma.
+    /// Posição do cotovelo a partir da orientação REAL do sensor da palma.
     ///
-    /// Usa a lei dos cossenos para encontrar o ângulo de flexão, depois projeta o
-    /// cotovelo num plano perpendicular ao eixo ombro→palma usando o vetor hint.
-    ///
-    /// Hint = Vector3.back → cotovelo aponta para longe da base station (atrás do player).
+    /// O antebraço é um corpo rígido medido: a sua direção no mundo é
+    /// rotaçãoPalma * EixoAntebracoLocal. O cotovelo fica a um comprimento de
+    /// antebraço (Lf) da palma ao longo desse eixo. Sem palpites de hint, pelo
+    /// que funciona igual em flexão sagital, lateral e abdução.
     /// </summary>
-    private static Vector3 CalcularPosCotovelo(Vector3 ombro, Vector3 palma, float comprimentoBraco, Vector3 hint)
+    private Vector3 CalcularPosCotovelo(Vector3 posPalma)
     {
-        // Fallback se comprimento não calibrado
-        float bracoTotal = comprimentoBraco > 0.05f ? comprimentoBraco : 0.44f;
+        float bracoTotal = ComprimentoBraco > 0.05f ? ComprimentoBraco : 0.44f;
+        float Lf         = bracoTotal * FRACAO_ANTEBRACO; // antebraço (cotovelo→palma)
 
-        float Lu = bracoTotal * FRACAO_BRACO_SUPERIOR; // braço superior (ombro→cotovelo)
-        float Lf = bracoTotal * FRACAO_ANTEBRACO;      // antebraço (cotovelo→palma)
+        Vector3 eixo = _devicePalma.ObterRotacaoSensor(0) * EixoAntebracoLocal;
+        if (eixo.sqrMagnitude < 1e-6f)
+            eixo = -DirecaoFrente; // fallback se orientação ainda não chegou
 
-        Vector3 dir = palma - ombro;
-        float d = dir.magnitude;
-
-        if (d < 0.001f) return (ombro + palma) * 0.5f;
-
-        Vector3 dirNorm = dir / d;
-
-        // Limite do alcance: braço totalmente estendido ou dobrado ao máximo
-        float maxAlcance = Lu + Lf;
-        float minAlcance = Mathf.Abs(Lu - Lf);
-        float dEfetivo   = Mathf.Clamp(d, minAlcance + 0.001f, maxAlcance - 0.001f);
-
-        // Lei dos cossenos: distância ao longo do eixo até à base da perpendicular
-        float a = (dEfetivo * dEfetivo + Lu * Lu - Lf * Lf) / (2f * dEfetivo);
-        // Altura do cotovelo acima do eixo ombro→palma
-        float h = Mathf.Sqrt(Mathf.Max(0f, Lu * Lu - a * a));
-
-        // Ponto projetado ao longo do eixo (limite ao comprimento real da direção)
-        Vector3 pontoBase = ombro + dirNorm * Mathf.Min(a, d);
-
-        if (h < 0.001f) return pontoBase; // braço esticado — cotovelo no eixo
-
-        // Normaliza o hint; fallback se paralelo ao eixo do braço
-        if (hint.magnitude < 0.01f) hint = Vector3.back;
-        hint = hint.normalized;
-        if (Mathf.Abs(Vector3.Dot(dirNorm, hint)) > 0.98f)
-            hint = Vector3.right;
-
-        // Componente do hint perpendicular ao eixo do braço
-        Vector3 perpHint = (hint - Vector3.Dot(hint, dirNorm) * dirNorm).normalized;
-
-        return pontoBase + perpHint * h;
+        return posPalma + eixo.normalized * Lf;
     }
 
     // ── Helpers de geometria ──────────────────────────────────────────
@@ -302,12 +275,15 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     }
 
     private GameObject CriarCilindro(string nome, Color cor)
+        => CriarCilindroMat(nome, CriarMaterial(cor));
+
+    private GameObject CriarCilindroMat(string nome, Material mat)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         go.name = "Esqueleto_" + nome;
         go.transform.SetParent(transform, false);
         Object.DestroyImmediate(go.GetComponent<CapsuleCollider>());
-        go.GetComponent<Renderer>().material = CriarMaterial(cor);
+        go.GetComponent<Renderer>().material = mat;
         return go;
     }
 
@@ -317,6 +293,24 @@ public class OmmoEsqueletoJogador : MonoBehaviour
         mat.color = cor;
         mat.SetFloat("_Metallic",    0f);
         mat.SetFloat("_Glossiness",  0.3f);
+        return mat;
+    }
+
+    /// <summary>Material translúcido — usado para as partes ESTIMADAS do esqueleto.</summary>
+    private static Material CriarMaterialTranslucido(Color cor, float alpha)
+    {
+        var mat = new Material(Shader.Find("Standard"));
+        mat.color = new Color(cor.r, cor.g, cor.b, alpha);
+        mat.SetFloat("_Mode", 3f); // Transparent
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.SetInt("_ZWrite", 0);
+        mat.DisableKeyword("_ALPHATEST_ON");
+        mat.EnableKeyword("_ALPHABLEND_ON");
+        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.renderQueue = 3000;
+        mat.SetFloat("_Metallic",   0f);
+        mat.SetFloat("_Glossiness", 0.3f);
         return mat;
     }
 
@@ -333,7 +327,16 @@ public class OmmoEsqueletoJogador : MonoBehaviour
             var t = device.ObterTransformSensor(i);
             if (t == null) continue;
             var renderers = t.GetComponentsInChildren<Renderer>(true);
-            var mat = new Material(Shader.Find("Standard")) { color = cor };
+            // Contorno Fresnel: realça o objeto controlado pelo Ommo. Fallback para
+            // Standard caso o shader não esteja disponível.
+            var shader = Shader.Find("PrevenGame/RimGlow") ?? Shader.Find("Standard");
+            var mat = new Material(shader) { color = cor };
+            if (mat.HasProperty("_RimColor"))
+            {
+                mat.SetColor("_RimColor", Color.white);
+                mat.SetFloat("_RimPower", 3f);
+                mat.SetFloat("_RimIntensity", 2.2f);
+            }
             mat.SetFloat("_Metallic",   0.05f);
             mat.SetFloat("_Glossiness", 0.5f);
             foreach (var r in renderers)

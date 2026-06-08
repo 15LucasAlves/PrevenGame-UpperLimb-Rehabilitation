@@ -9,8 +9,7 @@ using System.Collections.Generic;
 /// Modo único: 1 sensor (palma). O tracking inicia automaticamente no Start().
 ///
 /// Fluxo:
-///   AguardarSensores → AtribuirSensores
-///     → Ombro → BracoEstendido → Peito → Cabeca → Completo
+///   AguardarSensores → AtribuirSensores → Ombro → BracoEstendido → Completo
 ///
 /// Captura:
 ///   Auto: janela deslizante de 10 amostras, variação < 4 cm por 3 s.
@@ -51,12 +50,8 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     // ── Estado interno ────────────────────────────────────────────────
     private EstadoCalibracao _estado = EstadoCalibracao.AguardarSensores;
-    // Sempre 1 sensor (palma); ombro nunca tracked em tempo real
-    private readonly bool _modoUmSensor = true;
 
     private OmmoDevice _devicePalma;
-    // _deviceOmbro é sempre null — mantido por compatibilidade com OmmoEsqueletoJogador
-    private OmmoDevice _deviceOmbro = null;
 
     private Queue<Vector3> _historicoPos = new Queue<Vector3>();
     private float _tempoEstavel = 0f;
@@ -143,12 +138,11 @@ public class OmmoCalibracaoManager : MonoBehaviour
         devices.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
 
         _devicePalma = devices[0];
-        _deviceOmbro = null; // sempre null em modo 1 sensor
 
         Debug.Log($"[OmmoCalibracao] 1 sensor | Palma → {_devicePalma.name}");
 
         if (Esqueleto)
-            Esqueleto.Inicializar(_devicePalma, null);
+            Esqueleto.Inicializar(_devicePalma);
 
         AvancarEstado(); // → AtribuirSensores
     }

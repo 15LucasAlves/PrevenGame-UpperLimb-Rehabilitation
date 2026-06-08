@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Rendering;
+using System.Collections.Generic;
 
 /// <summary>
 /// OmmoSceneBuilder - Editor script que constrói cenas Ommo automaticamente.
@@ -26,6 +28,15 @@ public class OmmoSceneBuilder : EditorWindow
             "Sim, construir!", "Cancelar"))
             return;
 
+        BuildJogoCore();
+    }
+
+    /// <summary>
+    /// Constrói o conteúdo da Clinical Trial na cena ATUAL (sem diálogo de confirmação).
+    /// Reutilizado pelo orquestrador BuildTresCenas() para gravar a cena ClinicalTrial.unity.
+    /// </summary>
+    public static void BuildJogoCore()
+    {
         Debug.Log("[OmmoBuilder] A construir mundo 3D do jogo...");
         ClearExistingJogo();
 
@@ -40,12 +51,7 @@ public class OmmoSceneBuilder : EditorWindow
         }
 
         // ── Materiais ─────────────────────────────────────────────────
-        // Sensor — cápsula branca (representa o membro a reabilitar)
-        Material sensorMat = new Material(Shader.Find("Standard"));
-        sensorMat.color = new Color(0.95f, 0.95f, 0.95f);
-        sensorMat.SetFloat("_Metallic", 0.1f);
-        sensorMat.SetFloat("_Glossiness", 0.6f);
-        sensorMat.name = "SensorMaterial";
+        // (O material do objeto controlado é tratado por CriarVisualSensor.)
 
         // Piso — grid subtil
         Material pisoMat = new Material(Shader.Find("Standard"));
@@ -54,13 +60,17 @@ public class OmmoSceneBuilder : EditorWindow
         pisoMat.SetFloat("_Glossiness", 0.1f);
         pisoMat.name = "PisoMaterial";
 
-        // ── AppManager ────────────────────────────────────────────────
+        // ── OmmoBootstrap (camada de ligação persistente) ─────────────
+        // Cria/possui o dispatcher + launcher e sobrevive a trocas de cena
+        // (DontDestroyOnLoad). Singleton: se entrarmos por outra cena que já o
+        // criou, este auto-destrói-se. Mantém o serviço .exe vivo entre cenas.
+        var bootstrapGO = CreateEmpty("OmmoBootstrap");
+        bootstrapGO.AddComponent<OmmoBootstrap>();
+
+        // ── AppManager (por cena) ─────────────────────────────────────
+        // Hardware/tracking re-inicializa-se sozinho via OmmoServiceLauncher.ServiceReady
+        // (o launcher persistente já está pronto) e recupera os sensores ligados.
         GameObject appManager = CreateEmpty("AppManager");
-        appManager.AddComponent<UnityMainThreadDispatcher>();
-        var launcher   = appManager.AddComponent<OmmoServiceLauncher>();
-        launcher.ServiceExeName = "ommo_service_v0.22.0.exe";
-        launcher.WarmupSeconds  = 2.5f;
-        launcher.KillOnExit     = true;
         var monitor    = appManager.AddComponent<OmmoHardwareMonitor>();
         var devManager = appManager.AddComponent<OmmoDeviceManager>();
         var sensorMgr  = appManager.AddComponent<OmmoSensorManager>();
@@ -91,15 +101,11 @@ public class OmmoSceneBuilder : EditorWindow
         Object.DestroyImmediate(piso.GetComponent<MeshCollider>());
         piso.GetComponent<MeshRenderer>().sharedMaterial = pisoMat;
 
-        // ── CuboSensor (SensorPrefab — o objeto controlado pelo sensor) ─
-        // Cubo branco — filho do TrackedDevicePrefab.
-        // OmmoDevice instancia um por unidade de sensor e move-o em Update()
-        // com os dados de posição + rotação vindos do hardware Ommo.
-        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cubo.name = "CuboSensor";
-        cubo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-        Object.DestroyImmediate(cubo.GetComponent<BoxCollider>());
-        cubo.GetComponent<MeshRenderer>().sharedMaterial = sensorMat;
+        // ── Objeto controlado pelo Ommo (SensorPrefab) ────────────────
+        // Prefab real (Assets/PrevenGameAssets/ObjetoControlado.prefab) se existir,
+        // senão cubo branco placeholder com contorno RimGlow.
+        // OmmoDevice instancia um por sensor e move-o em Update() com os dados Ommo.
+        var cubo = CriarVisualSensor();
 
         // ── TrackedDevice Prefab ──────────────────────────────────────
         // Root inativo — OmmoDeviceManager instancia um por dispositivo conectado.
@@ -344,6 +350,11 @@ public class OmmoSceneBuilder : EditorWindow
         textoComp.fontSize  = 20;
         textoComp.color     = new Color(0.9f, 0.9f, 0.9f);
         textoComp.alignment = TextAlignmentOptions.Right;
+
+        // ── Demo do exercício (canto inferior esquerdo) ───────────────
+        // Imagem que cicla em loop a demonstrar o exercício. Ancorada bottom-left,
+        // ~⅓ da largura; o CanvasScaler (ScaleWithScreenSize) torna-a responsiva.
+        ConstruirDemoExercicio(hudJogo.transform, 1);
 
         hudJogo.SetActive(false); // escondido até calibração terminar
 
@@ -731,6 +742,553 @@ public class OmmoSceneBuilder : EditorWindow
             "• BaseStation (azul) = origem do espaço de tracking\n\n" +
             "Guarda a cena (Ctrl+S) e carrega Play para testar.",
             "OK");
+    }
+
+    /// <summary>
+    /// Constrói a UI de demonstração do exercício (canto inferior esquerdo) que cicla
+    /// as imagens do exercício em loop. Responsiva via CanvasScaler do canvas pai.
+    /// </summary>
+    static void ConstruirDemoExercicio(Transform pai, int numeroExercicio)
+    {
+        var demoGO = new GameObject("DemoExercicio");
+        demoGO.transform.SetParent(pai, false);
+        var demoRect = demoGO.AddComponent<RectTransform>();
+        demoRect.anchorMin        = new Vector2(0f, 0f);
+        demoRect.anchorMax        = new Vector2(0f, 0f);
+        demoRect.pivot            = new Vector2(0f, 0f);
+        demoRect.anchoredPosition = new Vector2(40f, 40f);
+        demoRect.sizeDelta        = new Vector2(560f, 320f); // ~⅓ de 1920 (referência do CanvasScaler)
+
+        var demoImg = demoGO.AddComponent<Image>();
+        demoImg.color          = new Color(1f, 1f, 1f, 0.96f);
+        demoImg.preserveAspect = true;   // mantém o rácio da imagem dentro do retângulo
+        demoImg.raycastTarget  = false;
+
+        var demoLoop = demoGO.AddComponent<ExercicioDemoLoop>();
+        demoLoop.ImagemAlvo        = demoImg;
+        demoLoop.IntervaloSegundos = 0.5f;
+
+        // Imagens da demo: pasta dedicada (PastaAssets/Demo) ou fallback ao exercício.
+        var sprites = CarregarSpritesDemo(numeroExercicio);
+        demoLoop.Sprites = sprites;
+        if (sprites.Length > 0) demoImg.sprite = sprites[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // PrevenGame — 3 cenas (MainMenu + ClinicalTrial + Gamification)
+    // ─────────────────────────────────────────────────────────────────
+
+    [MenuItem("Ommo/PrevenGame/Build 3 Cenas (Menu + Clinical + Gamification)")]
+    public static void BuildTresCenas()
+    {
+        if (!EditorUtility.DisplayDialog("PrevenGame — Build 3 Cenas",
+            "Cria/grava 3 cenas em Assets/Scenes:\n" +
+            "• MainMenu.unity\n• ClinicalTrial.unity\n• Gamification.unity\n\n" +
+            "E regista-as no Build Settings (MainMenu como cena inicial).\n" +
+            "Cenas existentes com estes nomes são sobrescritas. Continuar?",
+            "Sim", "Cancelar"))
+            return;
+
+        const string dir   = "Assets/Scenes";
+        const string pMenu = "Assets/Scenes/MainMenu.unity";
+        const string pClin = "Assets/Scenes/ClinicalTrial.unity";
+        const string pGam  = "Assets/Scenes/Gamification.unity";
+        if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+
+        // Clinical Trial (reaproveita o builder do jogo existente).
+        var sClin = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        BuildJogoCore();
+        EditorSceneManager.SaveScene(sClin, pClin);
+
+        // Gamification.
+        var sGam = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        BuildGamificationCore();
+        EditorSceneManager.SaveScene(sGam, pGam);
+
+        // MainMenu.
+        var sMenu = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        BuildMainMenuCore();
+        EditorSceneManager.SaveScene(sMenu, pMenu);
+
+        EditorBuildSettings.scenes = new[]
+        {
+            new EditorBuildSettingsScene(pMenu, true),
+            new EditorBuildSettingsScene(pClin, true),
+            new EditorBuildSettingsScene(pGam, true),
+        };
+        AssetDatabase.SaveAssets();
+        EditorSceneManager.OpenScene(pMenu);
+
+        EditorUtility.DisplayDialog("PrevenGame — Build 3 Cenas",
+            "✅ 3 cenas criadas e registadas no Build Settings.\n\n" +
+            "Abre MainMenu e carrega Play. Os assets do Gamification (alvo, dardo, sala, " +
+            "imagens) são placeholders — substitui-os depois sem alterar a lógica.", "OK");
+    }
+
+    // ── MainMenu ──────────────────────────────────────────────────────
+    public static void BuildMainMenuCore()
+    {
+        ClearExistingJogo();
+        GarantirEventSystem();
+
+        CreateEmpty("OmmoBootstrap").AddComponent<OmmoBootstrap>();
+
+        var canvas = CriarCanvasOverlay("MenuCanvas", 10);
+        var fundo  = new GameObject("Fundo");
+        fundo.transform.SetParent(canvas.transform, false);
+        StretchFull(fundo.AddComponent<RectTransform>());
+        fundo.AddComponent<Image>().color = new Color(0.06f, 0.06f, 0.09f, 1f);
+
+        CriarTexto("Titulo", canvas.transform, "PrevenGame", 64, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -160f), new Vector2(900f, 90f), Color.white);
+        CriarTexto("Subtitulo", canvas.transform, "Reabilitação do Membro Superior", 28,
+            TextAlignmentOptions.Center,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -260f), new Vector2(900f, 50f), new Color(0.8f, 0.8f, 0.85f));
+
+        var btnClin = CriarBotaoSimples("BotaoClinicalTrial", canvas.transform, "Clinical Trial",
+            new Color(0.2f, 0.5f, 0.85f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(-180f, -20f), new Vector2(320f, 90f)).GetComponent<Button>();
+        var btnGam = CriarBotaoSimples("BotaoGamification", canvas.transform, "Gamification",
+            new Color(0.85f, 0.45f, 0.15f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(180f, -20f), new Vector2(320f, 90f)).GetComponent<Button>();
+
+        var ctrl = CreateEmpty("MainMenu").AddComponent<MainMenuController>();
+        ctrl.BotaoClinicalTrial = btnClin;
+        ctrl.BotaoGamification  = btnGam;
+
+        Camera cam = Camera.main ?? Object.FindObjectOfType<Camera>();
+        if (cam != null)
+        {
+            cam.clearFlags      = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.06f, 0.06f, 0.09f);
+        }
+        Debug.Log("[OmmoBuilder] ✅ Cena MainMenu construída.");
+    }
+
+    // ── Gamification ──────────────────────────────────────────────────
+    public static void BuildGamificationCore()
+    {
+        ClearExistingJogo();
+        var s = ConstruirScaffold();
+
+        // Sala preta + câmara (posições a afinar com os assets reais).
+        Camera cam = Camera.main ?? Object.FindObjectOfType<Camera>();
+        if (cam != null)
+        {
+            if (cam.gameObject.tag != "MainCamera") cam.gameObject.tag = "MainCamera";
+            cam.clearFlags      = CameraClearFlags.SolidColor;
+            cam.backgroundColor = Color.black;
+            cam.fieldOfView     = 55f;
+            cam.nearClipPlane   = 0.1f;
+            cam.farClipPlane    = 200f;
+            cam.transform.position = new Vector3(-9f, 17f, -3f);
+            cam.transform.LookAt(new Vector3(0f, 13f, 5f));
+            if (cam.gameObject.GetComponent<OmmoCameraSetup>() == null)
+                cam.gameObject.AddComponent<OmmoCameraSetup>();
+        }
+        var luz = CreateEmpty("LuzDirecional").AddComponent<Light>();
+        luz.type      = LightType.Directional;
+        luz.intensity = 1.0f;
+        luz.color     = new Color(1f, 0.97f, 0.9f);
+        luz.transform.rotation = Quaternion.Euler(50f, -20f, 0f);
+
+        // Sala/ambiente (prefab real se existir; senão fica a sala preta da câmara).
+        var salaPrefab = CarregarPrefab(AssetSala);
+        if (salaPrefab != null) Object.Instantiate(salaPrefab).name = "Sala";
+
+        // Alvo de 5 aros reais (Alvo1=exterior … Alvo5=bullseye), concêntricos.
+        var alvoGO = CreateEmpty("Alvo");
+        alvoGO.transform.position = new Vector3(0f, 13f, 8f);
+        // Plano do alvo virado para o jogador (transform.forward = normal).
+        alvoGO.transform.rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
+        var alvo = alvoGO.AddComponent<GamificationTarget>();
+        alvo.CriarVisualPlaceholder = false;
+        alvo.RaioExterior = 1.5f; // fallback se faltarem os prefabs
+        alvo.AroPrefabs = new[]
+        {
+            CarregarPrefab(AssetAlvo1), CarregarPrefab(AssetAlvo2), CarregarPrefab(AssetAlvo3),
+            CarregarPrefab(AssetAlvo4), CarregarPrefab(AssetAlvo5),
+        };
+
+        // Manager.
+        var gm = CreateEmpty("GamificationManager").AddComponent<GamificationManager>();
+        gm.Esqueleto         = s.Esqueleto;
+        gm.CalibracaoManager = s.CalibManager;
+        gm.Alvo              = alvo;
+        gm.DardoPrefab       = CarregarPrefab(AssetDardo); // null → dardo placeholder
+
+        // HUD.
+        var hud = new GameObject("HUDJogo");
+        hud.transform.SetParent(s.GameCanvasGO.transform, false);
+        hud.AddComponent<RectTransform>();
+        var textoPont = CriarTexto("TextoPontuacao", hud.transform, "Pontuação: 0", 24,
+            TextAlignmentOptions.Left,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(24f, -20f), new Vector2(400f, 40f), Color.white);
+        var textoDardos = CriarTexto("TextoDardos", hud.transform, "Dardos: 5/5", 24,
+            TextAlignmentOptions.Right,
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f),
+            new Vector2(-24f, -20f), new Vector2(400f, 40f), Color.white);
+        ConstruirDemoExercicio(hud.transform, 1);
+        hud.SetActive(false);
+        gm.HUDJogo        = hud;
+        gm.TextoPontuacao = textoPont;
+        gm.TextoDardos    = textoDardos;
+
+        // Painel Fim.
+        var fim = new GameObject("PainelFim");
+        fim.transform.SetParent(s.GameCanvasGO.transform, false);
+        fim.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.7f);
+        var fimRect = fim.GetComponent<RectTransform>();
+        fimRect.anchorMin = fimRect.anchorMax = fimRect.pivot = new Vector2(0.5f, 0.5f);
+        fimRect.anchoredPosition = Vector2.zero;
+        fimRect.sizeDelta        = new Vector2(700f, 260f);
+        var textoResult = CriarTexto("TextoResultado", fim.transform, "🎯 Sessão concluída!", 28,
+            TextAlignmentOptions.Center,
+            new Vector2(0.05f, 0.5f), new Vector2(0.95f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, 20f), new Vector2(0f, 80f), Color.white);
+        var btnNova = CriarBotaoSimples("BotaoNovaSessao", fim.transform, "Nova Sessão",
+            new Color(0.2f, 0.7f, 0.3f),
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 28f), new Vector2(220f, 50f)).GetComponent<Button>();
+        fim.SetActive(false);
+        gm.PainelFim       = fim;
+        gm.TextoResultado  = textoResult;
+        gm.BotaoNovaSessao = btnNova;
+
+        // Painel de seleção (1 card).
+        var painelSel = new GameObject("PainelSelecao");
+        painelSel.transform.SetParent(s.GameCanvasGO.transform, false);
+        painelSel.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.82f);
+        var selRect = painelSel.GetComponent<RectTransform>();
+        selRect.anchorMin = selRect.anchorMax = selRect.pivot = new Vector2(0.5f, 0.5f);
+        selRect.anchoredPosition = Vector2.zero;
+        selRect.sizeDelta        = new Vector2(900f, 620f);
+
+        CriarTexto("Titulo", painelSel.transform, "Lançamento de Dardos", 30,
+            TextAlignmentOptions.Center,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -28f), new Vector2(700f, 50f), Color.white);
+
+        var btnDir = CriarBotaoSimples("BotaoBracoDireito", painelSel.transform, "Braço Direito",
+            new Color(0.2f, 0.7f, 0.3f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(-130f, -90f), new Vector2(250f, 46f)).GetComponent<Button>();
+        var btnEsq = CriarBotaoSimples("BotaoBracoEsquerdo", painelSel.transform, "Braço Esquerdo",
+            new Color(0.35f, 0.35f, 0.35f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(130f, -90f), new Vector2(250f, 46f)).GetComponent<Button>();
+
+        // Card com a imagem do exercício.
+        var cardGO = new GameObject("Card");
+        cardGO.transform.SetParent(painelSel.transform, false);
+        var cardRect = cardGO.AddComponent<RectTransform>();
+        cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.anchoredPosition = new Vector2(0f, 20f);
+        cardRect.sizeDelta        = new Vector2(360f, 300f);
+        cardGO.AddComponent<Image>().color = new Color(0.18f, 0.55f, 0.25f);
+
+        var imgExGO = new GameObject("ImagemExercicio");
+        imgExGO.transform.SetParent(cardGO.transform, false);
+        var imgExRect = imgExGO.AddComponent<RectTransform>();
+        imgExRect.anchorMin = imgExRect.anchorMax = imgExRect.pivot = new Vector2(0.5f, 0.5f);
+        imgExRect.anchoredPosition = Vector2.zero;
+        imgExRect.sizeDelta        = new Vector2(328f, 252f);
+        var imgEx = imgExGO.AddComponent<Image>();
+        imgEx.preserveAspect = true;
+        imgEx.raycastTarget  = false;
+        var cardSprite = CarregarSpriteAsset(AssetCard)
+                         ?? CarregarSpriteAsset("Assets/Execercises/ex1/1.png");
+        if (cardSprite != null) imgEx.sprite = cardSprite; else imgEx.color = new Color(0.1f, 0.1f, 0.12f);
+
+        var barraReps = new GameObject("BarraReps");
+        barraReps.transform.SetParent(painelSel.transform, false);
+        var brRect = barraReps.AddComponent<RectTransform>();
+        brRect.anchorMin = brRect.anchorMax = brRect.pivot = new Vector2(0.5f, 0f);
+        brRect.anchoredPosition = new Vector2(0f, 100f);
+        brRect.sizeDelta        = new Vector2(300f, 52f);
+        var btnMenos = CriarBotaoSimples("BotaoMenos", barraReps.transform, "─",
+            new Color(0.2f, 0.2f, 0.22f),
+            new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+            new Vector2(8f, 0f), new Vector2(60f, 0f)).GetComponent<Button>();
+        var textoReps = CriarTexto("TextoReps", barraReps.transform, "5", 26,
+            TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(80f, 0f), Color.white);
+        var btnMais = CriarBotaoSimples("BotaoMais", barraReps.transform, "+",
+            new Color(0.2f, 0.2f, 0.22f),
+            new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f),
+            new Vector2(-8f, 0f), new Vector2(60f, 0f)).GetComponent<Button>();
+
+        var btnIniciar = CriarBotaoSimples("BotaoIniciar", painelSel.transform, "▶ Iniciar",
+            new Color(0.15f, 0.65f, 0.25f),
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 30f), new Vector2(280f, 58f)).GetComponent<Button>();
+
+        painelSel.SetActive(false);
+
+        gm.PainelSelecao      = painelSel;
+        gm.BotaoBracoDireito  = btnDir;
+        gm.BotaoBracoEsquerdo = btnEsq;
+        gm.BotaoMenos         = btnMenos;
+        gm.BotaoMais          = btnMais;
+        gm.TextoReps          = textoReps;
+        gm.BotaoIniciar       = btnIniciar;
+        gm.ImagemExercicio    = imgEx;
+
+        Debug.Log("[OmmoBuilder] ✅ Cena Gamification construída.");
+    }
+
+    // ── Scaffold partilhado (Ommo + calibração + esqueleto) ───────────
+    class ScaffoldRefs
+    {
+        public OmmoSensorManager     SensorMgr;
+        public OmmoEsqueletoJogador  Esqueleto;
+        public OmmoCalibracaoManager CalibManager;
+        public GameObject            GameCanvasGO;
+    }
+
+    static ScaffoldRefs ConstruirScaffold()
+    {
+        GarantirEventSystem();
+
+        CreateEmpty("OmmoBootstrap").AddComponent<OmmoBootstrap>();
+
+        var appManager = CreateEmpty("AppManager");
+        var monitor    = appManager.AddComponent<OmmoHardwareMonitor>();
+        var devManager = appManager.AddComponent<OmmoDeviceManager>();
+        var sensorMgr  = appManager.AddComponent<OmmoSensorManager>();
+
+        // BaseStation.
+        var baseStation = CreateEmpty("BaseStation");
+        baseStation.transform.position = new Vector3(0f, 13f, 0f);
+        var bsMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        bsMarker.name = "BaseStation_Marcador";
+        bsMarker.transform.SetParent(baseStation.transform);
+        bsMarker.transform.localPosition = Vector3.zero;
+        bsMarker.transform.localScale    = Vector3.one * 0.08f;
+        Object.DestroyImmediate(bsMarker.GetComponent<SphereCollider>());
+        bsMarker.GetComponent<MeshRenderer>().sharedMaterial =
+            new Material(Shader.Find("Unlit/Color")) { color = new Color(0.2f, 0.6f, 1f) };
+
+        // Objeto controlado pelo Ommo (prefab real ou cubo placeholder com RimGlow).
+        var cubo = CriarVisualSensor();
+
+        var trackedRoot = CreateEmpty("TrackedDevicePrefab_TEMP");
+        var ommoDevice  = trackedRoot.AddComponent<OmmoDevice>();
+        ommoDevice.SensorPrefab  = cubo;
+        ommoDevice.RequestedMode = Ommo.DeviceFusionMode.FullFusion;
+        cubo.transform.SetParent(trackedRoot.transform, false);
+        cubo.transform.localPosition = Vector3.zero;
+        trackedRoot.SetActive(false);
+
+        devManager.BaseStation    = baseStation;
+        devManager.UnityScaleInCM = 10f;
+        devManager.DeviceTypePrefabs = new OmmoDeviceManager.DeviceTypePrefab[]
+        {
+            new OmmoDeviceManager.DeviceTypePrefab { DeviceType = 0, Prefab = trackedRoot }
+        };
+
+        // Painel "A ligar".
+        var painelCanvas = CriarCanvasOverlay("PainelALigar_TEMP", 99);
+        var fundoGO = new GameObject("Fundo");
+        fundoGO.transform.SetParent(painelCanvas.transform, false);
+        StretchFull(fundoGO.AddComponent<RectTransform>());
+        fundoGO.AddComponent<Image>().color = new Color(0.06f, 0.06f, 0.08f, 1f);
+        var textoEstado = CriarTexto("TextoEstado", painelCanvas.transform,
+            "A ligar ao sensor Ommo...", 28, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(800f, 80f), Color.white);
+
+        sensorMgr.DeviceManager   = devManager;
+        sensorMgr.HardwareMonitor = monitor;
+        sensorMgr.PainelALigar    = painelCanvas;
+        sensorMgr.TextoEstado     = textoEstado;
+
+        var esqueleto = CreateEmpty("EsqueletoJogador").AddComponent<OmmoEsqueletoJogador>();
+
+        // Calibração.
+        var calibCanvas = CriarCanvasOverlay("CalibracaoCanvas", 50);
+        var painelCalib = new GameObject("PainelCalibracao");
+        painelCalib.transform.SetParent(calibCanvas.transform, false);
+        painelCalib.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+        var pcRect = painelCalib.GetComponent<RectTransform>();
+        pcRect.anchorMin = pcRect.anchorMax = pcRect.pivot = new Vector2(0.5f, 0.5f);
+        pcRect.anchoredPosition = Vector2.zero;
+        pcRect.sizeDelta        = new Vector2(750f, 380f);
+
+        var textoPasso = CriarTexto("TextoPasso", painelCalib.transform, "", 18,
+            TextAlignmentOptions.Center,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -14f), new Vector2(0f, 28f), new Color(0.8f, 0.8f, 0.8f));
+        var textoInstr = CriarTexto("TextoInstrucao", painelCalib.transform, "A aguardar sensor...", 28,
+            TextAlignmentOptions.Center,
+            new Vector2(0.05f, 0.5f), new Vector2(0.95f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, 30f), new Vector2(0f, 90f), Color.white);
+        var textoSub = CriarTexto("TextoSub", painelCalib.transform, "Liga o sensor da palma.", 18,
+            TextAlignmentOptions.Center,
+            new Vector2(0.05f, 0.5f), new Vector2(0.95f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -28f), new Vector2(0f, 50f), new Color(0.75f, 0.75f, 0.75f));
+
+        var barraGO = new GameObject("BarraProgresso");
+        barraGO.transform.SetParent(painelCalib.transform, false);
+        var barraRect = barraGO.AddComponent<RectTransform>();
+        barraRect.anchorMin = barraRect.anchorMax = new Vector2(0.5f, 0f);
+        barraRect.pivot     = new Vector2(0.5f, 0f);
+        barraRect.anchoredPosition = new Vector2(0f, 28f);
+        barraRect.sizeDelta        = new Vector2(500f, 20f);
+        var barraBg = new GameObject("BarraFundo");
+        barraBg.transform.SetParent(barraGO.transform, false);
+        barraBg.AddComponent<Image>().color = new Color(0.2f, 0.2f, 0.2f);
+        StretchFull(barraBg.GetComponent<RectTransform>());
+        var barraFill = new GameObject("BarraFill");
+        barraFill.transform.SetParent(barraGO.transform, false);
+        var barraFillImg = barraFill.AddComponent<Image>();
+        barraFillImg.color      = new Color(0.2f, 0.85f, 0.3f);
+        barraFillImg.type       = Image.Type.Filled;
+        barraFillImg.fillMethod = Image.FillMethod.Horizontal;
+        barraFillImg.fillAmount = 0f;
+        StretchFull(barraFill.GetComponent<RectTransform>());
+
+        var calibManager = appManager.AddComponent<OmmoCalibracaoManager>();
+        calibManager.SensorManager        = sensorMgr;
+        calibManager.Esqueleto            = esqueleto;
+        calibManager.PainelCalibracao     = painelCalib;
+        calibManager.TextoInstrucao       = textoInstr;
+        calibManager.TextoPasso           = textoPasso;
+        calibManager.TextoSub             = textoSub;
+        calibManager.BarraProgressoImagem = barraFillImg;
+
+        var gameCanvas = CriarCanvasOverlay("PrevenGameCanvas", 40);
+
+        return new ScaffoldRefs
+        {
+            SensorMgr    = sensorMgr,
+            Esqueleto    = esqueleto,
+            CalibManager = calibManager,
+            GameCanvasGO = gameCanvas.gameObject,
+        };
+    }
+
+    // ── Helpers locais ────────────────────────────────────────────────
+    static void GarantirEventSystem()
+    {
+        if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        {
+            var es = CreateEmpty("EventSystem");
+            es.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        }
+    }
+
+    static Canvas CriarCanvasOverlay(string nome, int ordem)
+    {
+        var go = new GameObject(nome);
+        var c  = go.AddComponent<Canvas>();
+        c.renderMode   = RenderMode.ScreenSpaceOverlay;
+        c.sortingOrder = ordem;
+        var sc = go.AddComponent<CanvasScaler>();
+        sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        sc.referenceResolution = new Vector2(1920, 1080);
+        go.AddComponent<GraphicRaycaster>();
+        return c;
+    }
+
+    static TextMeshProUGUI CriarTexto(string nome, Transform pai, string texto, int tamanho,
+        TextAlignmentOptions align, Vector2 aMin, Vector2 aMax, Vector2 pivot,
+        Vector2 pos, Vector2 size, Color cor)
+    {
+        var go = new GameObject(nome);
+        go.transform.SetParent(pai, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = aMin; rect.anchorMax = aMax; rect.pivot = pivot;
+        rect.anchoredPosition = pos; rect.sizeDelta = size;
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text      = texto;
+        tmp.fontSize  = tamanho;
+        tmp.color     = cor;
+        tmp.alignment = align;
+        return tmp;
+    }
+
+    static Material CriarMaterialRimGlow(Color cor)
+    {
+        var m = new Material(Shader.Find("PrevenGame/RimGlow") ?? Shader.Find("Standard")) { color = cor };
+        if (m.HasProperty("_RimColor"))
+        {
+            m.SetColor("_RimColor", Color.white);
+            m.SetFloat("_RimPower", 3f);
+            m.SetFloat("_RimIntensity", 2.2f);
+        }
+        return m;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Convenção de assets — larga os ficheiros nestes caminhos e corre
+    // "Ommo → PrevenGame → Build 3 Cenas". Se faltarem, usa-se placeholder.
+    // ─────────────────────────────────────────────────────────────────
+    const string PastaAssets = "Assets/PrevenGameAssets";
+    const string AssetDardo  = PastaAssets + "/Dardo.prefab";      // dardo (Gamification)
+    const string AssetAlvo1  = PastaAssets + "/Alvo1.prefab";      // aro exterior
+    const string AssetAlvo2  = PastaAssets + "/Alvo2.prefab";
+    const string AssetAlvo3  = PastaAssets + "/Alvo3.prefab";
+    const string AssetAlvo4  = PastaAssets + "/Alvo4.prefab";
+    const string AssetAlvo5  = PastaAssets + "/Alvo5.prefab";      // bullseye
+    const string AssetSala   = PastaAssets + "/Sala.prefab";       // sala/ambiente (Gamification)
+    const string AssetCard   = PastaAssets + "/CardExercicio.png"; // imagem do card de seleção
+    const string PastaDemo   = PastaAssets + "/Demo";              // demo do exercício: 1.png, 2.png, ...
+
+    static GameObject CarregarPrefab(string path)
+        => AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+    static Sprite CarregarSpriteAsset(string path)
+    {
+        var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (imp != null && imp.textureType != TextureImporterType.Sprite)
+        {
+            imp.textureType      = TextureImporterType.Sprite;
+            imp.spriteImportMode = SpriteImportMode.Single;
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+    }
+
+    /// <summary>Sprites da demo: pasta dedicada (PastaDemo/1.png…) ou fallback às imagens do exercício.</summary>
+    static Sprite[] CarregarSpritesDemo(int exercicioFallback)
+    {
+        var lista = new List<Sprite>();
+        for (int s = 1; s <= 30; s++)
+        {
+            var sp = CarregarSpriteAsset($"{PastaDemo}/{s}.png");
+            if (sp == null) break;
+            lista.Add(sp);
+        }
+        if (lista.Count == 0)
+            for (int s = 1; s <= 5; s++)
+            {
+                var sp = CarregarSpriteAsset($"Assets/Execercises/ex{exercicioFallback}/{s}.png");
+                if (sp != null) lista.Add(sp);
+            }
+        return lista.ToArray();
+    }
+
+    /// <summary>
+    /// Objeto controlado pelo Ommo = cubo branco com RimGlow.
+    /// No Clinical é o visual jogável; na Gamification é apenas o âncora de tracking
+    /// (escondido por GamificationManager.PrepararSensorVisual — o dardo é o visual).
+    /// </summary>
+    static GameObject CriarVisualSensor()
+    {
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "CuboSensor";
+        cubo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        Object.DestroyImmediate(cubo.GetComponent<BoxCollider>());
+        cubo.GetComponent<MeshRenderer>().sharedMaterial = CriarMaterialRimGlow(new Color(0.95f, 0.95f, 0.95f));
+        return cubo;
     }
 
     // ── Cena de Diagnóstico (hardware panel + grelha 3D) ─────────────────

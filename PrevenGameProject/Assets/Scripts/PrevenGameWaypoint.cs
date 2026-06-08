@@ -30,6 +30,7 @@ public class PrevenGameWaypoint : MonoBehaviour
     private float[]      _pontuacoes;  // score de cada zona (ex: 1.0, 0.75, 0.5)
     private GameObject[] _aneis;       // esferas-anel filhas (para zonas além da interior)
     private bool         _zonasConfiguradas = false;
+    private bool         _visivel = true; // false no modo Gamification (zonas só para pontuação)
 
     // ── Score do último toque ─────────────────────────────────────────
     public float UltimaPontuacao { get; private set; }
@@ -82,7 +83,7 @@ public class PrevenGameWaypoint : MonoBehaviour
     void Update()
     {
         // Efeito de pulsar no estado Ativo
-        if (_estado == EstadoWaypoint.Ativo && _renderer)
+        if (_estado == EstadoWaypoint.Ativo && _renderer && _visivel)
         {
             _pulsarTimer += Time.deltaTime * 2.5f;
             float t = (Mathf.Sin(_pulsarTimer) + 1f) / 2f; // 0..1
@@ -101,13 +102,23 @@ public class PrevenGameWaypoint : MonoBehaviour
     /// <param name="pontuacoes">Score de cada zona, interior→exterior (ex: 1.0, 0.75, 0.50).</param>
     /// <param name="cores">Cor visual de cada zona.</param>
     /// <param name="escalaParent">EscalaEsfera do waypoint principal (para calcular localScale dos anéis).</param>
-    public void ConfigurarZonas(float[] raios, float[] pontuacoes, Color[] cores, float escalaParent)
+    public void ConfigurarZonas(float[] raios, float[] pontuacoes, Color[] cores, float escalaParent, bool visivel = true)
     {
         if (raios == null || raios.Length == 0) return;
 
-        _raios     = raios;
+        _visivel    = visivel;
+        _raios      = raios;
         _pontuacoes = pontuacoes;
-        Raio       = raios[raios.Length - 1]; // raio máximo para gizmos
+        Raio        = raios[raios.Length - 1]; // raio máximo para gizmos
+
+        if (!visivel)
+        {
+            // Modo Gamification: as zonas servem só de pontuação (entrada/saída),
+            // sem qualquer visual. Desliga a esfera principal e não cria anéis.
+            if (_renderer) _renderer.enabled = false;
+            _zonasConfiguradas = true;
+            return;
+        }
 
         // A esfera principal (índice 0) mantém o seu visual.
         // Criamos anéis filhos para os índices 1, 2, …
@@ -154,21 +165,21 @@ public class PrevenGameWaypoint : MonoBehaviour
         switch (estado)
         {
             case EstadoWaypoint.Inativo:
-                if (_renderer) _renderer.material = _matInativo;
+                if (_renderer && _visivel) _renderer.material = _matInativo;
                 gameObject.SetActive(true);
                 SetAneisAtivos(false);
                 ResetRastreio();
                 break;
 
             case EstadoWaypoint.Ativo:
-                if (_renderer) _renderer.material = _matAtivo;
+                if (_renderer && _visivel) _renderer.material = _matAtivo;
                 gameObject.SetActive(true);
                 SetAneisAtivos(true);
                 break;
 
             case EstadoWaypoint.Completo:
                 SetAneisAtivos(false);
-                StartCoroutine(AnimacaoConcluido());
+                if (_visivel) StartCoroutine(AnimacaoConcluido());
                 break;
         }
     }
