@@ -46,7 +46,7 @@ public class GamificationTarget : MonoBehaviour
 
     void Awake()
     {
-        if (AroPrefabs != null && AroPrefabs.Length > 0)
+        if (TemAlgumAroPrefab())
             MontarArosReais();
         else if (ModeloVisual != null)
         {
@@ -83,6 +83,15 @@ public class GamificationTarget : MonoBehaviour
     }
 
     // ── Montagem dos aros reais ───────────────────────────────────────
+
+    /// <summary>True se houver pelo menos um prefab de aro atribuído (não-nulo).</summary>
+    bool TemAlgumAroPrefab()
+    {
+        if (AroPrefabs == null) return false;
+        foreach (var p in AroPrefabs)
+            if (p != null) return true;
+        return false;
+    }
 
     void MontarArosReais()
     {

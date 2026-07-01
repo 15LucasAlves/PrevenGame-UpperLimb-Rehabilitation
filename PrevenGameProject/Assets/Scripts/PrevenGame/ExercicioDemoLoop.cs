@@ -23,6 +23,10 @@ public class ExercicioDemoLoop : MonoBehaviour
     [Tooltip("Intervalo entre imagens (segundos).")]
     public float IntervaloSegundos = 0.5f;
 
+    [Tooltip("Ajuste da imagem+borda ao tamanho do sprite (opcional). Se atribuído, " +
+             "a borda passa a envolver a imagem sem faixas pretas.")]
+    public AjusteImagemBorda Ajuste;
+
     void OnEnable()
     {
         if (ImagemAlvo == null) ImagemAlvo = GetComponent<Image>();
@@ -37,13 +41,21 @@ public class ExercicioDemoLoop : MonoBehaviour
         Sprites = novos;
         if (!isActiveAndEnabled || Sprites == null || Sprites.Length == 0) return;
         if (ImagemAlvo == null) ImagemAlvo = GetComponent<Image>();
-        if (Sprites[0] != null) ImagemAlvo.sprite = Sprites[0];
+        if (Sprites[0] != null)
+        {
+            ImagemAlvo.sprite = Sprites[0];
+            if (Ajuste != null) Ajuste.AjustarSeMudou(Sprites[0]);
+        }
         StartCoroutine(Animar());
     }
 
     IEnumerator Animar()
     {
         if (ImagemAlvo == null || Sprites == null || Sprites.Length == 0) yield break;
+
+        // Mede a 1ª imagem → ajusta a borda/container ao seu tamanho UMA vez;
+        // depois anima os frames lá dentro (a borda mantém-se estável).
+        if (Ajuste != null && Sprites[0] != null) Ajuste.AjustarSeMudou(Sprites[0]);
 
         int idx = 0;
         while (true)

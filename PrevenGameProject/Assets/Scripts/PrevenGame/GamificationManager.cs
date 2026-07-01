@@ -111,9 +111,7 @@ public class GamificationManager : MonoBehaviour
         BotaoMenos?.onClick.AddListener(() => AlterarReps(-1));
         BotaoMais?.onClick.AddListener(() => AlterarReps(+1));
 
-        if (HUDJogo)       HUDJogo.SetActive(false);
-        if (PainelFim)     PainelFim.SetActive(false);
-        if (PainelSelecao) PainelSelecao.SetActive(false);
+        EsconderPaineis();
     }
 
     void Update()
@@ -141,8 +139,7 @@ public class GamificationManager : MonoBehaviour
         // Esconde o esqueleto — no Gamification o visual é simplificado.
         if (Esqueleto) Esqueleto.AtivacaoEsqueleto(false);
 
-        if (HUDJogo)       HUDJogo.SetActive(false);
-        if (PainelFim)     PainelFim.SetActive(false);
+        EsconderPaineis();
         if (PainelSelecao) PainelSelecao.SetActive(true);
 
         LimparSessao();
@@ -207,8 +204,8 @@ public class GamificationManager : MonoBehaviour
         IniciarDirecao();
         AcoplarNovoDardo();
 
-        if (HUDJogo)   HUDJogo.SetActive(true);
-        if (PainelFim) PainelFim.SetActive(false);
+        EsconderPaineis();
+        if (HUDJogo) HUDJogo.SetActive(true);
         AtualizarHUD();
     }
 
@@ -386,6 +383,14 @@ public class GamificationManager : MonoBehaviour
         holder.transform.SetParent(_sensorTransform, false);
         holder.transform.localPosition = Vector3.zero;
         holder.transform.localRotation = Quaternion.identity;
+        // O _sensorTransform (CuboSensor) está escalado a 0.3; compensa a lossyScale do pai
+        // para o holder ter escala-mundo 1 → o modelo do dardo mantém a sua escala real
+        // (autorada no prefab) em vez de herdar o encolhimento do cubo.
+        Vector3 ls = _sensorTransform.lossyScale;
+        holder.transform.localScale = new Vector3(
+            Mathf.Approximately(ls.x, 0f) ? 1f : 1f / ls.x,
+            Mathf.Approximately(ls.y, 0f) ? 1f : 1f / ls.y,
+            Mathf.Approximately(ls.z, 0f) ? 1f : 1f / ls.z);
 
         GameObject modelo = DardoPrefab != null ? Instantiate(DardoPrefab) : CriarDardoPlaceholder();
         modelo.transform.SetParent(holder.transform, false);
@@ -475,7 +480,7 @@ public class GamificationManager : MonoBehaviour
         _estado = Estado.Concluido;
         LimparWaypointsELinha();
 
-        if (HUDJogo)   HUDJogo.SetActive(false);
+        EsconderPaineis();
         if (PainelFim) PainelFim.SetActive(true);
         MostrarResultadoFinal();
     }
@@ -492,6 +497,19 @@ public class GamificationManager : MonoBehaviour
     {
         if (TextoPontuacao) TextoPontuacao.text = $"{MediaPercentagem():F0} %";
         if (TextoDardos)    TextoDardos.text    = $"{NumRepeticoes - _dardosLancados}/{NumRepeticoes}";
+    }
+
+    // ── Painéis ───────────────────────────────────────────────────────
+    /// <summary>
+    /// Esconde TODOS os painéis de UI (seleção, HUD, fim). Ponto único de controlo:
+    /// cada transição chama isto antes de ativar o painel que quer, garantindo que
+    /// dois painéis/textos nunca ficam sobrepostos quando um ecrã acaba e outro começa.
+    /// </summary>
+    void EsconderPaineis()
+    {
+        if (PainelSelecao) PainelSelecao.SetActive(false);
+        if (HUDJogo)       HUDJogo.SetActive(false);
+        if (PainelFim)     PainelFim.SetActive(false);
     }
 
     // ── Limpeza ───────────────────────────────────────────────────────

@@ -805,9 +805,19 @@ public class OmmoSceneBuilder : EditorWindow
         demoImg.preserveAspect = true;
         demoImg.raycastTarget  = false;
 
+        // Ajuste da borda ao tamanho real do sprite: o DemoContainer passa a envolver a
+        // imagem (padding de 8 px uniforme) em vez de deixar faixas pretas. O ExercicioDemoLoop
+        // chama-o a cada troca de sprite.
+        var ajuste = demoGO.AddComponent<AjusteImagemBorda>();
+        ajuste.Imagem        = demoImg;
+        ajuste.Container      = cRect;
+        ajuste.TamanhoMaximo = new Vector2(560f, 320f); // = área útil dentro do container
+        ajuste.Borda         = 8f;
+
         var demoLoop = demoGO.AddComponent<ExercicioDemoLoop>();
         demoLoop.ImagemAlvo        = demoImg;
         demoLoop.IntervaloSegundos = 0.5f;
+        demoLoop.Ajuste            = ajuste;
 
         return demoLoop;
     }
@@ -880,7 +890,7 @@ public class OmmoSceneBuilder : EditorWindow
         CriarTexto("Titulo", canvas.transform, "PrevenGame", 64, TextAlignmentOptions.Center,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -160f), new Vector2(900f, 90f), Color.white);
-        CriarTexto("Subtitulo", canvas.transform, "Reabilitação do Membro Superior", 28,
+        CriarTexto("Subtitulo", canvas.transform, "Reabilitação dos Membros Superiores", 28,
             TextAlignmentOptions.Center,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -260f), new Vector2(900f, 50f), new Color(0.8f, 0.8f, 0.85f));
@@ -944,7 +954,9 @@ public class OmmoSceneBuilder : EditorWindow
         // Plano do alvo virado para o jogador (transform.forward = normal).
         alvoGO.transform.rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
         var alvo = alvoGO.AddComponent<GamificationTarget>();
-        alvo.CriarVisualPlaceholder = false;
+        // Rede de segurança: se algum AroPrefab falhar o carregamento, o alvo mostra
+        // um placeholder paramétrico em vez de ficar invisível.
+        alvo.CriarVisualPlaceholder = true;
         alvo.RaioExterior = 1.5f; // fallback se faltarem os prefabs
         alvo.AroPrefabs = new[]
         {
@@ -1289,7 +1301,7 @@ public class OmmoSceneBuilder : EditorWindow
     // Convenção de assets — larga os ficheiros nestes caminhos e corre
     // "Ommo → PrevenGame → Build 3 Cenas". Se faltarem, usa-se placeholder.
     // ─────────────────────────────────────────────────────────────────
-    const string PastaAssets = "Assets/PrevenGameAssets";
+    const string PastaAssets = "Assets/Prefabs/PrevenGameAssets/Dardos";
     const string AssetDardo  = PastaAssets + "/Dardo.prefab";      // dardo (Gamification)
     const string AssetAlvo1  = PastaAssets + "/Alvo1.prefab";      // aro exterior
     const string AssetAlvo2  = PastaAssets + "/Alvo2.prefab";
@@ -1297,7 +1309,7 @@ public class OmmoSceneBuilder : EditorWindow
     const string AssetAlvo4  = PastaAssets + "/Alvo4.prefab";
     const string AssetAlvo5  = PastaAssets + "/Alvo5.prefab";      // bullseye
     const string AssetSala   = PastaAssets + "/Sala.prefab";       // sala/ambiente (Gamification)
-    const string AssetCard   = PastaAssets + "/CardExercicio.png"; // imagem do card de seleção
+    const string AssetCard   = PastaAssets + "/DardosSelectionCard.png"; // imagem do card de seleção
 
 
     static GameObject CarregarPrefab(string path)
