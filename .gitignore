@@ -112,3 +112,6 @@ BurstCache/
 **/ommo.sdk/data/log-*.txt.meta
 **/.sentry-native/
 **/.sentry_native/
+
+# graphify — knowledge graph gerado localmente (paths absolutos, não versionar)
+graphify-out/

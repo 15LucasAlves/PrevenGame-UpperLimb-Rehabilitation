@@ -23,15 +23,18 @@ Todo o código, comentários e documentação deste repositório estão em **Por
 ```
 PrevenGameProject/   # Projeto Unity (Unity 2022.3.62f3)
   Assets/
-    Scripts/         # Todos os scripts (estrutura plana, sem subdirectorias)
+    Scripts/         # Scripts organizados em duas camadas:
+      Ommo/          #   Integração sensor→Unity (SDK, gRPC, hardware, diagnóstico)
+        Editor/      #     OmmoPairingHelper (tool de emparelhamento SIU)
+      PrevenGame/    #   Lógica do jogo (managers, waypoints, gamification, menu, calibração, esqueleto)
+        Editor/      #     OmmoSceneBuilder (construção automática das cenas)
     Prefabs/         # OmmoDevice.prefab, SensorPrefab.prefab, *_TEMP.prefab
-    Scenes/          # SampleScene.unity, SampleScene/DeviceScene.unity, SampleScene/SiuScene.unity
+    Scenes/          # MainMenu.unity, ClinicalTrial.unity, Gamification.unity
     Plugins/
       ommo.sdk/      # Binários do serviço Ommo (ommo_service_v0.22.0.exe, DLLs Qt)
       Cysharp.Net.Http.YetAnotherHttpHandler.Native/  # DLL nativa gRPC HTTP/2
     Packages/        # Packages NuGet (Grpc, Google.Protobuf, Microsoft.Extensions)
     NuGet/           # Plugin NuGetForUnity (editor only)
-    Editor/          # Scripts de editor (OmmoSceneBuilder)
   Packages/
     manifest.json    # Dependências Unity Package Manager
 OMMO/                # SDK Ommo de referência (não faz parte do jogo)
@@ -49,7 +52,7 @@ Hardware Ommo  →  ommo_service_v0.22.0.exe  →  gRPC (localhost:50051)  →  
 
 O serviço `.exe` é **obrigatório** como intermediário. O `OmmoServiceLauncher` lança-o automaticamente ao entrar em Play Mode e mata-o ao sair.
 
-### Scripts de integração Ommo (Assets/Scripts/)
+### Scripts de integração Ommo (Assets/Scripts/Ommo/)
 
 | Script | Função |
 |--------|--------|
@@ -69,30 +72,19 @@ O serviço `.exe` é **obrigatório** como intermediário. O `OmmoServiceLaunche
 | `OmmoDiagnostic.cs` | Script de diagnóstico — imprime no Console dispositivos conectados e instâncias `OmmoDevice` |
 | `UnityMainThreadDispatcher.cs` | Singleton persistente — fila de `Action`s para despachar callbacks gRPC (threads) para o main thread Unity |
 
-### Hierarquias de GameObjects — dois modos de cena
+### Hierarquias de GameObjects — Build 3 Cenas
 
-O `OmmoSceneBuilder` tem dois menus distintos:
-
-**Ommo → Build Scene (Jogo)** — para o PrevenGame (sem UI de diagnóstico):
+O `OmmoSceneBuilder` tem **um único** menu: **Ommo → PrevenGame → Build 3 Cenas (Menu + Clinical + Gamification)**, que cria e regista no Build Settings as três cenas (`MainMenu`, `ClinicalTrial`, `Gamification`). O scaffold Ommo partilhado:
 ```
-AppManager    ← UnityMainThreadDispatcher, OmmoServiceLauncher,
-                 OmmoHardwareMonitor, OmmoDeviceManager, OmmoSensorManager
-BaseStation   ← origem do espaço de tracking (posição 0,0,0)
+OmmoBootstrap  ← UnityMainThreadDispatcher + OmmoServiceLauncher persistentes entre cenas
+AppManager     ← OmmoHardwareMonitor, OmmoDeviceManager, OmmoSensorManager, OmmoCalibracaoManager
+BaseStation    ← origem do espaço de tracking (invisível na Gamification)
 TrackedDevicePrefab_TEMP  ← prefab inativo para OmmoDeviceManager
+EsqueletoJogador ← OmmoEsqueletoJogador (visualização do membro superior)
 ```
-`OmmoSensorManager` inicia o tracking automaticamente quando o serviço fica pronto.
+`OmmoSensorManager` inicia o tracking automaticamente; a calibração corre antes do jogo.
 
-**Ommo → Build Scene (Diagnóstico)** — painel de hardware completo:
-```
-AppManager                  ← UnityMainThreadDispatcher, OmmoServiceLauncher,
-                               OmmoHardwareMonitor, OmmoDeviceManager, OmmoUIManager
-BaseStation                 ← origem do espaço de tracking (posição 0,0,0)
-MainCanvas                  ← Hardware Panel UI (lista Connected/Disconnected/Blocked)
-HUDCanvas                   ← Overlay 3D com dados de sensores em tempo real
-GridCamera                  ← Camera + OmmoGridVisualizer (grelha wireframe + marcadores)
-TrackedDevicePrefab_TEMP    ← prefab inativo para OmmoDeviceManager
-DeviceRowPrefab_TEMP        ← prefab inativo para linhas do Hardware Panel
-```
+> Os builders standalone antigos (`Build Scene (Jogo)`/`(Diagnóstico)`) e os scripts de diagnóstico de cena foram removidos — o workflow é só `Build 3 Cenas`.
 
 ### Dados expostos por sensor
 
@@ -132,7 +124,7 @@ UnityMainThreadDispatcher.Enqueue(() => { /* código Unity */ });
 
 ## Configuração de uma scene de jogo
 
-Usar o menu **Ommo → Build Scene (Jogo)** para criar a cena mínima automaticamente.
+Usar o menu **Ommo → PrevenGame → Build 3 Cenas** para criar/gravar as três cenas automaticamente.
 
 Para uma cena manual mínima do jogo:
 1. `AppManager` vazio → `OmmoServiceLauncher` + `UnityMainThreadDispatcher`
