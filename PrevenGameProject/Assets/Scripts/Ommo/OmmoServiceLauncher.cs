@@ -3,6 +3,9 @@ using System.Diagnostics;
 using System.IO;
 using System;
 using System.Collections;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+using System.Runtime.InteropServices;
+#endif
 
 /// <summary>
 /// OmmoServiceLauncher - Lança o OmmoService.exe e só inicializa o cliente gRPC
@@ -81,10 +84,18 @@ public class OmmoServiceLauncher : MonoBehaviour
             {
                 FileName = exePath,
                 UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Normal
+                // Minimizada: o serviço arranca para trás (barra de tarefas) em vez de
+                // aparecer em frente ao jogo/main menu. Não afeta o gRPC.
+                WindowStyle = ProcessWindowStyle.Minimized
             });
             UnityEngine.Debug.Log($"[OmmoLauncher] Lançado (PID {_launchedProcess.Id}). Warmup: {WarmupSeconds}s");
             StartCoroutine(WarmupThenReady(WarmupSeconds));
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            // A app Qt do serviço mostra o seu próprio splash e ignora o WindowStyle. Escondemos
+            // as janelas do processo durante os primeiros segundos para o splash não aparecer à
+            // frente do jogo (o serviço continua a correr e vai para o system tray).
+            StartCoroutine(EsconderJanelasServico(_launchedProcess.Id));
+#endif
         }
         catch (Exception e)
         {
@@ -100,6 +111,44 @@ public class OmmoServiceLauncher : MonoBehaviour
         ServiceReady = true;
         OnServiceReady?.Invoke();
     }
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+    // ── Esconder as janelas do serviço Ommo (splash Qt) ───────────────
+    private const int SW_HIDE = 0;
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    IEnumerator EsconderJanelasServico(int pid)
+    {
+        // O splash pode surgir com atraso e mudar de janela — repetimos durante alguns segundos.
+        float t = 0f;
+        while (t < 6f)
+        {
+            EsconderJanelasDoProcesso(pid);
+            t += 0.2f;
+            yield return new WaitForSeconds(0.2f);
+        }
+    }
+
+    static void EsconderJanelasDoProcesso(int pid)
+    {
+        EnumWindows((hWnd, lParam) =>
+        {
+            GetWindowThreadProcessId(hWnd, out uint janelaPid);
+            if (janelaPid == (uint)pid) ShowWindow(hWnd, SW_HIDE);
+            return true; // continua a enumerar
+        }, IntPtr.Zero);
+    }
+#endif
 
     bool IsServiceRunning()
     {

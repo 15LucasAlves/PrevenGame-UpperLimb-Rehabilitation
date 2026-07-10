@@ -12,7 +12,7 @@ Projeto final da Licenciatura em Engenharia de Desenvolvimento de Jogos Digitais
 
 **Objetivo:** Jogo sério que transforma exercícios de fisioterapia em desafios orientados a tarefas do dia-a-dia, com dificuldade adaptada em tempo real a partir dos dados do sensor Ommo. Inclui interface para o fisioterapeuta monitorizar o progresso do paciente.
 
-**Estado atual:** A camada de integração Ommo (sensor → Unity) está completa. A lógica do jogo PrevenGame ainda não foi implementada.
+**Estado atual:** A camada de integração Ommo (sensor → Unity) está completa. O jogo é o modo **Gamification** (lançamento de dardos), com o loop principal implementado: main menu → calibração (guiada por personagens-ajudantes) → seleção de minijogos → minijogos → score. O antigo modo Clinical Trial e os scripts de diagnóstico foram removidos.
 
 ## Idioma
 
@@ -26,10 +26,13 @@ PrevenGameProject/   # Projeto Unity (Unity 2022.3.62f3)
     Scripts/         # Scripts organizados em duas camadas:
       Ommo/          #   Integração sensor→Unity (SDK, gRPC, hardware, diagnóstico)
         Editor/      #     OmmoPairingHelper (tool de emparelhamento SIU)
-      PrevenGame/    #   Lógica do jogo (managers, waypoints, gamification, menu, calibração, esqueleto)
+      PrevenGame/    #   Lógica do jogo (fluxo, minijogo, waypoints, calibração, esqueleto, UI)
         Editor/      #     OmmoSceneBuilder (construção automática das cenas)
-    Prefabs/         # OmmoDevice.prefab, SensorPrefab.prefab, *_TEMP.prefab
-    Scenes/          # MainMenu.unity, ClinicalTrial.unity, Gamification.unity
+    Prefabs/         # OmmoDevice.prefab, SensorPrefab.prefab, CuboSensor.prefab, TrackedDevicePrefab_TEMP
+      PrevenGameAssets/
+        Dardos/      #   Alvo1-5.prefab, Dardo.prefab, Sala.prefab (mundo do minijogo)
+        UIAssets/    #   Fundos, botões, cards, cursor, balão, helpers Jane/Patrick, Exercises/
+    Scenes/          # Menu.unity (hub), MinijogoDardos.unity
     Plugins/
       ommo.sdk/      # Binários do serviço Ommo (ommo_service_v0.22.0.exe, DLLs Qt)
       Cysharp.Net.Http.YetAnotherHttpHandler.Native/  # DLL nativa gRPC HTTP/2
@@ -63,28 +66,55 @@ O serviço `.exe` é **obrigatório** como intermediário. O `OmmoServiceLaunche
 | `OmmoCoreServiceExtension.cs` | Extensão ao `CoreServiceClient` com métodos não incluídos no SDK: `GetHardwareStates` e `SetBaseStationMotorRunning` (inferidos do binário v0.22.0) |
 | `OmmoDevice.cs` | MonoBehaviour de um dispositivo — abre stream `TrackingDeviceData` e actualiza os seus GameObjects filhos (um por sensor) |
 | `OmmoDeviceManager.cs` | Instancia/destrói `OmmoDevice`s quando sensores ligam/desligam; expõe `StartTracking()` / `StopTracking()` |
-| `OmmoSIU.cs` | Alternativa legada — usa `StreamDataFrame` (todos os dispositivos num único stream) em vez de streams individuais por dispositivo |
 | `OmmoHardwareMonitor.cs` | Polling a cada 1.5s ao `GetHardwareStates`; expõe `ServiceInfo` com listas Connected/Disconnected/Blocked; emite `OnHardwareUpdated` |
-| `OmmoSensorManager.cs` | **Gestor de hardware para o jogo** — inicia tracking automaticamente ao `OnServiceReady`, para o motor em segurança, expõe `SensoresConectados`, `NumeroSensores` e evento `OnNumeroDeSensoresMudou` |
-| `OmmoUIManager.cs` | Painel de diagnóstico/fisioterapeuta — hardware panel + 3D grid view; **não é usado na cena do jogo** mas preserva `StartTracking`/`StopTracking`/`StopBaseStationMotor` para uso futuro na interface do fisioterapeuta |
-| `OmmoGridVisualizer.cs` | Camera component — grelha 3D wireframe via GL + marcadores de sensores (diagnóstico) |
-| `OmmoDeviceRow.cs` | Linha de UI do hardware panel: botões Start/Stop Motor e Block/Unblock SIU |
-| `OmmoDiagnostic.cs` | Script de diagnóstico — imprime no Console dispositivos conectados e instâncias `OmmoDevice` |
+| `OmmoSensorManager.cs` | **Gestor de hardware para o jogo** — arranca o tracking via `IniciarTracking(n)`, para o motor em segurança, expõe `SensoresConectados`, `NumeroSensores` e evento `OnNumeroDeSensoresMudou` |
+| `OmmoSensorFilter.cs` | Filtro por sensor — descarta (0,0,0), throttle, jump filter, lag de 1 amostra |
+| `OmmoBootstrap.cs` | Bootstrap persistente (DontDestroyOnLoad) — `UnityMainThreadDispatcher` + `OmmoServiceLauncher` |
 | `UnityMainThreadDispatcher.cs` | Singleton persistente — fila de `Action`s para despachar callbacks gRPC (threads) para o main thread Unity |
 
-### Hierarquias de GameObjects — Build 3 Cenas
+> Os scripts de diagnóstico (`OmmoUIManager`, `OmmoGridVisualizer`, `OmmoDeviceRow`, `OmmoDiagnostic`) e o legado `OmmoSIU` foram removidos no refactor do modo Gamification.
 
-O `OmmoSceneBuilder` tem **um único** menu: **Ommo → PrevenGame → Build 3 Cenas (Menu + Clinical + Gamification)**, que cria e regista no Build Settings as três cenas (`MainMenu`, `ClinicalTrial`, `Gamification`). O scaffold Ommo partilhado:
+### Cenas — Build Cenas (Menu + Minijogo)
+
+O `OmmoSceneBuilder` tem **um único** menu: **Ommo → PrevenGame → Build Cenas (Menu + Minijogo)**, que cria e regista no Build Settings duas cenas:
+
+- **`Menu` (hub)** — Splash → Calibração → Seleção → Score, geridas pelo `GameFlowManager`. O Ommo só é necessário aqui para a calibração.
+- **`MinijogoDardos`** — o mundo dos dardos (sala + alvo + dardo) com `GamificationManager` (runner) + `PauseMenu`. Cada minijogo é a sua própria cena, carregada ao entrar no jogo (melhor performance, mundo 3D isolado).
+
+Scaffold Ommo partilhado (`ConstruirScaffoldOmmo`):
 ```
-OmmoBootstrap  ← UnityMainThreadDispatcher + OmmoServiceLauncher persistentes entre cenas
-AppManager     ← OmmoHardwareMonitor, OmmoDeviceManager, OmmoSensorManager, OmmoCalibracaoManager
-BaseStation    ← origem do espaço de tracking (invisível na Gamification)
+OmmoBootstrap  ← OmmoBootstrap (+ dispatcher + launcher) + SessionManager + CursorManager (persistentes)
+AppManager     ← OmmoHardwareMonitor, OmmoDeviceManager, OmmoSensorManager [, OmmoCalibracaoManager só no Menu]
+BaseStation    ← origem do espaço de tracking (invisível)
 TrackedDevicePrefab_TEMP  ← prefab inativo para OmmoDeviceManager
-EsqueletoJogador ← OmmoEsqueletoJogador (visualização do membro superior)
+EsqueletoJogador ← OmmoEsqueletoJogador (membro superior)
 ```
-`OmmoSensorManager` inicia o tracking automaticamente; a calibração corre antes do jogo.
 
-> Os builders standalone antigos (`Build Scene (Jogo)`/`(Diagnóstico)`) e os scripts de diagnóstico de cena foram removidos — o workflow é só `Build 3 Cenas`.
+### Scripts de jogo (Assets/Scripts/PrevenGame/)
+
+| Script | Função |
+|--------|--------|
+| `SessionManager.cs` | Singleton persistente — guarda a **calibração**, a **fila de minijogos** e os **scores** entre cenas; carrega a próxima cena |
+| `GameFlowManager.cs` | Máquina de fases do hub: Splash→Calibração→Seleção→Score, com fades e helpers |
+| `ScreenFader.cs` | Fade in/out full-screen (CanvasGroup) |
+| `HelperDialogueManager.cs` | Personagem (Jane/Patrick por emoção) + balão + texto; linha fixa (calibração) ou sequência com clique (tutorial/score) |
+| `MinigameSelectionUI.cs` / `SelectionCard.cs` | Ecrã SELECT MINI GAME — cards por exercício com reps L/R, START/EXIT |
+| `MinigameController.cs` | Numa cena de minijogo: reidrata o esqueleto da calibração persistida, arranca o `GamificationManager`, regista o score e avança |
+| `GamificationManager.cs` | **Runner** dos dardos — corre reps L/R de um exercício, gera a trajetória via `ExerciciosWaypoints`, lança dardos, emite `OnConcluido(pct)` |
+| `ExerciciosWaypoints.cs` | Geradores dos 4 exercícios (flexão, elevação, abdução, cotovelo) → `Vector3[5]` |
+| `GamificationTarget.cs` / `GamificationDart.cs` / `PrevenGameWaypoint.cs` | Alvo de 5 aros, dardo, zonas de pontuação por waypoint |
+| `PauseMenu.cs` | ESC nas cenas de minijogo → overlay Continue/Main Menu/Exit Game |
+| `CursorManager.cs` | Cursor do jogo (`mouse.png`), persistente |
+| `OmmoCalibracaoManager.cs` | Calibração (1 sensor); arranca via `GameFlowManager`, instruções pelos helpers, grava no `SessionManager` |
+| `OmmoEsqueletoJogador.cs` | Visualização do membro superior; `AplicarCalibracao(...)` reidrata sem recalibrar |
+| `OmmoCameraSetup.cs` | Reposiciona a câmara relativamente ao ombro calibrado |
+| `AjusteImagemBorda.cs` / `ExercicioDemoLoop.cs` / `CardAnimacaoHover.cs` | Utilidades de imagens de exercício (borda ajustada, loop, hover) |
+
+### Loop do jogo
+`Splash (tap→fade)` → `Calibração (helper guia; grava no SessionManager)` → `Seleção (tutorial do outro helper; escolhe exercícios + reps L/R; START)` → carrega `MinijogoDardos` por cada minijogo (ESC=pausa) → ao terminar volta a `Menu` em `Score` (helpers comentam) → tap → `Splash`. Já calibrado, o próximo START salta a calibração.
+
+### Assets de UI (Assets/Prefabs/PrevenGameAssets/UIAssets/)
+`firstMenu` (splash), `mainMenuBackground`, botões `start/exit/continue/mainMenu/exitGame` (+ `Hover`), `selectionCard`, `balãoDeFala`, `mouse`, helpers `Jane/` e `Patrick/` (7 emoções cada). Animações de exercício em `Exercises/<Tipo>/1..5.png` (`<Tipo>` = `FlexaoBraco`/`ElevacaoTotal`/`AbducaoLateral`/`FlexaoCotovelo`). Fontes Poppins esperadas em `Assets/Fonts/Poppins-ExtraBold SDF.asset` e `Poppins-Medium SDF.asset` (fallback LiberationSans).
 
 ### Dados expostos por sensor
 
@@ -122,15 +152,15 @@ Callbacks gRPC chegam em threads separadas. Para actualizar UI ou GameObjects, u
 UnityMainThreadDispatcher.Enqueue(() => { /* código Unity */ });
 ```
 
-## Configuração de uma scene de jogo
+## Configuração das cenas de jogo
 
-Usar o menu **Ommo → PrevenGame → Build 3 Cenas** para criar/gravar as três cenas automaticamente.
+Usar o menu **Ommo → PrevenGame → Build Cenas (Menu + Minijogo)** para criar/gravar as duas cenas automaticamente.
 
 Para uma cena manual mínima do jogo:
-1. `AppManager` vazio → `OmmoServiceLauncher` + `UnityMainThreadDispatcher`
+1. `OmmoBootstrap` → `OmmoBootstrap` + `SessionManager` + `CursorManager`
 2. `AppManager` → `OmmoHardwareMonitor` + `OmmoDeviceManager` + `OmmoSensorManager`
 3. `OmmoSensorManager` referencia `DeviceManager` e `HardwareMonitor` no Inspector
-4. O tracking inicia automaticamente — não é necessário chamar `StartTracking()` manualmente
+4. O tracking é iniciado por `OmmoCalibracaoManager.IniciarCalibracao()` (no hub) via `IniciarTracking(1)`
 
 ### Utilizar dados dos sensores nos scripts do jogo
 
@@ -167,7 +197,8 @@ O `Library/` não está no git — o Unity regenera-o na primeira abertura.
 ## Contexto técnico chave
 
 - A integração com o **PrevenCare** (plataforma de saúde externa) ainda não está implementada — é um requisito futuro
-- A interface do fisioterapeuta é uma funcionalidade de primeira classe, não um extra
+- A interface do fisioterapeuta é um requisito futuro (a UI de diagnóstico foi removida no refactor)
 - A adaptação de dificuldade deve responder aos dados do sensor dentro da mesma sessão
 - O modo de fusão recomendado para reabilitação é `FullFusion` (combina IMU + magnetómetro)
-- `OmmoSIU.cs` é código legado — preferir `OmmoDevice` + `OmmoDeviceManager` para novos scripts
+- A calibração é feita **uma vez** no hub e persiste no `SessionManager`; as cenas de minijogo reidratam-na via `OmmoEsqueletoJogador.AplicarCalibracao(...)` sem recalibrar
+- Escala: `UnityScaleInCM = 10` → **1 unidade Unity = 10 cm**; `BaseStation` na origem (0,13,0)

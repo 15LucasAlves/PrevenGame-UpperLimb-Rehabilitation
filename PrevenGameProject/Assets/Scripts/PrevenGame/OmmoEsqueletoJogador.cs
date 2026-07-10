@@ -89,6 +89,17 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     }
 
     /// <summary>
+    /// Reidrata a calibração a partir de valores persistidos (ex.: numa cena de minijogo,
+    /// sem repetir a captura interativa). Chamar após <see cref="Inicializar"/>.
+    /// </summary>
+    public void AplicarCalibracao(Vector3 posOmbro, float comprimento, Vector3 direcao)
+    {
+        DefinirPosicaoFixa("Ombro", posOmbro);
+        DefinirComprimentoBraco(comprimento);
+        DirecaoFrente = direcao == Vector3.zero ? Vector3.forward : direcao.normalized;
+    }
+
+    /// <summary>
     /// Guarda a direção frontal do paciente a partir da posição da palma
     /// quando o braço está estendido para a frente (passo BracoEstendido).
     /// Projeta no plano horizontal para eliminar componente vertical.

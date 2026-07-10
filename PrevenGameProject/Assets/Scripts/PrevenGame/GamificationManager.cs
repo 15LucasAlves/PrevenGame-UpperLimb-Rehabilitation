@@ -1,41 +1,24 @@
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// GamificationManager — Orquestrador do modo Gamification (lançar dardos a um alvo).
+/// GamificationManager — Runner do minijogo dos dardos (uma cena de minijogo).
 ///
-/// Reutiliza a lógica do Exercício 1 (Flexão do Braço) e a pontuação por zonas do
-/// <see cref="PrevenGameWaypoint"/> da Clinical Trial, mas:
-///   • os waypoints são INVISÍVEIS (só zonas de pontuação) — ver ConfigurarZonas(..., visivel:false);
-///   • o único guia visível é uma LINHA VERDE (trajeto ótimo);
-///   • cada repetição completa (estender → recuar → estender) lança um dardo cuja precisão
-///     (aro atingido) corresponde à qualidade média dessa repetição.
-///
-/// Fluxo: AguardarCalibracao → AguardarSelecao → EmJogo → Concluido.
+/// Recebe o exercício e as repetições L/R do <see cref="MinigameController"/> (que os lê do
+/// <see cref="SessionManager"/>). Corre os blocos de repetições (braço esquerdo, depois direito),
+/// gerando a trajetória com <see cref="ExerciciosWaypoints"/>; cada repetição completa
+/// (estender→recuar) lança um dardo cuja precisão reflete a qualidade média da repetição.
+/// No fim emite <see cref="OnConcluido"/> com a % média — sem UI de seleção/fim (isso é do hub).
 /// </summary>
 public class GamificationManager : MonoBehaviour
 {
     // ── Referências ───────────────────────────────────────────────────
     [Header("Referências")]
-    public OmmoEsqueletoJogador  Esqueleto;
-    public OmmoCalibracaoManager CalibracaoManager;
-    public GamificationTarget    Alvo;
+    public OmmoEsqueletoJogador Esqueleto;
+    public GamificationTarget   Alvo;
     [Tooltip("Prefab do dardo (opcional). Se null, é criado um placeholder.")]
-    public GameObject            DardoPrefab;
-
-    // ── UI — Seleção (1 card) ─────────────────────────────────────────
-    [Header("UI — Seleção")]
-    public GameObject      PainelSelecao;
-    public Button          BotaoBracoDireito;
-    public Button          BotaoBracoEsquerdo;
-    public Button          BotaoMenos;
-    public Button          BotaoMais;
-    public TextMeshProUGUI TextoReps;
-    public Button          BotaoIniciar;
-    public Image           ImagemExercicio;
-    public Button          BotaoVoltarMenu;
+    public GameObject           DardoPrefab;
 
     // ── UI — HUD ──────────────────────────────────────────────────────
     [Header("UI — HUD")]
@@ -43,16 +26,9 @@ public class GamificationManager : MonoBehaviour
     public TextMeshProUGUI TextoPontuacao;
     public TextMeshProUGUI TextoDardos;
 
-    // ── UI — Fim ──────────────────────────────────────────────────────
-    [Header("UI — Fim")]
-    public GameObject      PainelFim;
-    public TextMeshProUGUI TextoResultado;
-    public Button          BotaoNovaSessao;
-
     // ── Configuração ──────────────────────────────────────────────────
     [Header("Configuração")]
-    public int   NumRepeticoes = 5;
-    public float EscalaEsfera  = 0.45f;
+    public float EscalaEsfera = 0.45f;
     [Tooltip("Raios das zonas de pontuação, interior→exterior (Unity units).")]
     public float[] RaiosZonas      = { 0.50f, 0.80f, 1.10f, 1.40f, 1.70f };
     [Tooltip("Score de cada zona, interior→exterior (0–1).")]
@@ -60,34 +36,37 @@ public class GamificationManager : MonoBehaviour
     public Color   CorLinha        = new Color(0.2f, 0.9f, 0.3f, 0.9f);
 
     [Header("Dardo")]
-    [Tooltip("Pose do modelo do dardo dentro do holder — afina para a ponta apontar a +Z (sentido do voo).")]
     public Vector3 OffsetDardoLocal  = Vector3.zero;
     public Vector3 RotacaoDardoEuler = Vector3.zero;
-    [Tooltip("Multiplicador de escala do modelo (1 = escala do prefab).")]
     public float   EscalaDardo       = 1f;
 
-    // ── Estado ────────────────────────────────────────────────────────
-    private enum Estado { AguardarCalibracao, AguardarSelecao, EmJogo, Concluido }
-    private Estado _estado = Estado.AguardarCalibracao;
+    /// <summary>Emitido quando o minijogo termina, com a % média (0–100).</summary>
+    public event System.Action<float> OnConcluido;
 
-    // Seleção
-    private bool _bracoDireito = true;
-    private int  _reps         = 5;
+    // ── Estado do minijogo ────────────────────────────────────────────
+    private struct Bloco { public bool BracoDireito; public int Reps; }
+    private readonly List<Bloco> _blocos = new List<Bloco>();
+    private int  _blocoAtual;
+    private int  _repAtualBloco;
+    private ExerciciosWaypoints.TipoExercicio _tipo;
+    private bool _emJogo;
+    private bool _terminado;
 
-    // Waypoints / travessia (mesmo padrão do PrevenGameManager)
+    // Waypoints / travessia
     private PrevenGameWaypoint[] _waypoints;
     private Vector3[]            _posicoes;
-    private int   _wpAtual  = 0;
-    private bool  _emVolta  = false;
-    private int   _repAtual = 0;
+    private int   _wpAtual;
+    private bool  _emVolta;
     private LineRenderer _linha;
 
     // Pontuação por repetição
-    private float _scoreRep       = 0f;
-    private int   _wpRep          = 0;
-    private float _somaPctDardos  = 0f; // soma das percentagens dos dardos JÁ CRAVADOS (para a média)
-    private int   _dardosLancados = 0;  // dardos lançados (contador "Dardos x/X")
-    private int   _dardosCravados = 0;  // dardos que chegaram ao alvo (denominador da média)
+    private float _scoreRep;
+    private int   _wpRep;
+    private float _somaPctDardos;
+    private int   _dardosCravados;
+    private int   _dardosLancados;
+    private int   _totalReps;
+    private int   _dardosEmVoo;
 
     // Dardo / sensor
     private GamificationDart _dardoAtivo;
@@ -97,137 +76,65 @@ public class GamificationManager : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────
     void Start()
     {
-        if (CalibracaoManager == null) CalibracaoManager = FindObjectOfType<OmmoCalibracaoManager>();
-        if (Esqueleto == null)         Esqueleto         = FindObjectOfType<OmmoEsqueletoJogador>();
-        if (Alvo == null)              Alvo              = FindObjectOfType<GamificationTarget>();
-
-        _reps = Mathf.Max(1, NumRepeticoes);
-
-        BotaoIniciar?.onClick.AddListener(IniciarSessao);
-        BotaoNovaSessao?.onClick.AddListener(MostrarSelecao);
-        BotaoVoltarMenu?.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
-        BotaoBracoDireito?.onClick.AddListener(() => ToggleBraco(true));
-        BotaoBracoEsquerdo?.onClick.AddListener(() => ToggleBraco(false));
-        BotaoMenos?.onClick.AddListener(() => AlterarReps(-1));
-        BotaoMais?.onClick.AddListener(() => AlterarReps(+1));
-
-        EsconderPaineis();
+        if (Esqueleto == null) Esqueleto = FindObjectOfType<OmmoEsqueletoJogador>();
+        if (Alvo == null)      Alvo      = FindObjectOfType<GamificationTarget>();
+        if (HUDJogo) HUDJogo.SetActive(false);
     }
 
     void Update()
     {
-        switch (_estado)
-        {
-            case Estado.AguardarCalibracao:
-                if (CalibracaoManager != null && CalibracaoManager.Calibrado &&
-                    (CalibracaoManager.PainelCalibracao == null ||
-                     !CalibracaoManager.PainelCalibracao.activeSelf))
-                    MostrarSelecao();
-                break;
-
-            case Estado.EmJogo:
-                AtualizarJogo();
-                break;
-        }
+        if (_emJogo) AtualizarJogo();
     }
 
-    // ── Seleção ───────────────────────────────────────────────────────
-    void MostrarSelecao()
+    // ── Arranque ──────────────────────────────────────────────────────
+    /// <summary>Inicia o minijogo: corre RepsL no braço esquerdo e RepsR no direito.</summary>
+    public void StartMinijogo(ExerciciosWaypoints.TipoExercicio tipo, int repsL, int repsR)
     {
-        _estado = Estado.AguardarSelecao;
+        _tipo = tipo;
+        _blocos.Clear();
+        if (repsL > 0) _blocos.Add(new Bloco { BracoDireito = false, Reps = repsL });
+        if (repsR > 0) _blocos.Add(new Bloco { BracoDireito = true,  Reps = repsR });
+        if (_blocos.Count == 0) _blocos.Add(new Bloco { BracoDireito = true, Reps = 1 });
 
-        // Esconde o esqueleto — no Gamification o visual é simplificado.
-        if (Esqueleto) Esqueleto.AtivacaoEsqueleto(false);
+        _totalReps = 0;
+        foreach (var b in _blocos) _totalReps += b.Reps;
 
-        EsconderPaineis();
-        if (PainelSelecao) PainelSelecao.SetActive(true);
-
-        LimparSessao();
-        AtualizarUISelecao();
-    }
-
-    void AtualizarUISelecao()
-    {
-        if (TextoReps) TextoReps.text = _reps.ToString();
-
-        if (BotaoBracoDireito)
-            BotaoBracoDireito.GetComponent<Image>().color =
-                _bracoDireito ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.35f, 0.35f, 0.35f);
-        if (BotaoBracoEsquerdo)
-            BotaoBracoEsquerdo.GetComponent<Image>().color =
-                _bracoDireito ? new Color(0.35f, 0.35f, 0.35f) : new Color(0.2f, 0.7f, 0.3f);
-    }
-
-    void ToggleBraco(bool direito)
-    {
-        _bracoDireito = direito;
-        if (ImagemExercicio != null)
-        {
-            var s = ImagemExercicio.rectTransform.localScale;
-            s.x = direito ? 1f : -1f;
-            ImagemExercicio.rectTransform.localScale = s;
-        }
-        AtualizarUISelecao();
-    }
-
-    void AlterarReps(int delta)
-    {
-        _reps = Mathf.Clamp(_reps + delta, 1, 20);
-        AtualizarUISelecao();
-    }
-
-    void IniciarSessao()
-    {
-        NumRepeticoes   = _reps;
         _somaPctDardos  = 0f;
-        _dardosLancados = 0;
         _dardosCravados = 0;
-        _scoreRep       = 0f;
-        _wpRep          = 0;
-
-        if (PainelSelecao) PainelSelecao.SetActive(false);
+        _dardosLancados = 0;
+        _dardosEmVoo    = 0;
+        _terminado      = false;
 
         PrepararSensorVisual();
-        IniciarJogo();
-    }
 
-    // ── Jogo ──────────────────────────────────────────────────────────
-    void IniciarJogo()
-    {
-        _estado   = Estado.EmJogo;
-        _repAtual = 0;
-        _emVolta  = false;
-        _wpAtual  = 0;
-
-        GerarWaypointsEX1();
-        CriarLinha();
-        IniciarDirecao();
-        AcoplarNovoDardo();
-
-        EsconderPaineis();
         if (HUDJogo) HUDJogo.SetActive(true);
+        _emJogo = true;
+        IniciarBloco(0);
         AtualizarHUD();
     }
 
-    /// <summary>EX1 — Flexão do Braço: bícep horizontal para a frente, cotovelo 0°→144°.</summary>
-    void GerarWaypointsEX1()
+    void IniciarBloco(int i)
+    {
+        _blocoAtual    = i;
+        _repAtualBloco = 0;
+        _scoreRep      = 0f;
+        _wpRep         = 0;
+        _emVolta       = false;
+        _wpAtual       = 0;
+
+        GerarWaypoints(_blocos[i].BracoDireito);
+        CriarLinha();
+        IniciarDirecao();
+        AcoplarNovoDardo();
+    }
+
+    // ── Waypoints ─────────────────────────────────────────────────────
+    void GerarWaypoints(bool bracoDireito)
     {
         Vector3 posOmbro  = Esqueleto.ObterPosOmbroAtual();
-        float   L         = Esqueleto.ComprimentoBraco > 0.05f ? Esqueleto.ComprimentoBraco : 0.44f;
-        Vector3 dirFrente = Esqueleto.DirecaoFrente == Vector3.zero ? Vector3.forward : Esqueleto.DirecaoFrente;
-
-        float Lu = L * (18.6f / 44.0f); // braço superior
-        float Lf = L * (14.6f / 44.0f); // antebraço
-
-        float[] angulos = { 0f, 36f, 72f, 108f, 144f };
-        _posicoes = new Vector3[angulos.Length];
-        for (int i = 0; i < angulos.Length; i++)
-        {
-            float rad = angulos[i] * Mathf.Deg2Rad;
-            _posicoes[i] = posOmbro
-                + dirFrente  * (Lu + Lf * Mathf.Cos(rad))
-                + Vector3.up * (Lf * Mathf.Sin(rad));
-        }
+        float   L         = Esqueleto.ComprimentoBraco;
+        Vector3 dirFrente = Esqueleto.DirecaoFrente;
+        _posicoes = ExerciciosWaypoints.Gerar(_tipo, posOmbro, L, dirFrente, bracoDireito);
         InstanciarWaypoints();
     }
 
@@ -244,8 +151,7 @@ public class GamificationManager : MonoBehaviour
             Destroy(go.GetComponent<SphereCollider>());
 
             var wp = go.AddComponent<PrevenGameWaypoint>();
-            // Modo invisível: as zonas só pontuam, sem visual.
-            wp.ConfigurarZonas(RaiosZonas, PontuacoesZonas, null, EscalaEsfera, false);
+            wp.ConfigurarZonas(RaiosZonas, PontuacoesZonas, null, EscalaEsfera, false); // invisível
             _waypoints[i] = wp;
         }
     }
@@ -258,7 +164,7 @@ public class GamificationManager : MonoBehaviour
         _waypoints = null;
     }
 
-    // ── Linha verde (único guia visível) ──────────────────────────────
+    // ── Linha verde (guia) ────────────────────────────────────────────
     void CriarLinha()
     {
         if (_linha == null)
@@ -342,13 +248,16 @@ public class GamificationManager : MonoBehaviour
             _wpRep    = 0;
             LancarDardo(pct);
 
-            _repAtual++;
-            if (_repAtual >= NumRepeticoes)
+            _repAtualBloco++;
+            if (_repAtualBloco >= _blocos[_blocoAtual].Reps)
             {
-                ConcluirSessao();
+                _blocoAtual++;
+                if (_blocoAtual >= _blocos.Count) ConcluirMinijogo();
+                else IniciarBloco(_blocoAtual);
             }
             else
             {
+                // Próxima repetição, mesmo braço.
                 _emVolta = false;
                 _wpAtual = 1;
                 foreach (var wp in _waypoints) wp.Repor();
@@ -367,25 +276,19 @@ public class GamificationManager : MonoBehaviour
 
         _sensorTransform = device.ObterTransformSensor(0);
         if (_sensorTransform != null)
-        {
-            // Esconde o cubo do sensor — o visual controlado passa a ser o dardo.
             foreach (var r in _sensorTransform.GetComponentsInChildren<Renderer>(true))
-                r.enabled = false;
-        }
+                r.enabled = false; // esconde o cubo do sensor — o visual é o dardo
     }
 
     void AcoplarNovoDardo()
     {
         if (_sensorTransform == null) return;
 
-        // Holder controlado pela mão; o modelo do dardo é filho com pose configurável.
         var holder = new GameObject("DardoHolder");
         holder.transform.SetParent(_sensorTransform, false);
         holder.transform.localPosition = Vector3.zero;
         holder.transform.localRotation = Quaternion.identity;
-        // O _sensorTransform (CuboSensor) está escalado a 0.3; compensa a lossyScale do pai
-        // para o holder ter escala-mundo 1 → o modelo do dardo mantém a sua escala real
-        // (autorada no prefab) em vez de herdar o encolhimento do cubo.
+        // Compensa a lossyScale do pai (CuboSensor a 0.3) → o dardo mantém a sua escala real.
         Vector3 ls = _sensorTransform.lossyScale;
         holder.transform.localScale = new Vector3(
             Mathf.Approximately(ls.x, 0f) ? 1f : 1f / ls.x,
@@ -401,7 +304,7 @@ public class GamificationManager : MonoBehaviour
 
         _dardoAtivo = holder.AddComponent<GamificationDart>();
         _dardoAtivo.DuracaoVoo = 0.3f;
-        _dardoAtivo.AtivarBrilho(MaterialBrilho()); // brilha enquanto controlado e em voo
+        _dardoAtivo.AtivarBrilho(MaterialBrilho());
     }
 
     Material MaterialBrilho()
@@ -425,7 +328,7 @@ public class GamificationManager : MonoBehaviour
         var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         go.name = "Dardo";
         Destroy(go.GetComponent<Collider>());
-        go.transform.localScale = new Vector3(0.05f, 0.18f, 0.05f); // fino e comprido
+        go.transform.localScale = new Vector3(0.05f, 0.18f, 0.05f);
 
         var shader = Shader.Find("PrevenGame/RimGlow") ?? Shader.Find("Standard");
         var mat = new Material(shader) { color = new Color(0.9f, 0.9f, 0.95f) };
@@ -441,87 +344,67 @@ public class GamificationManager : MonoBehaviour
 
     void LancarDardo(float pct)
     {
-        // A % desta repetição (pct) decide o aro AGORA — independente da média acumulada.
         int aro = AroParaPercentagem(pct);
         _dardosLancados++;
 
         if (_dardoAtivo != null && Alvo != null)
+        {
+            _dardosEmVoo++;
             _dardoAtivo.Lancar(Alvo.PontoNoAro(aro), Alvo.transform,
                 aoChegar: () =>
                 {
                     _dardosCravados++;
                     _somaPctDardos += pct;
+                    _dardosEmVoo--;
                     AtualizarHUD();
-                    // Se a sessão já terminou (último dardo ainda em voo), corrige o resultado final.
-                    if (_estado == Estado.Concluido) MostrarResultadoFinal();
+                    if (_terminado && _dardosEmVoo <= 0) EmitirConclusao();
                 });
+        }
 
         _dardoAtivo = null;
-        AtualizarHUD(); // atualiza "Dardos x/X" já; a média só sobe quando o dardo crava
+        AtualizarHUD();
     }
 
-    /// <summary>Média das percentagens dos dardos que já CRAVARAM (0 se ainda nenhum).</summary>
     float MediaPercentagem()
         => _dardosCravados > 0 ? _somaPctDardos / _dardosCravados : 0f;
 
-    /// <summary>Mapeia a qualidade da repetição (0–100%) ao aro atingido (1 exterior … 5 bullseye).</summary>
     static int AroParaPercentagem(float pct)
     {
         if (pct >= 80f) return 5;
         if (pct >= 60f) return 4;
         if (pct >= 40f) return 3;
         if (pct >= 20f) return 2;
-        return 1; // <20% (inclui <10%) → aro exterior
+        return 1;
     }
 
-    // ── Fim ───────────────────────────────────────────────────────────
-    void ConcluirSessao()
+    // ── Conclusão ─────────────────────────────────────────────────────
+    void ConcluirMinijogo()
     {
-        _estado = Estado.Concluido;
+        _emJogo = false;
+        _terminado = true;
         LimparWaypointsELinha();
-
-        EsconderPaineis();
-        if (PainelFim) PainelFim.SetActive(true);
-        MostrarResultadoFinal();
+        if (_dardosEmVoo <= 0) EmitirConclusao(); // senão espera o último dardo cravar
     }
 
-    /// <summary>Atualiza o texto do painel final com a média atual (corrige-se quando o último dardo crava).</summary>
-    void MostrarResultadoFinal()
+    private bool _conclusaoEmitida;
+    void EmitirConclusao()
     {
-        if (TextoResultado)
-            TextoResultado.text = $"🎯 Sessão concluída!\nPontuação: {MediaPercentagem():F0} %";
+        if (_conclusaoEmitida) return;
+        _conclusaoEmitida = true;
+        if (HUDJogo) HUDJogo.SetActive(false);
+        OnConcluido?.Invoke(MediaPercentagem());
     }
 
     // ── HUD ───────────────────────────────────────────────────────────
     void AtualizarHUD()
     {
         if (TextoPontuacao) TextoPontuacao.text = $"{MediaPercentagem():F0} %";
-        if (TextoDardos)    TextoDardos.text    = $"{NumRepeticoes - _dardosLancados}/{NumRepeticoes}";
+        if (TextoDardos)    TextoDardos.text    = $"{_totalReps - _dardosLancados}/{_totalReps}";
     }
 
-    // ── Painéis ───────────────────────────────────────────────────────
-    /// <summary>
-    /// Esconde TODOS os painéis de UI (seleção, HUD, fim). Ponto único de controlo:
-    /// cada transição chama isto antes de ativar o painel que quer, garantindo que
-    /// dois painéis/textos nunca ficam sobrepostos quando um ecrã acaba e outro começa.
-    /// </summary>
-    void EsconderPaineis()
-    {
-        if (PainelSelecao) PainelSelecao.SetActive(false);
-        if (HUDJogo)       HUDJogo.SetActive(false);
-        if (PainelFim)     PainelFim.SetActive(false);
-    }
-
-    // ── Limpeza ───────────────────────────────────────────────────────
     void LimparWaypointsELinha()
     {
         DestruirWaypoints();
         if (_linha) _linha.gameObject.SetActive(false);
-    }
-
-    void LimparSessao()
-    {
-        LimparWaypointsELinha();
-        if (_dardoAtivo != null) { Destroy(_dardoAtivo.gameObject); _dardoAtivo = null; }
     }
 }
