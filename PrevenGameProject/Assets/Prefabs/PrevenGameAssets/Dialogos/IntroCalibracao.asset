@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 519a3395fad2ade4ca396250f003a040, type: 3}
+  m_Name: IntroCalibracao
+  m_EditorClassIdentifier: 
+  Falas:
+  - Quem: 0
+    Emocao: 0
+    Texto: Bem-vindo ao PrevenGame!
+  - Quem: 0
+    Emocao: 0
+    Texto: "Eu sou a Jane e este \xE9 o meu colega Patrick. Vamos aparecer ao longo
+      do jogo para te ajudar e motivar."
+  - Quem: 1
+    Emocao: 2
+    Texto: "Aqui vais encontrar v\xE1rios minijogos para ajudar na tua reabilita\xE7\xE3o.
+      Exerc\xEDcios escolhidos a dedo e gamificados para a\xE7\xF5es reais em cen\xE1rios
+      reais."
+  - Quem: 0
+    Emocao: 3
+    Texto: "Agora agarra o Ommo e vamos come\xE7ar por calibrar."

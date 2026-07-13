@@ -30,17 +30,14 @@ public class GameFlowManager : MonoBehaviour
     public GameObject ScorePainel;
     public TMPro.TextMeshProUGUI ScoreTexto;
 
-    [Header("Helper que faz a calibração (o outro dá o tutorial)")]
-    public HelperId HelperCalibracao = HelperId.Jane;
-
     [Header("Diálogos (opcional — se vazio, usa os textos por defeito)")]
-    [Tooltip("Tutorial mostrado ao entrar na seleção. Cria em Create → PrevenGame → Sequência de Diálogo.")]
+    [Tooltip("Tutorial mostrado ao entrar na seleção.")]
     public DialogueSequence TutorialSelecaoSeq;
     [Tooltip("Comentário do score quando a média ≥ 75 %.")]
     public DialogueSequence ScoreAltoSeq;
-    [Tooltip("Comentário do score quando a média está entre 45 % e 75 %.")]
+    [Tooltip("Comentário do score quando a média está entre 15 % e 75 %.")]
     public DialogueSequence ScoreMedioSeq;
-    [Tooltip("Comentário do score quando a média < 45 %.")]
+    [Tooltip("Comentário do score quando a média < 15 %.")]
     public DialogueSequence ScoreBaixoSeq;
 
     private Fase _fase;
@@ -48,9 +45,6 @@ public class GameFlowManager : MonoBehaviour
 
     void Start()
     {
-        if (SessionManager.Instancia != null)
-            SessionManager.Instancia.HelperCalibracao = HelperCalibracao;
-
         SetPainel(SplashPainel, false);
         SetPainel(CalibracaoPainel, false);
         SetPainel(SelecaoPainel, false);
@@ -97,8 +91,7 @@ public class GameFlowManager : MonoBehaviour
 
         if (Calibracao != null)
         {
-            Calibracao.Dialogo          = Dialogo;
-            Calibracao.HelperCalibracao = HelperCalibracao;
+            Calibracao.Dialogo = Dialogo;
             Calibracao.OnCalibracaoConcluida += AoCalibracaoConcluida;
             Calibracao.IniciarCalibracao();
         }
@@ -127,12 +120,10 @@ public class GameFlowManager : MonoBehaviour
             ? TutorialSelecaoSeq.Falas
             : TutorialSelecaoDefault();
 
-    /// <summary>Tutorial por defeito, dado pelo helper que NÃO fez a calibração.</summary>
+    /// <summary>Tutorial por defeito (fala o Patrick; ambos os helpers ficam visíveis).</summary>
     List<HelperFala> TutorialSelecaoDefault()
     {
-        HelperId h = SessionManager.Instancia != null
-            ? SessionManager.Instancia.HelperTutorial
-            : (HelperCalibracao == HelperId.Jane ? HelperId.Patrick : HelperId.Jane);
+        HelperId h = HelperId.Patrick;
 
         return new List<HelperFala>
         {
@@ -191,9 +182,9 @@ public class GameFlowManager : MonoBehaviour
                              :                ScoreBaixoSeq;
         if (seq != null && seq.TemFalas) return seq.Falas;
 
-        HelperId h = HelperCalibracao;
+        HelperId h = HelperId.Jane;
         HelperEmocao emocao = media >= 75f ? HelperEmocao.Impressed
-                            : media >= 45f ? HelperEmocao.Pleased
+                            : media >= 15f ? HelperEmocao.Pleased
                             :                HelperEmocao.Worried;
         string txt = media >= 75f ? "Excelente trabalho! Estás mesmo a melhorar."
                    : media >= 45f ? "Bom trabalho! Continua assim."
@@ -211,7 +202,7 @@ public class GameFlowManager : MonoBehaviour
     {
         if (SessionManager.Instancia != null) SessionManager.Instancia.LimparScoresPendentes();
         SetPainel(ScorePainel, false);
-        IniciarSplash();
+        IniciarSelecao(); // volta à escolha de minijogos (já está calibrado)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

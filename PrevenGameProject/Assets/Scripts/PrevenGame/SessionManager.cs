@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>Qual dos helpers do jogo. Um faz a calibração, o outro o tutorial da seleção.</summary>
+/// <summary>Qual dos helpers do jogo (Patrick à esquerda, Jane à direita no diálogo).</summary>
 public enum HelperId { Jane, Patrick }
 
 /// <summary>
@@ -18,15 +18,28 @@ public class SessionManager : MonoBehaviour
 
     public const string CenaMenu = "Menu";
 
-    // ── Calibração persistida ─────────────────────────────────────────
-    public bool    Calibrado        { get; private set; }
+    // ── Calibração persistida (um conjunto por braço) ─────────────────
+    /// <summary>Dados de calibração de UM braço — os braços podem ter comprimentos/ROM diferentes.</summary>
+    [System.Serializable]
+    public struct DadosBraco
+    {
+        public Vector3 PosOmbro;
+        public float   ComprimentoBraco;
+        public Vector3 DirecaoFrente;
+        public bool    Valido;
+    }
+
+    public DadosBraco BracoDireito  { get; private set; }
+    public DadosBraco BracoEsquerdo { get; private set; }
+
+    /// <summary>Calibrado quando AMBOS os braços têm dados válidos.</summary>
+    public bool Calibrado => BracoDireito.Valido && BracoEsquerdo.Valido;
+
+    // Ponte temporária até ao rework do minijogo dos dardos: os scripts antigos
+    // (MinigameController/GamificationManager) leem um conjunto único — espelham o braço direito.
     public Vector3 PosOmbro         { get; private set; }
     public float   ComprimentoBraco { get; private set; }
     public Vector3 DirecaoFrente    { get; private set; }
-
-    /// <summary>Helper que guiou a calibração; o OUTRO dá o tutorial da seleção.</summary>
-    public HelperId HelperCalibracao { get; set; } = HelperId.Jane;
-    public HelperId HelperTutorial => HelperCalibracao == HelperId.Jane ? HelperId.Patrick : HelperId.Jane;
 
     // ── Fila de minijogos + scores ────────────────────────────────────
     public struct Minijogo
@@ -64,13 +77,30 @@ public class SessionManager : MonoBehaviour
     }
 
     // ── Calibração ────────────────────────────────────────────────────
-    public void GuardarCalibracao(Vector3 ombro, float comprimento, Vector3 direcao)
+    /// <summary>Guarda a calibração de um braço (direito ou esquerdo).</summary>
+    public void GuardarCalibracaoBraco(bool direito, Vector3 ombro, float comprimento, Vector3 direcao)
     {
-        PosOmbro         = ombro;
-        ComprimentoBraco = comprimento;
-        DirecaoFrente    = direcao;
-        Calibrado        = true;
+        var dados = new DadosBraco
+        {
+            PosOmbro         = ombro,
+            ComprimentoBraco = comprimento,
+            DirecaoFrente    = direcao,
+            Valido           = true,
+        };
+
+        if (direito)
+        {
+            BracoDireito = dados;
+            // Ponte para os scripts antigos do minijogo (ver comentário nos campos).
+            PosOmbro         = ombro;
+            ComprimentoBraco = comprimento;
+            DirecaoFrente    = direcao;
+        }
+        else BracoEsquerdo = dados;
     }
+
+    /// <summary>Dados de calibração do braço pedido (direito = true).</summary>
+    public DadosBraco ObterBraco(bool direito) => direito ? BracoDireito : BracoEsquerdo;
 
     // ── Sessão de minijogos ───────────────────────────────────────────
     public void IniciarSessao(List<Minijogo> fila)

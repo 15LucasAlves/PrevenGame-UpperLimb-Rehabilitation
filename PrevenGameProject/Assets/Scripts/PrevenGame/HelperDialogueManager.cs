@@ -8,25 +8,36 @@ using TMPro;
 public enum HelperEmocao { Neutral, Pleased, Impressed, Laugh, Surprised, Worried, Disappointed }
 
 /// <summary>
-/// HelperDialogueManager — Mostra um personagem-ajudante (Jane/Patrick, por emoção) com um
-/// balão de fala e texto escrito letra a letra (máquina de escrever).
+/// HelperDialogueManager — Mostra os DOIS personagens-ajudantes em simultâneo (Patrick em
+/// baixo à esquerda, Jane em baixo à direita) com um balão de fala apontado a quem fala e
+/// texto escrito letra a letra (máquina de escrever).
 ///
 /// Modos:
 ///   • <see cref="MostrarLinha"/> — uma linha fixa (ex.: instrução de calibração).
 ///   • <see cref="Reproduzir(DialogueSequence, System.Action)"/> / <see cref="Reproduzir(IEnumerable{HelperFala}, System.Action)"/>
 ///     — reproduz uma sequência; o clique completa a escrita e, se já completa, avança.
 ///
-/// Cada <see cref="HelperFala"/> escolhe o personagem e a emoção, pelo que cada balão pode ter
-/// uma emoção diferente. Texto do balão: Poppins Medium, 40, #231F20 (definido no builder).
+/// Cada <see cref="HelperFala"/> escolhe o orador e a emoção. A emoção muda só no orador; o
+/// outro personagem mantém a última (ambos começam Neutral em cada conversa). Para forçar a
+/// emoção do não-orador (ex.: pôr os dois Neutral na fala final) usa <see cref="DefinirEmocao"/>.
+/// Quando fala a Jane o balão é espelhado horizontalmente para o bico apontar para ela — o
+/// texto é contra-espelhado para ficar direito.
 /// </summary>
 public class HelperDialogueManager : MonoBehaviour
 {
     [Header("Referências UI")]
-    [Tooltip("Conteúdo do diálogo (personagem + balão). Liga/desliga com o diálogo.")]
+    [Tooltip("Conteúdo do diálogo (personagens + balão). Liga/desliga com o diálogo.")]
     public GameObject      Painel;
-    public Image           HelperImagem;
+    public Image           ImagemPatrick;   // canto inferior esquerdo
+    public Image           ImagemJane;      // canto inferior direito
     public Image           BalaoImagem;
     public TextMeshProUGUI TextoBalao;
+    [Tooltip("Linha secundária opcional (ex.: dica), numa caixa própria abaixo do texto principal.")]
+    public TextMeshProUGUI TextoBalaoSub;
+
+    [Header("Posição do balão por orador (âncora topo-centro)")]
+    public Vector2 PosBalaoPatrick = new Vector2( 120f, -120f);
+    public Vector2 PosBalaoJane    = new Vector2(-120f, -120f);
 
     [Header("Máquina de escrever")]
     [Tooltip("Velocidade de escrita em caracteres por segundo. 0 = texto instantâneo.")]
@@ -62,11 +73,12 @@ public class HelperDialogueManager : MonoBehaviour
     }
 
     // ── Modo linha fixa (calibração) ──────────────────────────────────
-    public void MostrarLinha(HelperId quem, HelperEmocao emocao, string texto)
+    /// <param name="subtexto">Linha secundária opcional, mostrada na caixa própria (sem máquina de escrever).</param>
+    public void MostrarLinha(HelperId quem, HelperEmocao emocao, string texto, string subtexto = null)
     {
         _emSequencia = false;
-        if (Painel) Painel.SetActive(true);
-        Aplicar(quem, emocao, texto);
+        AbrirPainel();
+        Aplicar(quem, emocao, texto, subtexto);
     }
 
     public void Esconder()
@@ -75,7 +87,7 @@ public class HelperDialogueManager : MonoBehaviour
         if (Painel) Painel.SetActive(false);
     }
 
-    // ── Modo sequência (tutorial / score) ─────────────────────────────
+    // ── Modo sequência (intro / tutorial / score) ─────────────────────
     public void Reproduzir(DialogueSequence seq, System.Action aoTerminar = null)
         => Reproduzir(seq != null ? seq.Falas : null, aoTerminar);
 
@@ -88,7 +100,7 @@ public class HelperDialogueManager : MonoBehaviour
         if (_sequencia.Count == 0) { aoTerminar?.Invoke(); return; }
 
         _emSequencia = true;
-        if (Painel) Painel.SetActive(true);
+        AbrirPainel();
         MostrarAtual();
     }
 
@@ -100,7 +112,10 @@ public class HelperDialogueManager : MonoBehaviour
             _emSequencia = false;
             if (Painel) Painel.SetActive(false);
             var cb = _aoTerminar; _aoTerminar = null;
-            cb?.Invoke();
+            // Se o callback rebentar, o erro aparece no Console em vez de matar o fluxo
+            // em silêncio com o painel escondido.
+            try { cb?.Invoke(); }
+            catch (System.Exception e) { Debug.LogException(e); }
             return;
         }
         MostrarAtual();
@@ -112,13 +127,48 @@ public class HelperDialogueManager : MonoBehaviour
         Aplicar(f.Quem, f.Emocao, f.Texto);
     }
 
-    // ── Aplicar + máquina de escrever ─────────────────────────────────
-    void Aplicar(HelperId quem, HelperEmocao emocao, string texto)
+    // ── Emoções dos personagens ───────────────────────────────────────
+    /// <summary>Força a emoção de um personagem sem mexer no balão (ex.: "Jane também Neutral").</summary>
+    public void DefinirEmocao(HelperId quem, HelperEmocao emocao)
     {
-        if (HelperImagem)
+        var img = quem == HelperId.Jane ? ImagemJane : ImagemPatrick;
+        if (img == null) return;
+        var sprite = SpritePara(quem, emocao);
+        img.sprite  = sprite;
+        img.color   = Color.white;          // a Image nasce quase transparente no builder
+        img.enabled = sprite != null;
+    }
+
+    /// <summary>Ambos os personagens voltam a Neutral (estado de arranque de cada conversa).</summary>
+    public void ReporEmocoes()
+    {
+        DefinirEmocao(HelperId.Jane,    HelperEmocao.Neutral);
+        DefinirEmocao(HelperId.Patrick, HelperEmocao.Neutral);
+    }
+
+    /// <summary>Abre o painel; se estava fechado, a conversa começa com ambos Neutral.</summary>
+    void AbrirPainel()
+    {
+        if (Painel == null) return;
+        if (!Painel.activeSelf)
         {
-            var sprite = SpritePara(quem, emocao);
-            if (sprite != null) { HelperImagem.sprite = sprite; HelperImagem.enabled = true; }
+            Painel.SetActive(true);
+            ReporEmocoes();
+        }
+    }
+
+    // ── Aplicar + máquina de escrever ─────────────────────────────────
+    void Aplicar(HelperId quem, HelperEmocao emocao, string texto, string subtexto = null)
+    {
+        DefinirEmocao(quem, emocao);
+        AplicarOrador(quem);
+
+        // Subtexto na caixa própria: instantâneo, escondido quando vazio.
+        if (TextoBalaoSub != null)
+        {
+            bool temSub = !string.IsNullOrEmpty(subtexto);
+            TextoBalaoSub.text = temSub ? subtexto : "";
+            TextoBalaoSub.gameObject.SetActive(temSub);
         }
 
         if (TextoBalao == null) return;
@@ -133,6 +183,22 @@ public class HelperDialogueManager : MonoBehaviour
             TextoBalao.maxVisibleCharacters = int.MaxValue;
             _aEscrever = false;
         }
+    }
+
+    /// <summary>Aponta o balão ao orador: reposiciona e espelha (texto contra-espelhado).</summary>
+    void AplicarOrador(HelperId quem)
+    {
+        if (BalaoImagem == null) return;
+        bool jane = quem == HelperId.Jane;
+
+        var rt = BalaoImagem.rectTransform;
+        rt.anchoredPosition = jane ? PosBalaoJane : PosBalaoPatrick;
+        rt.localScale       = new Vector3(jane ? -1f : 1f, 1f, 1f);
+
+        // Os textos são filhos do balão: espelhá-los outra vez devolve-os direitos.
+        var contraFlip = new Vector3(jane ? -1f : 1f, 1f, 1f);
+        if (TextoBalao    != null) TextoBalao.rectTransform.localScale    = contraFlip;
+        if (TextoBalaoSub != null) TextoBalaoSub.rectTransform.localScale = contraFlip;
     }
 
     IEnumerator Escrever()

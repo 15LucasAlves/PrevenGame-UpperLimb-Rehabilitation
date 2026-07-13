@@ -27,9 +27,9 @@ public class OmmoSceneBuilder
 
     // Emoções por índice (HelperEmocao): Neutral, Pleased, Impressed, Laugh, Surprised, Worried, Disappointed
     static readonly string[] NomesJane =
-        { "JaneNeutral", "JanePleased", "JaneImpressed", "JaneLaugh", "JaneSuprised", "JaneWorried", "JaneDissapointed" };
+        { "JaneNeutral", "JanePleased", "JaneImpressed", "JaneLaugh", "JaneSurprised", "JaneWorried", "JaneDisappointed" };
     static readonly string[] NomesPatrick =
-        { "PatrickNeutral", "PatrickPleased", "PatrickImpressed", "PatrickLaugh", "PatrickSurprised", "PatrickWorried", "PatrickDisapointed" };
+        { "PatrickNeutral", "PatrickPleased", "PatrickImpressed", "PatrickLaugh", "PatrickSurprised", "PatrickWorried", "PatrickDisappointed" };
 
     // Cores dos textos dos cards
     static readonly Color CorNomeExercicio = new Color32(95, 120, 108, 255);  // #5F786C
@@ -130,9 +130,10 @@ public class OmmoSceneBuilder
         gfm.SelecaoPainel    = selecao;
         gfm.ScorePainel      = score;
         gfm.ScoreTexto       = scoreTxt;
-        gfm.HelperCalibracao = HelperId.Jane;
 
         // Sequências de diálogo editáveis (assets). Não sobrescreve se já existirem.
+        if (scaffold.Calib != null)
+            scaffold.Calib.IntroSeq = CriarSequenciaDialogo("IntroCalibracao", FalasIntroCalibracaoDefault());
         gfm.TutorialSelecaoSeq = CriarSequenciaDialogo("TutorialSelecao", FalasTutorialDefault());
         gfm.ScoreAltoSeq  = CriarSequenciaDialogo("ScoreAlto",  FalasScoreDefault(HelperEmocao.Impressed, "Excelente trabalho! Estás mesmo a melhorar."));
         gfm.ScoreMedioSeq = CriarSequenciaDialogo("ScoreMedio", FalasScoreDefault(HelperEmocao.Pleased,   "Bom trabalho! Continua assim."));
@@ -272,9 +273,9 @@ public class OmmoSceneBuilder
         if (comCalibracao)
         {
             calib = appManager.AddComponent<OmmoCalibracaoManager>();
-            calib.SensorManager    = sensorMgr;
-            calib.Esqueleto        = esqueleto;
-            calib.HelperCalibracao = HelperId.Jane;
+            calib.SensorManager = sensorMgr;
+            calib.Esqueleto     = esqueleto;
+            calib.Pressao       = appManager.AddComponent<EntradaPressao>();
         }
 
         return new ScaffoldRefs { SensorMgr = sensorMgr, Esqueleto = esqueleto, Calib = calib };
@@ -285,21 +286,66 @@ public class OmmoSceneBuilder
     // ═════════════════════════════════════════════════════════════════
     static MinigameSelectionUI ConstruirSelecao(Transform pai)
     {
-        // Selection box (container central).
+        // Selection box — container SEM visual próprio, alinhado com o painel claro
+        // desenhado no mainMenuBackground (x 90..1830, y 280..1055 @1920×1080).
+        // Contém um ScrollRect vertical: os cards têm tamanho fixo numa grelha de
+        // 4 colunas (esquerda→direita, linhas para baixo) e a área faz scroll
+        // quando houver mais cards do que cabem.
         var box = new GameObject("SelectionBox");
         box.transform.SetParent(pai, false);
         var boxRect = box.AddComponent<RectTransform>();
         boxRect.anchorMin = boxRect.anchorMax = boxRect.pivot = new Vector2(0.5f, 0.5f);
-        boxRect.anchoredPosition = new Vector2(0f, -30f);
-        boxRect.sizeDelta        = new Vector2(1700f, 760f);
-        var boxImg = box.AddComponent<Image>();
-        boxImg.color = new Color(0f, 0f, 0f, 0.15f);
+        boxRect.anchoredPosition = new Vector2(0f, -132f);
+        boxRect.sizeDelta        = new Vector2(1740f, 775f);
+        var scroll = box.AddComponent<ScrollRect>();
+
+        // Viewport: máscara de recorte + Image invisível para a roda do rato
+        // funcionar em qualquer ponto da área (mesmo nos espaços entre cards).
+        var viewport = new GameObject("Viewport");
+        viewport.transform.SetParent(box.transform, false);
+        var vpRect = viewport.AddComponent<RectTransform>();
+        StretchFull(vpRect);
+        viewport.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0f);
+        viewport.AddComponent<RectMask2D>();
+
+        // Content: grelha 4×N. Com UpperLeft, uma última linha incompleta fica
+        // alinhada à esquerda, deixando o espaço livre à direita.
+        var content = new GameObject("Content");
+        content.transform.SetParent(viewport.transform, false);
+        var ctRect = content.AddComponent<RectTransform>();
+        ctRect.anchorMin = new Vector2(0f, 1f);
+        ctRect.anchorMax = new Vector2(1f, 1f);
+        ctRect.pivot     = new Vector2(0.5f, 1f);
+        ctRect.offsetMin = Vector2.zero;
+        ctRect.offsetMax = Vector2.zero;
+
+        var grelha = content.AddComponent<GridLayoutGroup>();
+        grelha.cellSize        = new Vector2(420f, 635f);   // = tamanho fixo dos cards
+        grelha.spacing         = new Vector2(20f, 20f);
+        grelha.padding         = new RectOffset(0, 0, 70, 70);
+        grelha.startCorner     = GridLayoutGroup.Corner.UpperLeft;
+        grelha.startAxis       = GridLayoutGroup.Axis.Horizontal;
+        grelha.childAlignment  = TextAnchor.UpperLeft;
+        grelha.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        grelha.constraintCount = 4;
+
+        var fitter = content.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        scroll.content           = ctRect;
+        scroll.viewport          = vpRect;
+        scroll.horizontal        = false;
+        scroll.vertical          = true;
+        scroll.movementType      = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
 
         // START / EXIT.
         var start = CriarBotaoImagem("BotaoStart", pai, UISprite("startButton"), UISprite("startButtonHover"),
-            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -30f), new Vector2(260f, 110f));
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-110f, -75f), new Vector2(260f, 110f));
+        start.transform.localScale = Vector3.one * 1.4f;
         var exit  = CriarBotaoImagem("BotaoExit", pai, UISprite("exitButton"), UISprite("exitButtonHover"),
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -30f), new Vector2(260f, 110f));
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(110f, -75f), new Vector2(260f, 110f));
+        exit.transform.localScale = Vector3.one * 1.4f;
 
         // Cards — um por exercício (4).
         var tipos = new[]
@@ -309,10 +355,9 @@ public class OmmoSceneBuilder
             ExerciciosWaypoints.TipoExercicio.AbducaoLateral,
             ExerciciosWaypoints.TipoExercicio.FlexaoCotovelo,
         };
-        float[] cardX = { -600f, -200f, 200f, 600f };
         var cards = new SelectionCard[tipos.Length];
         for (int i = 0; i < tipos.Length; i++)
-            cards[i] = ConstruirCard(box.transform, tipos[i], new Vector2(cardX[i], 0f));
+            cards[i] = ConstruirCard(content.transform, tipos[i]);
 
         var selGO = CreateEmpty("MinigameSelectionUI");
         var selUI = selGO.AddComponent<MinigameSelectionUI>();
@@ -323,51 +368,54 @@ public class OmmoSceneBuilder
         return selUI;
     }
 
-    static SelectionCard ConstruirCard(Transform pai, ExerciciosWaypoints.TipoExercicio tipo, Vector2 pos)
+    static SelectionCard ConstruirCard(Transform pai, ExerciciosWaypoints.TipoExercicio tipo)
     {
+        // O tamanho/posição reais vêm do GridLayoutGroup do Content (cellSize 420×635);
+        // as zonas internas abaixo estão calibradas para esse tamanho (rácio da arte 423×640).
         var card = new GameObject($"Card_{tipo}");
         card.transform.SetParent(pai, false);
         var rect = card.AddComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = pos;
-        rect.sizeDelta        = new Vector2(360f, 620f);
+        rect.sizeDelta = new Vector2(420f, 635f);
         var cardImg = card.AddComponent<Image>();
         var cardSprite = UISprite("selectionCard");
         if (cardSprite != null) cardImg.sprite = cardSprite; else cardImg.color = new Color(0.18f, 0.55f, 0.25f);
         var cardBtn = card.AddComponent<Button>();
 
-        // Imagem do exercício (hover anima).
+        // Imagem do exercício — dentro da moldura desenhada (10%–50% da altura).
         var img = CriarImagem("ImagemExercicio", card.transform, null,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(320f, 250f));
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(330f, 240f));
         img.raycastTarget = false;
         var hover = card.AddComponent<CardAnimacaoHover>();
         hover.ImagemAlvo = img;
         hover.Sprites    = CarregarSpritesExercicio(tipo);
 
-        // Título do jogo — 40 Poppins ExtraBold branco.
+        // Título do jogo — na faixa desenhada (~53%–60% da altura).
         var titulo = CriarTexto("TituloJogo", card.transform, "DARDOS", 40, TextAlignmentOptions.Center,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-            new Vector2(0f, -300f), new Vector2(320f, 50f), Color.white, PoppinsExtraBold, FontStyles.Bold);
+            new Vector2(0f, -337f), new Vector2(330f, 48f), Color.white, PoppinsExtraBold, FontStyles.Bold);
         titulo.raycastTarget = false;
 
-        // Nome do exercício — 20 Poppins Medium #5F786C.
+        // Nome do exercício — logo abaixo da faixa do título.
         var nome = CriarTexto("NomeExercicio", card.transform, ExerciciosWaypoints.Nome(tipo), 20,
             TextAlignmentOptions.Center,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-            new Vector2(0f, -350f), new Vector2(320f, 32f), CorNomeExercicio, PoppinsMedium, FontStyles.Normal);
+            new Vector2(0f, -394f), new Vector2(330f, 32f), CorNomeExercicio, PoppinsMedium, FontStyles.Normal);
         nome.raycastTarget = false;
 
-        // Linha L: - [num] +
-        var repsL = ConstruirLinhaReps(card.transform, "L", new Vector2(0f, -430f), out var lMenos, out var lMais);
-        // Linha R: - [num] +
-        var repsR = ConstruirLinhaReps(card.transform, "R", new Vector2(0f, -510f), out var rMenos, out var rMais);
+        // Linhas de reps — zonas de clique invisíveis sobre os − / + desenhados
+        // (a arte já inclui as letras L e R e os círculos dos botões).
+        var repsL = ConstruirLinhaReps(card.transform, "L", -466f, out var lMenos, out var lMais);
+        var repsR = ConstruirLinhaReps(card.transform, "R", -541f, out var rMenos, out var rMais);
 
         var sc = card.AddComponent<SelectionCard>();
-        sc.Tipo            = tipo;
-        sc.TituloJogo      = titulo;
-        sc.NomeExercicio   = nome;
-        sc.ImagemExercicio = img;
-        sc.BotaoSelecionar = cardBtn;
+        sc.Tipo             = tipo;
+        sc.TituloJogo       = titulo;
+        sc.NomeExercicio    = nome;
+        sc.ImagemExercicio  = img;
+        sc.BotaoSelecionar  = cardBtn;
+        sc.FundoCard        = cardImg;
+        sc.SpriteNormal     = cardSprite;
+        sc.SpriteSelecionado = UISprite("selectionCardSelected");
         sc.RepsLTexto      = repsL;
         sc.RepsRTexto      = repsR;
         sc.BotaoLMenos     = lMenos; sc.BotaoLMais = lMais;
@@ -375,32 +423,36 @@ public class OmmoSceneBuilder
         return sc;
     }
 
-    static TextMeshProUGUI ConstruirLinhaReps(Transform pai, string lado, Vector2 pos, out Button menos, out Button mais)
+    /// <summary>
+    /// Linha de reps: a arte do card já desenha a letra L/R e os círculos − e +
+    /// (centros a ~33% e ~77% da largura), por isso só criamos zonas de clique
+    /// invisíveis por cima deles e o número no espaço entre os dois.
+    /// yCentro = centro vertical da linha em coordenadas do card (a partir do topo).
+    /// </summary>
+    static TextMeshProUGUI ConstruirLinhaReps(Transform pai, string lado, float yCentro, out Button menos, out Button mais)
     {
-        var linha = new GameObject($"Reps{lado}");
-        linha.transform.SetParent(pai, false);
-        var lRect = linha.AddComponent<RectTransform>();
-        lRect.anchorMin = lRect.anchorMax = lRect.pivot = new Vector2(0.5f, 1f);
-        lRect.anchoredPosition = pos;
-        lRect.sizeDelta        = new Vector2(320f, 64f);
+        menos = CriarBotaoInvisivel($"Menos{lado}", pai, new Vector2(-76f, yCentro), new Vector2(70f, 68f));
+        mais  = CriarBotaoInvisivel($"Mais{lado}",  pai, new Vector2(130f, yCentro), new Vector2(70f, 68f));
 
-        CriarTexto($"Label{lado}", linha.transform, lado, 30, TextAlignmentOptions.Left,
-            new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(10f, 0f), new Vector2(50f, 60f), CorReps, PoppinsExtraBold, FontStyles.Bold).raycastTarget = false;
-
-        var menosGO = CriarBotaoSimples($"Menos{lado}", linha.transform, "-", new Color(0.20f, 0.20f, 0.22f),
-            new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(70f, 0f), new Vector2(54f, 54f));
-        menos = menosGO.GetComponent<Button>();
-
-        var num = CriarTexto($"Num{lado}", linha.transform, "1", 38, TextAlignmentOptions.Center,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, 0f), new Vector2(80f, 60f), CorReps, PoppinsExtraBold, FontStyles.Bold);
+        var num = CriarTexto($"Num{lado}", pai, "1", 38, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(19f, yCentro), new Vector2(80f, 60f), CorReps, PoppinsExtraBold, FontStyles.Bold);
         num.raycastTarget = false;
-
-        var maisGO = CriarBotaoSimples($"Mais{lado}", linha.transform, "+", new Color(0.20f, 0.20f, 0.22f),
-            new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-70f, 0f), new Vector2(54f, 54f));
-        mais = maisGO.GetComponent<Button>();
         return num;
+    }
+
+    /// <summary>Zona de clique invisível (Image transparente mas com raycast) sobre arte desenhada.</summary>
+    static Button CriarBotaoInvisivel(string nome, Transform pai, Vector2 pos, Vector2 size)
+    {
+        var go = new GameObject(nome);
+        go.transform.SetParent(pai, false);
+        var rect = go.AddComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = pos;
+        rect.sizeDelta        = size;
+        go.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0f); // invisível; mantém o raycast
+        return go.AddComponent<Button>();
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -444,30 +496,52 @@ public class OmmoSceneBuilder
 
         var conteudo = CriarPainel("Conteudo", root.transform);
 
-        // Personagem (canto inferior esquerdo).
-        var helperImg = CriarImagem("Helper", conteudo.transform, null,
-            new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(60f, 40f), new Vector2(520f, 760f));
-        helperImg.preserveAspect = true;
-        helperImg.raycastTarget  = false;
+        // Patrick (canto inferior esquerdo) e Jane (canto inferior direito) — sempre os dois.
+        var patrickImg = CriarImagem("HelperPatrick", conteudo.transform, null,
+            new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(60f, -15f), new Vector2(520f, 760f));
+        patrickImg.preserveAspect = true;
+        patrickImg.raycastTarget  = false;
+        patrickImg.rectTransform.localScale = Vector3.one * 1.15f;
 
-        // Balão (acima/à direita do personagem).
-        var balaoImg = CriarImagem("Balao", conteudo.transform, UISprite("balãoDeFala"),
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(480f, -120f), new Vector2(1200f, 420f));
-        balaoImg.type = Image.Type.Sliced;
+        var janeImg = CriarImagem("HelperJane", conteudo.transform, null,
+            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-60f, -15f), new Vector2(520f, 760f));
+        janeImg.preserveAspect = true;
+        janeImg.raycastTarget  = false;
+        janeImg.rectTransform.localScale = Vector3.one * 1.15f;
+
+        // Balão (topo-centro; o manager posiciona-o e espelha-o consoante o orador).
+        var balaoImg = CriarImagem("Balao", conteudo.transform,
+            CarregarSpriteAsset($"{PastaUI}/balãoDeFala.png", 4096),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(120f, -120f), new Vector2(1200f, 420f));
+        balaoImg.type = Image.Type.Simple;
         balaoImg.raycastTarget = false;
 
+        // Na arte do balão, o corpo da bolha ocupa ~4%–74% da altura (o resto é o bico),
+        // por isso os textos centram-se nessa zona e não no centro do rect.
         var texto = CriarTexto("TextoBalao", balaoImg.transform, "", 40, TextAlignmentOptions.Center,
             new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero,
             CorBalao, PoppinsMedium, FontStyles.Normal);
         var tr = texto.rectTransform;
-        tr.offsetMin = new Vector2(80f, 90f);
-        tr.offsetMax = new Vector2(-80f, -60f);
+        tr.offsetMin = new Vector2(90f, 155f);   // fundo: acima do bico e da faixa do subtexto
+        tr.offsetMax = new Vector2(-90f, -45f);  // topo: dentro do contorno da bolha
         texto.raycastTarget = false;
 
+        // Linha secundária (ex.: dica da calibração) — caixa própria, sem máquina de escrever.
+        var textoSub = CriarTexto("TextoBalaoSub", balaoImg.transform, "", 26, TextAlignmentOptions.Center,
+            new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero,
+            new Color(CorBalao.r, CorBalao.g, CorBalao.b, 0.75f), PoppinsMedium, FontStyles.Normal);
+        var trSub = textoSub.rectTransform;
+        trSub.offsetMin = new Vector2(90f, 115f);
+        trSub.offsetMax = new Vector2(-90f, -265f);
+        textoSub.raycastTarget = false;
+        textoSub.gameObject.SetActive(false);    // só aparece quando há subtexto
+
         dlg.Painel         = conteudo;   // alterna o conteúdo, não a raiz
-        dlg.HelperImagem   = helperImg;
+        dlg.ImagemPatrick  = patrickImg;
+        dlg.ImagemJane     = janeImg;
         dlg.BalaoImagem    = balaoImg;
         dlg.TextoBalao     = texto;
+        dlg.TextoBalaoSub  = textoSub;
         dlg.SpritesJane    = SpritesHelper("Jane", NomesJane);
         dlg.SpritesPatrick = SpritesHelper("Patrick", NomesPatrick);
 
@@ -484,6 +558,10 @@ public class OmmoSceneBuilder
         go.AddComponent<SessionManager>();
         var cursor = go.AddComponent<CursorManager>();
         cursor.CursorTextura = UITexture("mouse");
+
+        // Sensor de pressão BLE — GameObject próprio: o Awake do BLEManager destrói
+        // o GO duplicado ao voltar à cena, por isso não pode partilhar o OmmoBootstrap.
+        CreateEmpty("BLEManager").AddComponent<BLEManager>();
     }
 
     static ScreenFader CriarFader()
@@ -578,28 +656,6 @@ public class OmmoSceneBuilder
         return tmp;
     }
 
-    static GameObject CriarBotaoSimples(string nome, Transform pai, string label, Color cor,
-        Vector2 aMin, Vector2 aMax, Vector2 pivot, Vector2 pos, Vector2 size)
-    {
-        var go   = new GameObject(nome);
-        go.transform.SetParent(pai, false);
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = aMin; rect.anchorMax = aMax; rect.pivot = pivot;
-        rect.anchoredPosition = pos; rect.sizeDelta = size;
-        go.AddComponent<Image>().color = cor;
-        go.AddComponent<Button>();
-
-        var lblGO = new GameObject("Label");
-        lblGO.transform.SetParent(go.transform, false);
-        var lblRect = lblGO.AddComponent<RectTransform>();
-        lblRect.anchorMin = Vector2.zero; lblRect.anchorMax = Vector2.one; lblRect.sizeDelta = Vector2.zero;
-        var tmp = lblGO.AddComponent<TextMeshProUGUI>();
-        tmp.text = label; tmp.fontSize = 28; tmp.color = Color.white;
-        tmp.fontStyle = FontStyles.Bold; tmp.alignment = TextAlignmentOptions.Center;
-        tmp.raycastTarget = false;
-        return go;
-    }
-
     static void StretchFull(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
@@ -661,14 +717,30 @@ public class OmmoSceneBuilder
 
     static GameObject CarregarPrefab(string path) => AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
-    static Sprite CarregarSpriteAsset(string path)
+    /// <summary>
+    /// Carrega um sprite garantindo os import settings de qualidade da UI: tipo Sprite,
+    /// sem compressão (a DXT cria blocos nas bordas), mipmaps + trilinear (sem serrilhado
+    /// quando a imagem é desenhada mais pequena que a textura). Idempotente — só reimporta
+    /// se algo estiver diferente, por isso cada Build Cenas re-normaliza os assets.
+    /// </summary>
+    static Sprite CarregarSpriteAsset(string path, int maxTextureSize = 2048)
     {
         var imp = AssetImporter.GetAtPath(path) as TextureImporter;
-        if (imp != null && imp.textureType != TextureImporterType.Sprite)
+        if (imp != null)
         {
-            imp.textureType      = TextureImporterType.Sprite;
-            imp.spriteImportMode = SpriteImportMode.Single;
-            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            bool mudou = false;
+            if (imp.textureType != TextureImporterType.Sprite)
+            {
+                imp.textureType      = TextureImporterType.Sprite;
+                imp.spriteImportMode = SpriteImportMode.Single;
+                mudou = true;
+            }
+            if (imp.textureCompression != TextureImporterCompression.Uncompressed)
+            { imp.textureCompression = TextureImporterCompression.Uncompressed; mudou = true; }
+            if (!imp.mipmapEnabled)                     { imp.mipmapEnabled = true;               mudou = true; }
+            if (imp.filterMode != FilterMode.Trilinear) { imp.filterMode = FilterMode.Trilinear;  mudou = true; }
+            if (imp.maxTextureSize != maxTextureSize)   { imp.maxTextureSize = maxTextureSize;    mudou = true; }
+            if (mudou) AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
         }
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
@@ -686,16 +758,38 @@ public class OmmoSceneBuilder
         return lista.ToArray();
     }
 
-    static TMP_FontAsset PoppinsExtraBold => AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{PastaFontes}/Poppins-ExtraBold SDF.asset");
-    static TMP_FontAsset PoppinsMedium    => AssetDatabase.LoadAssetAtPath<TMP_FontAsset>($"{PastaFontes}/Poppins-Medium SDF.asset");
+    static TMP_FontAsset PoppinsExtraBold => ObterFontePoppins("Poppins-ExtraBold");
+    static TMP_FontAsset PoppinsMedium    => ObterFontePoppins("Poppins-Medium");
+
+    /// <summary>Carrega o SDF do Poppins; se ainda não existir, gera-o a partir do TTF em Assets/Fonts.</summary>
+    static TMP_FontAsset ObterFontePoppins(string nome)
+    {
+        string caminho = $"{PastaFontes}/{nome} SDF.asset";
+        var fonte = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(caminho);
+        if (fonte == null)
+        {
+            PoppinsFontBuilder.CriarFontes();
+            fonte = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(caminho);
+        }
+        return fonte;
+    }
 
     // ── Sequências de diálogo (assets editáveis) ──────────────────────
     static HelperFala F(HelperId q, HelperEmocao e, string t)
         => new HelperFala { Quem = q, Emocao = e, Texto = t };
 
+    /// <summary>Introdução da calibração: a Jane e o Patrick apresentam-se e o jogo (avança por clique).</summary>
+    static HelperFala[] FalasIntroCalibracaoDefault() => new[]
+    {
+        F(HelperId.Jane,    HelperEmocao.Neutral,   "Bem-vindo ao PrevenGame!"),
+        F(HelperId.Jane,    HelperEmocao.Neutral,   "Eu sou a Jane e este é o meu colega Patrick. Vamos aparecer ao longo do jogo para te ajudar e motivar."),
+        F(HelperId.Patrick, HelperEmocao.Impressed, "Aqui vais encontrar vários minijogos para ajudar na tua reabilitação. Exercícios escolhidos a dedo e gamificados para ações reais em cenários reais."),
+        F(HelperId.Jane,    HelperEmocao.Laugh,     "Agora agarra o Ommo e vamos começar por calibrar."),
+    };
+
     static HelperFala[] FalasTutorialDefault()
     {
-        var h = HelperId.Patrick; // o outro helper (Jane calibra por defeito)
+        var h = HelperId.Patrick;
         return new[]
         {
             F(h, HelperEmocao.Pleased,   "Boa! Agora escolhe os teus minijogos aqui."),

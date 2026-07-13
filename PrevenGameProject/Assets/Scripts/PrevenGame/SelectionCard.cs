@@ -24,9 +24,11 @@ public class SelectionCard : MonoBehaviour
     public TextMeshProUGUI RepsRTexto;      // número (braço direito)
 
     [Header("Imagem / seleção")]
-    public Image      ImagemExercicio;      // animada no hover (CardAnimacaoHover)
-    public Button     BotaoSelecionar;      // o próprio card — alterna a seleção
-    public GameObject RealceSelecionado;    // moldura/realce visível quando selecionado
+    public Image  ImagemExercicio;      // animada no hover (CardAnimacaoHover)
+    public Button BotaoSelecionar;      // o próprio card — alterna a seleção
+    public Image  FundoCard;            // Image de fundo do card (troca de sprite ao selecionar)
+    public Sprite SpriteNormal;         // selectionCard.png
+    public Sprite SpriteSelecionado;    // selectionCardSelected.png
 
     [Header("Steppers")]
     public Button BotaoLMenos, BotaoLMais;
@@ -74,6 +76,11 @@ public class SelectionCard : MonoBehaviour
     {
         if (RepsLTexto) RepsLTexto.text = _repsL.ToString();
         if (RepsRTexto) RepsRTexto.text = _repsR.ToString();
-        if (RealceSelecionado) RealceSelecionado.SetActive(_selecionado);
+
+        if (FundoCard)
+        {
+            var alvo = _selecionado && SpriteSelecionado != null ? SpriteSelecionado : SpriteNormal;
+            if (alvo != null) FundoCard.sprite = alvo;
+        }
     }
 }

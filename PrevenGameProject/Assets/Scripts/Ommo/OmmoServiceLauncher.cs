@@ -28,6 +28,10 @@ public class OmmoServiceLauncher : MonoBehaviour
     void Start()
     {
         ServiceReady = false;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        // Janela do jogo/editor, para devolver o foco se o serviço o roubar ao arrancar.
+        _janelaJogo = GetActiveWindow();
+#endif
         string exePath = FindServicePath();
 
         if (string.IsNullOrEmpty(exePath))
@@ -84,16 +88,17 @@ public class OmmoServiceLauncher : MonoBehaviour
             {
                 FileName = exePath,
                 UseShellExecute = true,
-                // Minimizada: o serviço arranca para trás (barra de tarefas) em vez de
-                // aparecer em frente ao jogo/main menu. Não afeta o gRPC.
-                WindowStyle = ProcessWindowStyle.Minimized
+                // Hidden: o Qt respeita o STARTUPINFO no primeiro show da janela principal
+                // (SW_SHOWDEFAULT), por isso na maioria dos arranques o splash nem chega a
+                // aparecer. Não afeta o gRPC nem o ícone no system tray.
+                WindowStyle = ProcessWindowStyle.Hidden
             });
             UnityEngine.Debug.Log($"[OmmoLauncher] Lançado (PID {_launchedProcess.Id}). Warmup: {WarmupSeconds}s");
             StartCoroutine(WarmupThenReady(WarmupSeconds));
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-            // A app Qt do serviço mostra o seu próprio splash e ignora o WindowStyle. Escondemos
-            // as janelas do processo durante os primeiros segundos para o splash não aparecer à
-            // frente do jogo (o serviço continua a correr e vai para o system tray).
+            // Rede de segurança: janelas que o Qt mostre à força (splash/main window) são
+            // escondidas no próprio frame em que aparecem, e o foco volta ao jogo. O serviço
+            // continua a correr e fica acessível pelo ícone do system tray.
             StartCoroutine(EsconderJanelasServico(_launchedProcess.Id));
 #endif
         }
@@ -120,33 +125,59 @@ public class OmmoServiceLauncher : MonoBehaviour
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetActiveWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    // Delegate cacheado (evita alocar um novo por frame) + estado da enumeração.
+    private static readonly EnumWindowsProc _enumProc = JanelaEnumerada;
+    private static uint _pidAlvo;
+    private static bool _escondeuAlguma;
+    private static IntPtr _janelaJogo;
 
     IEnumerator EsconderJanelasServico(int pid)
     {
-        // O splash pode surgir com atraso e mudar de janela — repetimos durante alguns segundos.
-        float t = 0f;
-        while (t < 6f)
+        // O splash pode surgir a qualquer momento durante o arranque — verificamos TODOS os
+        // frames nos primeiros segundos, para nenhuma janela ficar visível mais de 1 frame.
+        float fim = Time.realtimeSinceStartup + 8f;
+        while (Time.realtimeSinceStartup < fim)
         {
-            EsconderJanelasDoProcesso(pid);
-            t += 0.2f;
-            yield return new WaitForSeconds(0.2f);
+            if (EsconderJanelasDoProcesso(pid) && _janelaJogo != IntPtr.Zero)
+                SetForegroundWindow(_janelaJogo); // o serviço roubou o foco — devolve-o ao jogo
+            yield return null;
         }
     }
 
-    static void EsconderJanelasDoProcesso(int pid)
+    /// <summary>Esconde as janelas visíveis do processo. True se escondeu alguma.</summary>
+    static bool EsconderJanelasDoProcesso(int pid)
     {
-        EnumWindows((hWnd, lParam) =>
+        _pidAlvo        = (uint)pid;
+        _escondeuAlguma = false;
+        EnumWindows(_enumProc, IntPtr.Zero);
+        return _escondeuAlguma;
+    }
+
+    static bool JanelaEnumerada(IntPtr hWnd, IntPtr lParam)
+    {
+        GetWindowThreadProcessId(hWnd, out uint janelaPid);
+        if (janelaPid == _pidAlvo && IsWindowVisible(hWnd))
         {
-            GetWindowThreadProcessId(hWnd, out uint janelaPid);
-            if (janelaPid == (uint)pid) ShowWindow(hWnd, SW_HIDE);
-            return true; // continua a enumerar
-        }, IntPtr.Zero);
+            ShowWindow(hWnd, SW_HIDE);
+            _escondeuAlguma = true;
+        }
+        return true; // continua a enumerar
     }
 #endif
 

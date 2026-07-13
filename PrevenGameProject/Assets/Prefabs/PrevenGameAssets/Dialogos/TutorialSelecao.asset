@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 519a3395fad2ade4ca396250f003a040, type: 3}
+  m_Name: TutorialSelecao
+  m_EditorClassIdentifier: 
+  Falas:
+  - Quem: 1
+    Emocao: 1
+    Texto: Boa! Agora escolhe os teus minijogos aqui.
+  - Quem: 1
+    Emocao: 0
+    Texto: "Passa o rato por cima de um card e ele mostra-te o exerc\xEDcio."
+  - Quem: 1
+    Emocao: 0
+    Texto: "Onde v\xEAs L e R escolhes as repeti\xE7\xF5es para o bra\xE7o esquerdo
+      e direito."
+  - Quem: 1
+    Emocao: 2
+    Texto: "Podes escolher v\xE1rios exerc\xEDcios ao mesmo tempo!"
+  - Quem: 1
+    Emocao: 3
+    Texto: "O nome do jogo e do exerc\xEDcio aparecem em cada card."
+  - Quem: 1
+    Emocao: 1
+    Texto: Quando estiveres pronto, carrega em START. Vamos a isto!
