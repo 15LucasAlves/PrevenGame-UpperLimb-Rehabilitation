@@ -11,4 +11,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MinijogoDardos.unity
     guid: bff27fbe11f0baf46ac037e171b3dda2
-  m_configObjects: {}
+  m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: abb4ce0f755a2c74abda9718ed614daa, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 0ef236fed6314c74ba65b4eca5811f2a, type: 2}

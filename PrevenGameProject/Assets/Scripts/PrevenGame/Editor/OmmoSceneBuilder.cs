@@ -100,10 +100,11 @@ public class OmmoSceneBuilder
         var calib = CriarPainel("CalibracaoPainel", canvas.transform);
         CriarImagemFull("CalibBg", calib.transform, UISprite("Background"), new Color(0.09f, 0.12f, 0.10f, 1f));
 
-        // ── Painel Seleção (fundo + selection box + cards + START/EXIT) ─
+        // ── Painel Seleção (camadas: bottom → selection box/cards → top → botões) ─
         var selecao = CriarPainel("SelecaoPainel", canvas.transform);
-        CriarImagemFull("SelecaoBg", selecao.transform, UISprite("mainMenuBackground"), new Color(0.09f, 0.12f, 0.10f, 1f));
+        CriarImagemFull("SelecaoBgBottom", selecao.transform, UISprite("mainMenuBackgroundBottom"), new Color(0.09f, 0.12f, 0.10f, 1f));
         var selUI = ConstruirSelecao(selecao.transform);
+        selUI.GrupoInteracao = selecao.AddComponent<CanvasGroup>(); // bloqueado durante o tutorial
 
         // ── Painel Score ──────────────────────────────────────────────
         var score = CriarPainel("ScorePainel", canvas.transform);
@@ -238,10 +239,11 @@ public class OmmoSceneBuilder
 
     static ScaffoldRefs ConstruirScaffoldOmmo(bool comCalibracao = true)
     {
-        var appManager = CreateEmpty("AppManager");
-        var monitor    = appManager.AddComponent<OmmoHardwareMonitor>();
-        var devManager = appManager.AddComponent<OmmoDeviceManager>();
-        var sensorMgr  = appManager.AddComponent<OmmoSensorManager>();
+        var appManager  = CreateEmpty("AppManager");
+        var monitor     = appManager.AddComponent<OmmoHardwareMonitor>();
+        var devManager  = appManager.AddComponent<OmmoDeviceManager>();
+        var sensorMgr   = appManager.AddComponent<OmmoSensorManager>();
+        var autoPairing = appManager.AddComponent<OmmoAutoPairing>();
 
         // BaseStation (origem do tracking) — invisível.
         var baseStation = CreateEmpty("BaseStation");
@@ -266,6 +268,7 @@ public class OmmoSceneBuilder
 
         sensorMgr.DeviceManager   = devManager;
         sensorMgr.HardwareMonitor = monitor;
+        sensorMgr.AutoPairing     = autoPairing;
 
         var esqueleto = CreateEmpty("EsqueletoJogador").AddComponent<OmmoEsqueletoJogador>();
 
@@ -275,7 +278,10 @@ public class OmmoSceneBuilder
             calib = appManager.AddComponent<OmmoCalibracaoManager>();
             calib.SensorManager = sensorMgr;
             calib.Esqueleto     = esqueleto;
-            calib.Pressao       = appManager.AddComponent<EntradaPressao>();
+            var pressao         = appManager.AddComponent<EntradaPressao>();
+            pressao.FiltroNome  = "GRASP"; // o sensor de pressão anuncia-se como GRASP_x.y.z
+            calib.Pressao       = pressao;
+            calib.AutoPairing   = autoPairing;
         }
 
         return new ScaffoldRefs { SensorMgr = sensorMgr, Esqueleto = esqueleto, Calib = calib };
@@ -339,14 +345,6 @@ public class OmmoSceneBuilder
         scroll.movementType      = ScrollRect.MovementType.Clamped;
         scroll.scrollSensitivity = 30f;
 
-        // START / EXIT.
-        var start = CriarBotaoImagem("BotaoStart", pai, UISprite("startButton"), UISprite("startButtonHover"),
-            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-110f, -75f), new Vector2(260f, 110f));
-        start.transform.localScale = Vector3.one * 1.4f;
-        var exit  = CriarBotaoImagem("BotaoExit", pai, UISprite("exitButton"), UISprite("exitButtonHover"),
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(110f, -75f), new Vector2(260f, 110f));
-        exit.transform.localScale = Vector3.one * 1.4f;
-
         // Cards — um por exercício (4).
         var tipos = new[]
         {
@@ -358,6 +356,20 @@ public class OmmoSceneBuilder
         var cards = new SelectionCard[tipos.Length];
         for (int i = 0; i < tipos.Length; i++)
             cards[i] = ConstruirCard(content.transform, tipos[i]);
+
+        // Camada TOP do fundo — desenhada DEPOIS dos cards para o scroll deslizar
+        // "por dentro" da moldura (integração seamless). Sem raycast para não
+        // bloquear os cliques nos cards/scroll por baixo.
+        var topo = CriarImagemFull("SelecaoBgTop", pai, UISprite("mainMenuBackgroundTop"), new Color(0f, 0f, 0f, 0f));
+        topo.raycastTarget = false;
+
+        // START / EXIT — por cima da camada top para continuarem clicáveis.
+        var start = CriarBotaoImagem("BotaoStart", pai, UISprite("startButton"), UISprite("startButtonHover"),
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-110f, -75f), new Vector2(260f, 110f));
+        start.transform.localScale = Vector3.one * 1.4f;
+        var exit  = CriarBotaoImagem("BotaoExit", pai, UISprite("exitButton"), UISprite("exitButtonHover"),
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(110f, -75f), new Vector2(260f, 110f));
+        exit.transform.localScale = Vector3.one * 1.4f;
 
         var selGO = CreateEmpty("MinigameSelectionUI");
         var selUI = selGO.AddComponent<MinigameSelectionUI>();
@@ -705,7 +717,19 @@ public class OmmoSceneBuilder
     // ── Assets ────────────────────────────────────────────────────────
     static Sprite UISprite(string nome) => CarregarSpriteAsset($"{PastaUI}/{nome}.png");
 
-    static Texture2D UITexture(string nome) => AssetDatabase.LoadAssetAtPath<Texture2D>($"{PastaUI}/{nome}.png");
+    /// <summary>Textura para cursor de hardware — o Cursor.SetCursor exige Read/Write ativo.</summary>
+    static Texture2D UITexture(string nome)
+    {
+        string path = $"{PastaUI}/{nome}.png";
+        var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (imp != null && (imp.textureType != TextureImporterType.Cursor || !imp.isReadable))
+        {
+            imp.textureType = TextureImporterType.Cursor;
+            imp.isReadable  = true;
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        }
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
 
     static Sprite[] SpritesHelper(string subpasta, string[] nomes)
     {

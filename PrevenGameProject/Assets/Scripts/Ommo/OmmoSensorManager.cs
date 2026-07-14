@@ -18,6 +18,8 @@ public class OmmoSensorManager : MonoBehaviour
     [Header("Referências de Hardware")]
     public OmmoDeviceManager DeviceManager;
     public OmmoHardwareMonitor HardwareMonitor;
+    [Tooltip("Emparelhamento automático do SIU enquanto se espera por sensores. Pode ser null.")]
+    public OmmoAutoPairing AutoPairing;
 
     [Header("UI de Ligação (opcional)")]
     [Tooltip("Canvas exibido enquanto os sensores não estão prontos. Pode ser null.")]
@@ -47,6 +49,7 @@ public class OmmoSensorManager : MonoBehaviour
     private bool _motorEmInicio     = false;
     private bool _trackerSolicitado = false;
     private int  _sensoresNecessarios = 0; // definido pelo modo selecionado
+    private string _ultimoEstadoHardware = ""; // throttle do log de diagnóstico
 
     // ── Unity ─────────────────────────────────────────────────────────
 
@@ -79,6 +82,14 @@ public class OmmoSensorManager : MonoBehaviour
                 OcultarPainelALigar();
             else if (_trackingIniciado && contagem < _sensoresNecessarios)
                 MostrarPainelALigar(MensagemEspera());
+        }
+
+        // Emparelhamento automático: ativo apenas enquanto faltam sensores.
+        if (AutoPairing != null && _trackingIniciado)
+        {
+            bool faltamSensores = NumeroSensores < _sensoresNecessarios;
+            if      (faltamSensores && ServicoAtivo && !AutoPairing.Ativo) AutoPairing.Iniciar();
+            else if (!faltamSensores && AutoPairing.Ativo)                 AutoPairing.Parar();
         }
     }
 
@@ -200,6 +211,22 @@ public class OmmoSensorManager : MonoBehaviour
 
     void AoHardwareAtualizado(OmmoHardwareMonitor.ServiceInfo info)
     {
+        // Diagnóstico enquanto se espera por sensores: o que o serviço vê ao nível do
+        // hardware (distingue "SIU emparelhado mas sem tracking" de "SIU invisível").
+        if (_trackingIniciado && NumeroSensores < _sensoresNecessarios)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var d in info.Connected)
+                sb.Append($"{(d.IsBaseStation ? "BaseStation" : d.IsSIU ? "SIU" : "Recetor")} " +
+                          $"'{d.Name}' ({(d.IsRunning ? "running" : "parado")}); ");
+            string estado = sb.Length > 0 ? sb.ToString() : "nenhum dispositivo";
+            if (estado != _ultimoEstadoHardware)
+            {
+                _ultimoEstadoHardware = estado;
+                Debug.Log("[OmmoSensorManager] Hardware visto pelo serviço: " + estado);
+            }
+        }
+
         // Inicia motor quando tracking estiver ativo e base station ainda não a girar
         if (_trackingIniciado && !_motorEmInicio)
         {

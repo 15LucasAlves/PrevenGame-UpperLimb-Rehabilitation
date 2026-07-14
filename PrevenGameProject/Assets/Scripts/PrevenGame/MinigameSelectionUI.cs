@@ -15,6 +15,9 @@ public class MinigameSelectionUI : MonoBehaviour
     public Button BotaoStart;
     public Button BotaoExit;
 
+    [Tooltip("CanvasGroup do painel — a interação fica bloqueada enquanto o tutorial fala.")]
+    public CanvasGroup GrupoInteracao;
+
     [Tooltip("Cena de minijogo a carregar (por agora todos os exercícios usam a cena dos dardos).")]
     public string CenaMinijogo = "MinijogoDardos";
 
@@ -33,13 +36,26 @@ public class MinigameSelectionUI : MonoBehaviour
         BotaoExit?.onClick.AddListener(Sair);
     }
 
-    /// <summary>Mostra o ecrã e reproduz o tutorial dos helpers.</summary>
+    /// <summary>Mostra o ecrã e reproduz o tutorial; a seleção só fica interativa no fim.</summary>
     public void Mostrar(HelperDialogueManager dialogo, List<HelperFala> tutorial)
     {
         Wire();
         gameObject.SetActive(true);
+
         if (dialogo != null && tutorial != null && tutorial.Count > 0)
-            dialogo.Reproduzir(tutorial);
+        {
+            DefinirInteracao(false); // sem cliques nos cards/botões enquanto o tutorial fala
+            dialogo.Reproduzir(tutorial, () => DefinirInteracao(true));
+        }
+        else DefinirInteracao(true);
+    }
+
+    /// <summary>Liga/desliga a interação com todo o ecrã de seleção (cards, steppers, botões, scroll).</summary>
+    void DefinirInteracao(bool ativa)
+    {
+        if (GrupoInteracao == null) return;
+        GrupoInteracao.interactable   = ativa;
+        GrupoInteracao.blocksRaycasts = ativa;
     }
 
     void Iniciar()

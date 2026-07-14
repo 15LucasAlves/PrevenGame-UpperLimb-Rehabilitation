@@ -40,6 +40,8 @@ public class OmmoCalibracaoManager : MonoBehaviour
     [Header("Entrada de captura")]
     [Tooltip("Serviço de pressão BLE (opcional). Enter funciona sempre como fallback.")]
     public EntradaPressao Pressao;
+    [Tooltip("Emparelhamento automático do SIU (opcional) — dá feedback no balão quando emparelha.")]
+    public OmmoAutoPairing AutoPairing;
     [Tooltip("Tempo mínimo entre duas capturas (segundos) — evita capturas duplas.")]
     public float DebounceCaptura = 0.75f;
 
@@ -53,6 +55,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
     private OmmoDevice _devicePalma;
     private bool  _ativo;
     private bool  _introTerminada;
+    private bool  _confirmacaoAgendada;
     private bool  _pressaoPendente;
     private float _ultimaCaptura = -999f;
 
@@ -73,19 +76,22 @@ public class OmmoCalibracaoManager : MonoBehaviour
     {
         if (SensorManager) SensorManager.OnNumeroDeSensoresMudou -= AoNumeroDeSensoresMudou;
         if (Pressao)       Pressao.OnPressao -= AoPressao;
+        if (AutoPairing)   AutoPairing.OnSiuEmparelhado -= AoSiuEmparelhado;
     }
 
     /// <summary>Arranca a calibração: intro dos helpers + tracking do sensor em paralelo.</summary>
     public void IniciarCalibracao()
     {
         if (_ativo) return;
-        _ativo           = true;
-        _estado          = EstadoCalibracao.AguardarSensores;
-        _introTerminada  = false;
-        _pressaoPendente = false;
+        _ativo               = true;
+        _estado              = EstadoCalibracao.AguardarSensores;
+        _introTerminada      = false;
+        _confirmacaoAgendada = false;
+        _pressaoPendente     = false;
 
         if (SensorManager) SensorManager.IniciarTracking(1);
         if (Pressao)       Pressao.OnPressao += AoPressao;
+        if (AutoPairing)   AutoPairing.OnSiuEmparelhado += AoSiuEmparelhado;
 
         if (Dialogo != null && IntroSeq != null && IntroSeq.TemFalas)
         {
@@ -140,17 +146,30 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     void TentarComecarCapturas()
     {
+        // Nunca interrompe a intro: isto só corre depois de o jogador a ver toda.
         if (!_introTerminada || _estado != EstadoCalibracao.AguardarSensores) return;
 
         if (_devicePalma == null)
         {
             // A intro acabou mas o sensor ainda não ligou — informa e fica à espera
             // (AoNumeroDeSensoresMudou volta a chamar isto quando ligar).
-            Debug.Log("[Calibracao] Sem sensor — a mostrar linha de espera.");
+            Debug.Log("[Calibracao] Sem sensor — a mostrar linha de espera (auto-pairing ativo).");
             Dialogo?.MostrarLinha(HelperId.Patrick, HelperEmocao.Neutral, "A aguardar sensor...");
             return;
         }
 
+        // Sensor presente: confirmação breve para o jogador perceber que o
+        // dispositivo foi reconhecido, e só depois começam as capturas.
+        if (_confirmacaoAgendada) return;
+        _confirmacaoAgendada = true;
+        Debug.Log("[Calibracao] Sensor ligado — confirmação antes das capturas.");
+        Dialogo?.MostrarLinha(HelperId.Patrick, HelperEmocao.Pleased, "Sensor ligado!");
+        Invoke(nameof(ComecarCapturas), 1.2f);
+    }
+
+    void ComecarCapturas()
+    {
+        if (!_ativo || _estado != EstadoCalibracao.AguardarSensores) return;
         Debug.Log("[Calibracao] A começar as capturas (braço direito primeiro).");
         _pressaoPendente = false;
         _ultimaCaptura   = Time.unscaledTime; // debounce inicial: nada captura no 1º instante
@@ -162,6 +181,18 @@ public class OmmoCalibracaoManager : MonoBehaviour
     void AoPressao()
     {
         if (EmCaptura()) _pressaoPendente = true;
+    }
+
+    /// <summary>
+    /// Feedback no balão quando o auto-pairing aprova o SIU. Só na fase de ESPERA —
+    /// nunca interrompe a intro (o MostrarLinha mataria a sequência) nem as capturas.
+    /// O fluxo avança sozinho quando o OmmoDevice ligar.
+    /// </summary>
+    void AoSiuEmparelhado(uint uuid)
+    {
+        if (!_ativo || !_introTerminada || _confirmacaoAgendada) return;
+        if (_estado != EstadoCalibracao.AguardarSensores || _devicePalma != null) return;
+        Dialogo?.MostrarLinha(HelperId.Patrick, HelperEmocao.Pleased, "Sensor emparelhado!");
     }
 
     // ── Captura ───────────────────────────────────────────────────────
@@ -233,7 +264,8 @@ public class OmmoCalibracaoManager : MonoBehaviour
     void EmitirConclusao()
     {
         _ativo = false;
-        if (Pressao) Pressao.OnPressao -= AoPressao;
+        if (Pressao)     Pressao.OnPressao -= AoPressao;
+        if (AutoPairing) AutoPairing.OnSiuEmparelhado -= AoSiuEmparelhado;
         OnCalibracaoConcluida?.Invoke();
     }
 

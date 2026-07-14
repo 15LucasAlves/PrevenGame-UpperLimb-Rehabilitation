@@ -23,7 +23,6 @@ public class OmmoServiceLauncher : MonoBehaviour
     public static bool ServiceReady { get; private set; } = false;
 
     private Process _launchedProcess;
-    private bool _wasAlreadyRunning = false;
 
     void Start()
     {
@@ -44,8 +43,8 @@ public class OmmoServiceLauncher : MonoBehaviour
 
         if (IsServiceRunning())
         {
-            UnityEngine.Debug.Log("[OmmoLauncher] Serviço já está a correr.");
-            _wasAlreadyRunning = true;
+            UnityEngine.Debug.LogWarning("[OmmoLauncher] Serviço já estava a correr (instância pré-existente — " +
+                "pode ter uma pasta data/ e um pairing diferentes). Será fechada ao sair do jogo.");
             StartCoroutine(WarmupThenReady(0.5f)); // pequeno delay para garantir
             return;
         }
@@ -53,10 +52,22 @@ public class OmmoServiceLauncher : MonoBehaviour
         LaunchService(exePath);
     }
 
-    void OnDestroy()
+    void OnDestroy()         => MatarServico();
+    void OnApplicationQuit() => MatarServico();
+
+    /// <summary>
+    /// Mata o serviço Ommo por completo: o processo lançado por nós E qualquer outra
+    /// instância com o mesmo nome (deixada por um crash ou lançada à parte). Instâncias
+    /// órfãs têm a sua própria pasta data/ com um pairing diferente — é isso que faz o
+    /// hand sensor "desaparecer" — por isso o jogo é o dono do ciclo de vida do serviço.
+    /// </summary>
+    void MatarServico()
     {
         ServiceReady = false;
-        if (KillOnExit && !_wasAlreadyRunning && _launchedProcess != null)
+        if (!KillOnExit) return;
+
+        // 1. O processo que nós lançámos.
+        if (_launchedProcess != null)
         {
             try
             {
@@ -73,8 +84,28 @@ public class OmmoServiceLauncher : MonoBehaviour
             }
             finally
             {
-                _launchedProcess?.Dispose();
+                _launchedProcess.Dispose();
                 _launchedProcess = null;
+            }
+        }
+
+        // 2. Instâncias restantes com o mesmo nome (pré-existentes/órfãs).
+        string procName = Path.GetFileNameWithoutExtension(ServiceExeName);
+        foreach (var p in Process.GetProcessesByName(procName))
+        {
+            try
+            {
+                UnityEngine.Debug.Log($"[OmmoLauncher] A fechar instância do serviço (PID {p.Id})...");
+                p.Kill();
+                p.WaitForExit(3000);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"[OmmoLauncher] Erro ao fechar PID {p.Id}: {e.Message}");
+            }
+            finally
+            {
+                p.Dispose();
             }
         }
     }

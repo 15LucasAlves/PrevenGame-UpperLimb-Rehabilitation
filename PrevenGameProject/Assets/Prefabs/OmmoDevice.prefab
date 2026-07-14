@@ -24,13 +24,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8943082321474722907}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 1, y: 1, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: -2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &541638502652144822
 MonoBehaviour:
@@ -44,6 +44,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20ef30a5075350d4bba6e6a9d76b5eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SensorPrefab: {fileID: 5977318967389583148, guid: 8be5ac1fb13324b4480d614817d4dd25, type: 3}
-  RequestedMode: 0
-  DebugIntervalSegundos: 1
+  SensorPrefab: {fileID: 7474997334774903918, guid: 696a468bc0c157b489fbeb54f314ec36, type: 3}
