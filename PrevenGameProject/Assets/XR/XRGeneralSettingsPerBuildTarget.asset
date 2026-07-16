@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d236b7d11115f2143951f1e14045df39, type: 3}
   m_Name: Standalone Settings
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   m_LoaderManagerInstance: {fileID: -380424520563721537}
   m_InitManagerOnStart: 1
 --- !u!114 &-8363577346359033181

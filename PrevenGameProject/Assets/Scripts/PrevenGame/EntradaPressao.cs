@@ -31,7 +31,7 @@ public class EntradaPressao : MonoBehaviour
     [Tooltip("Tempo mínimo entre duas pressões aceites (segundos).")]
     public float DebounceSegundos = 0.5f;
     [Tooltip("Escreve no log os valores recebidos (1×/segundo) — útil para afinar o Limiar.")]
-    public bool LogValores = true;
+    public bool LogValores = false;
 
     /// <summary>
     /// Leitura contínua do sensor em MÓDULO (máx. de |w1| e |w2|) — o dispositivo emite

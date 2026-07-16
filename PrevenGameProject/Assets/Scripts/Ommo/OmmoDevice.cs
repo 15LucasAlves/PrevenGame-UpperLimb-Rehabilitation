@@ -15,7 +15,11 @@ public class OmmoDevice : MonoBehaviour
     private CancellationTokenSource _source;
     private CancellationToken _token;
 
-    private Vector3 _basePosition;
+    // Referencial do espaço Ommo (o transform do BaseStation/OmmoRoot). As posições
+    // dos sensores chegam relativas à base station física; aplicar o referencial
+    // completo (posição+rotação) permite ancorar todo o espaço Ommo no mundo VR
+    // (via QR code). Só pode ser lido no main thread.
+    private Transform _referencial;
     private Vector3[] _sensorPositions;
     private Quaternion[] _sensorOrientations;
     private bool _primeirosDadosRecebidos = false;
@@ -34,7 +38,7 @@ public class OmmoDevice : MonoBehaviour
 
     [Header("Debug")]
     [Tooltip("Intervalo em segundos entre cada linha de debug na consola (0 = desativado).")]
-    public float DebugIntervalSegundos = 1f;
+    public float DebugIntervalSegundos = 0f;
     private float _debugTimer = 0f;
 
     // TODO: make this a singleton
@@ -65,8 +69,8 @@ public class OmmoDevice : MonoBehaviour
         {
             if (_sensors[i] != null)
             {
-                _sensors[i].transform.position = _basePosition + _sensorPositions[i];
-                _sensors[i].transform.rotation = _sensorOrientations[i];
+                _sensors[i].transform.position = TransformarPosicao(_sensorPositions[i]);
+                _sensors[i].transform.rotation = TransformarRotacao(_sensorOrientations[i]);
             }
         }
 
@@ -80,8 +84,8 @@ public class OmmoDevice : MonoBehaviour
         sb.Append($"[OmmoDevice] {gameObject.name} | {_sensorPositions.Length} sensor(es)\n");
         for (int i = 0; i < _sensorPositions.Length; i++)
         {
-            Vector3  pos = _basePosition + _sensorPositions[i];
-            Vector3  posCM = pos * _unityScaleInCM; // converte de volta para cm para facilitar leitura
+            Vector3  pos = TransformarPosicao(_sensorPositions[i]);
+            Vector3  posCM = _sensorPositions[i] * _unityScaleInCM; // local (Ommo) em cm para facilitar leitura
             Quaternion rot = _sensorOrientations[i];
             sb.Append($"  S{i} | pos Unity: ({pos.x:F3}, {pos.y:F3}, {pos.z:F3})" +
                       $"  cm: ({posCM.x:F1}, {posCM.y:F1}, {posCM.z:F1})" +
@@ -100,10 +104,21 @@ public class OmmoDevice : MonoBehaviour
         _client = client;
     }
 
-    public void SetBasePosition(Vector3 basePosition)
+    /// <summary>
+    /// Define o referencial do espaço Ommo (transform do BaseStation/OmmoRoot).
+    /// As posições/rotações dos sensores passam a ser expressas neste referencial —
+    /// mover/rodar o referencial (ex.: ancorar no QR) move todo o espaço Ommo.
+    /// </summary>
+    public void DefinirReferencial(Transform referencial)
     {
-        _basePosition = basePosition;
+        _referencial = referencial;
     }
+
+    private Vector3 TransformarPosicao(Vector3 local)
+        => _referencial != null ? _referencial.TransformPoint(local) : local;
+
+    private Quaternion TransformarRotacao(Quaternion local)
+        => _referencial != null ? _referencial.rotation * local : local;
 
     public void SetDeviceDescriptor(Ommo.DeviceDescriptor device)
     {
@@ -113,7 +128,8 @@ public class OmmoDevice : MonoBehaviour
         Debug.Log("SetDeviceDescriptor - sensorCount " + sensorCount);
         for (int i = 0; i < sensorCount; i++)
         {
-            _sensors.Add(Instantiate(SensorPrefab, _basePosition, Quaternion.identity, gameObject.transform));
+            Vector3 posInicial = _referencial != null ? _referencial.position : Vector3.zero;
+            _sensors.Add(Instantiate(SensorPrefab, posInicial, Quaternion.identity, gameObject.transform));
         }
 
         _sensorPositions    = new Vector3[sensorCount];
@@ -185,25 +201,25 @@ public class OmmoDevice : MonoBehaviour
     public int NumeroSensores => _sensors.Count;
 
     /// <summary>
-    /// Posição do sensor no espaço Unity (relativa à BaseStation).
+    /// Posição do sensor no espaço mundo Unity (através do referencial do BaseStation).
     /// Devolve Vector3.zero se o índice for inválido ou não houver dados ainda.
     /// </summary>
     public Vector3 ObterPosicaoSensor(int indice)
     {
         if (_sensorPositions == null || indice < 0 || indice >= _sensorPositions.Length)
             return Vector3.zero;
-        return _basePosition + _sensorPositions[indice];
+        return TransformarPosicao(_sensorPositions[indice]);
     }
 
     /// <summary>
-    /// Rotação do sensor no espaço Unity.
+    /// Rotação do sensor no espaço mundo Unity (através do referencial do BaseStation).
     /// Devolve Quaternion.identity se o índice for inválido.
     /// </summary>
     public Quaternion ObterRotacaoSensor(int indice)
     {
         if (_sensorOrientations == null || indice < 0 || indice >= _sensorOrientations.Length)
             return Quaternion.identity;
-        return _sensorOrientations[indice];
+        return TransformarRotacao(_sensorOrientations[indice]);
     }
 
     /// <summary>Transform do GameObject filho que representa o sensor (para referência visual).</summary>

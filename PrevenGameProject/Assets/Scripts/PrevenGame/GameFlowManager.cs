@@ -70,6 +70,7 @@ public class GameFlowManager : MonoBehaviour
     void IniciarSplash()
     {
         _fase = Fase.Splash;
+        GestorXR.Instancia?.ModoMonitor();
         SetPainel(SplashPainel, true);
         _aguardaCliqueSplash = true;
     }
@@ -110,6 +111,7 @@ public class GameFlowManager : MonoBehaviour
     void IniciarSelecao()
     {
         _fase = Fase.Selecao;
+        GestorXR.Instancia?.ModoMonitor(); // seleção é no monitor (o HMD mostra o placard)
         SetPainel(SelecaoPainel, true);
         if (Selecao) Selecao.Mostrar(Dialogo, FalasTutorial());
     }
@@ -143,6 +145,7 @@ public class GameFlowManager : MonoBehaviour
     void IniciarScore()
     {
         _fase = Fase.Score;
+        GestorXR.Instancia?.ModoMonitor(); // após os minijogos volta-se ao monitor
         SetPainel(ScorePainel, true);
 
         var sm = SessionManager.Instancia;
@@ -161,6 +164,9 @@ public class GameFlowManager : MonoBehaviour
             float media = scores.Count > 0 ? total / scores.Count : 0f;
             sb.AppendLine($"\nMédia: {media:F0} %");
             ScoreTexto.text = sb.ToString();
+
+            // SFX da banda do score (amazing/good/bad).
+            if (scores.Count > 0) GestorAudio.Instancia?.TocarScoreBanda(media);
         }
 
         if (Dialogo != null)

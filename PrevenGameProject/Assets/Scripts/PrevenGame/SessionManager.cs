@@ -23,9 +23,17 @@ public class SessionManager : MonoBehaviour
     [System.Serializable]
     public struct DadosBraco
     {
-        public Vector3 PosOmbro;
+        public Vector3 PosOmbro;          // posição mundo no momento da calibração (fallback sem VR)
         public float   ComprimentoBraco;
-        public Vector3 DirecaoFrente;
+        public Vector3 DirecaoFrente;     // direção frente mundo no momento da calibração (fallback)
+
+        // Capturados com o headset posto: o ombro passa a seguir a POSIÇÃO da câmara
+        // VR em runtime (ver RastreadorCorpoJogador). Expressos no referencial
+        // yaw-local da cabeça no instante da captura.
+        public Vector3 OffsetOmbroLocalCabeca; // posOmbro − posCabeça, rodado para yaw-local
+        public Vector3 DirecaoFrenteLocal;     // DirecaoFrente em yaw-local
+        public bool    TemDadosCabeca;
+
         public bool    Valido;
     }
 
@@ -40,6 +48,22 @@ public class SessionManager : MonoBehaviour
     public Vector3 PosOmbro         { get; private set; }
     public float   ComprimentoBraco { get; private set; }
     public Vector3 DirecaoFrente    { get; private set; }
+
+    // ── Alinhamento Ommo↔VR (QR na base station) ──────────────────────
+    /// <summary>
+    /// Pose (mundo Unity/VR) da origem do espaço de tracking Ommo, obtida pelo
+    /// <see cref="AlinhadorOmmoQr"/> a partir do QR colado na base station.
+    /// Persiste entre cenas: cada cena aplica-a ao seu BaseStation/OmmoRoot no
+    /// arranque sem re-detetar o QR.
+    /// </summary>
+    public Pose AlinhamentoOmmo   { get; private set; }
+    public bool AlinhamentoValido { get; private set; }
+
+    public void GuardarAlinhamentoOmmo(Pose pose)
+    {
+        AlinhamentoOmmo   = pose;
+        AlinhamentoValido = true;
+    }
 
     // ── Fila de minijogos + scores ────────────────────────────────────
     public struct Minijogo
@@ -77,15 +101,27 @@ public class SessionManager : MonoBehaviour
     }
 
     // ── Calibração ────────────────────────────────────────────────────
-    /// <summary>Guarda a calibração de um braço (direito ou esquerdo).</summary>
+    /// <summary>Guarda a calibração de um braço (direito ou esquerdo), sem dados de cabeça (fallback sem VR).</summary>
     public void GuardarCalibracaoBraco(bool direito, Vector3 ombro, float comprimento, Vector3 direcao)
+        => GuardarCalibracaoBraco(direito, ombro, comprimento, direcao,
+                                  Vector3.zero, Vector3.zero, temDadosCabeca: false);
+
+    /// <summary>
+    /// Guarda a calibração de um braço com os offsets relativos à cabeça (headset posto):
+    /// o ombro passa a poder ser derivado da posição da câmara VR em runtime.
+    /// </summary>
+    public void GuardarCalibracaoBraco(bool direito, Vector3 ombro, float comprimento, Vector3 direcao,
+                                       Vector3 offsetOmbroLocalCabeca, Vector3 direcaoFrenteLocal, bool temDadosCabeca)
     {
         var dados = new DadosBraco
         {
-            PosOmbro         = ombro,
-            ComprimentoBraco = comprimento,
-            DirecaoFrente    = direcao,
-            Valido           = true,
+            PosOmbro               = ombro,
+            ComprimentoBraco       = comprimento,
+            DirecaoFrente          = direcao,
+            OffsetOmbroLocalCabeca = offsetOmbroLocalCabeca,
+            DirecaoFrenteLocal     = direcaoFrenteLocal,
+            TemDadosCabeca         = temDadosCabeca,
+            Valido                 = true,
         };
 
         if (direito)

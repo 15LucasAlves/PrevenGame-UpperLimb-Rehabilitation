@@ -114,7 +114,7 @@ EsqueletoJogador ← OmmoEsqueletoJogador (membro superior)
 `Splash (tap→fade)` → `Calibração (helper guia; grava no SessionManager)` → `Seleção (tutorial do outro helper; escolhe exercícios + reps L/R; START)` → carrega `MinijogoDardos` por cada minijogo (ESC=pausa) → ao terminar volta a `Menu` em `Score` (helpers comentam) → tap → `Splash`. Já calibrado, o próximo START salta a calibração.
 
 ### Assets de UI (Assets/Prefabs/PrevenGameAssets/UIAssets/)
-`firstMenu` (splash), `mainMenuBackground`, botões `start/exit/continue/mainMenu/exitGame` (+ `Hover`), `selectionCard`, `balãoDeFala`, `mouse`, helpers `Jane/` e `Patrick/` (7 emoções cada). Animações de exercício em `Exercises/<Tipo>/1..5.png` (`<Tipo>` = `FlexaoBraco`/`ElevacaoTotal`/`AbducaoLateral`/`FlexaoCotovelo`). Fontes Poppins esperadas em `Assets/Fonts/Poppins-ExtraBold SDF.asset` e `Poppins-Medium SDF.asset` (fallback LiberationSans).
+`firstMenu` (splash), `mainMenuBackground`, botões `start/exit/continue/mainMenu/exitGame` (+ `Hover`), `selectionCard`, `balãoDeFala`, `mouse`, helpers `Jane/` e `Patrick/` (7 emoções cada). Animações de exercício em `Exercises/<prefixo>_1..5.png` (prefixos do artista: `flexãoDoBraço`/`elevaçãoTotal`/`abduçãoLateral`/`flexãoHorizontal` → enum `FlexaoBraco`/`ElevacaoTotal`/`AbducaoLateral`/`FlexaoCotovelo`; o builder copia-as para `Assets/Resources/Exercises/<Tipo>/<n>.png` para o HudVR carregar em runtime). Fontes Poppins esperadas em `Assets/Fonts/Poppins-ExtraBold SDF.asset` e `Poppins-Medium SDF.asset` (fallback LiberationSans).
 
 ### Dados expostos por sensor
 

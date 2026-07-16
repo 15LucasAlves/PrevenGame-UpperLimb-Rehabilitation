@@ -31,10 +31,10 @@ public class OmmoSensorFilter
 
     /// <summary>
     /// Velocidade máxima esperada do sensor em Unity units/s.
-    /// 1 Unity unit = 10 cm. Predefinição: 20.0 u/s ≈ 200 cm/s ≈ 2 m/s
+    /// 1 Unity unit = 1 m. Predefinição: 2.0 u/s = 2 m/s
     /// (cobre movimentos rápidos de braço em reabilitação).
     /// </summary>
-    public float MaxVelocidade = 20.0f;
+    public float MaxVelocidade = 2.0f;
 
     /// <summary>
     /// Taxa de aceitação alvo (amostras/segundo).

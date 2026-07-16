@@ -19,11 +19,10 @@ public class OmmoDeviceManager : MonoBehaviour
     [Tooltip("GameObject representing the base station.")]
     public GameObject BaseStation;
 
-    [Tooltip("Scale for 1 Unity value in centimeters.")]
-    public float UnityScaleInCM = 10;
+    [Tooltip("Scale for 1 Unity value in centimeters. 100 = 1 unidade Unity é 1 metro (obrigatório para VR/MRUK).")]
+    public float UnityScaleInCM = 100;
 
     private Dictionary<uint, GameObject> _deviceTypePrefabDict = new Dictionary<uint, GameObject>();
-    private Vector3 _basePosition;
     private Ommo.Client _client;
 
     private SortedSet<Ommo.DeviceDescriptor> _devices =
@@ -41,7 +40,6 @@ public class OmmoDeviceManager : MonoBehaviour
             BaseStation = new GameObject("Base Station");
             BaseStation.transform.position = Vector3.zero;
         }
-        _basePosition = BaseStation.transform.position;
 
         if (DeviceTypePrefabs == null || DeviceTypePrefabs.Length == 0)
         {
@@ -172,7 +170,7 @@ public class OmmoDeviceManager : MonoBehaviour
 
             var device = Instantiate(
                 _deviceTypePrefabDict[key],
-                _basePosition, Quaternion.identity).GetComponent<OmmoDevice>();
+                BaseStation.transform.position, Quaternion.identity).GetComponent<OmmoDevice>();
 
             // O prefab template está SetActive(false) para não aparecer na cena como objeto solto.
             // A cópia instanciada herda esse estado, por isso é preciso ativá-la explicitamente.
@@ -181,7 +179,7 @@ public class OmmoDeviceManager : MonoBehaviour
             device.gameObject.SetActive(true);
 
             device.gameObject.name = $"OmmoDevice_{deviceInfo.SiuUuid}_{deviceInfo.PortId}";
-            device.SetBasePosition(_basePosition);
+            device.DefinirReferencial(BaseStation.transform);
             device.SetUnityScaleInCM(UnityScaleInCM);
             device.SetClient(_client);
             device.SetDeviceDescriptor(deviceInfo);
@@ -207,7 +205,7 @@ public class OmmoDeviceManager : MonoBehaviour
         var sensor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         sensor.name = "Sensor";
         sensor.transform.SetParent(go.transform, false);
-        sensor.transform.localScale = Vector3.one * 0.15f;
+        sensor.transform.localScale = Vector3.one * 0.04f; // ~4 cm (1 u = 1 m)
         var mat = new Material(Shader.Find("Standard"));
         mat.color = new Color(0.9f, 0.1f, 0.1f);
         sensor.GetComponent<Renderer>().material = mat;

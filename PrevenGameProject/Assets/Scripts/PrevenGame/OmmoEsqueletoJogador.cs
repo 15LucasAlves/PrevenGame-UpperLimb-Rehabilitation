@@ -85,7 +85,7 @@ public class OmmoEsqueletoJogador : MonoBehaviour
     public void DefinirComprimentoBraco(float comprimento)
     {
         ComprimentoBraco = comprimento;
-        Debug.Log($"[OmmoEsqueleto] ComprimentoBraco = {comprimento:F2} units = {comprimento * 10f:F1} cm");
+        Debug.Log($"[OmmoEsqueleto] ComprimentoBraco = {comprimento:F2} units = {comprimento * 100f:F1} cm");
     }
 
     /// <summary>

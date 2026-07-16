@@ -6,20 +6,21 @@ using TMPro;
 using System.Collections.Generic;
 
 /// <summary>
-/// OmmoSceneBuilder — Constrói as cenas do PrevenGame (Gamification) por código.
+/// OmmoSceneBuilder — Constrói a cena Menu do PrevenGame (Gamification) por código.
 ///
-/// Menu: Ommo → PrevenGame → Build Cenas (Menu + Minijogo).
+/// Menu: Ommo → PrevenGame → Build Cena (Menu).
 ///   • Menu (hub): Splash → Calibração (helpers) → Seleção → [Score], via GameFlowManager.
-///   • MinijogoDardos: mundo dos dardos + GamificationManager (runner) + PauseMenu.
 ///
-/// Assets reais em Assets/Prefabs/PrevenGameAssets/{UIAssets,Dardos}. As posições são um ponto
-/// de partida — afinam-se depois com os guias de layout. Se um asset faltar, usa-se placeholder.
+/// A cena MinijogoDardos.unity é construída e mantida MANUALMENTE no editor — o builder
+/// não lhe toca (apenas a regista no Build Settings se existir).
+///
+/// Assets reais em Assets/Prefabs/PrevenGameAssets/UIAssets. Se um asset faltar, usa-se placeholder.
 /// </summary>
 public class OmmoSceneBuilder
 {
     // ── Caminhos de assets ────────────────────────────────────────────
     const string PastaUI     = "Assets/Prefabs/PrevenGameAssets/UIAssets";
-    const string PastaDardos = "Assets/Prefabs/PrevenGameAssets/Dardos";
+    const string PastaSons   = "Assets/Prefabs/PrevenGameAssets/Sounds and SFX";
     const string PastaFontes = "Assets/Fonts";
 
     const string CenaMenu     = "Assets/Scenes/Menu.unity";
@@ -37,35 +38,35 @@ public class OmmoSceneBuilder
     static readonly Color CorBalao         = new Color32(35, 31, 32, 255);    // #231F20
 
     // ─────────────────────────────────────────────────────────────────
-    [MenuItem("Ommo/PrevenGame/Build Cenas (Menu + Minijogo)")]
+    [MenuItem("Ommo/PrevenGame/Build Cena (Menu)")]
     public static void BuildCenas()
     {
-        if (!EditorUtility.DisplayDialog("PrevenGame — Build Cenas",
-            "Cria/grava 2 cenas em Assets/Scenes:\n• Menu.unity (splash+calibração+seleção+score)\n" +
-            "• MinijogoDardos.unity\n\nCenas existentes com estes nomes são sobrescritas. Continuar?",
+        if (!EditorUtility.DisplayDialog("PrevenGame — Build Cena",
+            "Cria/grava Assets/Scenes/Menu.unity (splash+calibração+seleção+score).\n\n" +
+            "A cena MinijogoDardos.unity NÃO é tocada — é construída/mantida manualmente.\n\nContinuar?",
             "Sim", "Cancelar"))
             return;
 
         if (!System.IO.Directory.Exists("Assets/Scenes")) System.IO.Directory.CreateDirectory("Assets/Scenes");
 
+        // Sprites das demos de exercício em Resources (o HudVR carrega-os em runtime).
+        CopiarSpritesExerciciosParaResources();
+
         var sMenu = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
         BuildMenuHub();
         EditorSceneManager.SaveScene(sMenu, CenaMenu);
 
-        var sMini = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-        BuildMinijogoDardos();
-        EditorSceneManager.SaveScene(sMini, CenaMinijogo);
+        // Regista o Menu e, se existir em disco, a cena do minijogo (mantida à mão).
+        var cenas = new List<EditorBuildSettingsScene> { new EditorBuildSettingsScene(CenaMenu, true) };
+        if (System.IO.File.Exists(CenaMinijogo))
+            cenas.Add(new EditorBuildSettingsScene(CenaMinijogo, true));
+        EditorBuildSettings.scenes = cenas.ToArray();
 
-        EditorBuildSettings.scenes = new[]
-        {
-            new EditorBuildSettingsScene(CenaMenu, true),
-            new EditorBuildSettingsScene(CenaMinijogo, true),
-        };
         AssetDatabase.SaveAssets();
         EditorSceneManager.OpenScene(CenaMenu);
 
-        EditorUtility.DisplayDialog("PrevenGame — Build Cenas",
-            "✅ Cenas criadas e registadas no Build Settings.\n\nAbre Menu e carrega Play.", "OK");
+        EditorUtility.DisplayDialog("PrevenGame — Build Cena",
+            "✅ Cena Menu criada e registada no Build Settings.", "OK");
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -78,16 +79,24 @@ public class OmmoSceneBuilder
 
         var scaffold = ConstruirScaffoldOmmo();
 
-        // Câmara simples (fundo escuro; a calibração usa o esqueleto mas os menus tapam o 3D).
+        // Câmara desktop — desenha SÓ na janela do monitor (fundo dos canvases Overlay).
+        // Em VR o rig OVR é criado em runtime pelo GestorXR; esta câmara não vê o 3D.
         Camera cam = Camera.main ?? Object.FindObjectOfType<Camera>();
         if (cam != null)
         {
-            if (cam.gameObject.tag != "MainCamera") cam.gameObject.tag = "MainCamera";
+            cam.gameObject.tag  = "Untagged"; // a tag MainCamera pertence ao CenterEyeAnchor do rig VR
             cam.clearFlags      = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.08f, 0.08f, 0.12f);
-            if (cam.gameObject.GetComponent<OmmoCameraSetup>() == null)
-                cam.gameObject.AddComponent<OmmoCameraSetup>();
+            if (cam.gameObject.GetComponent<CamaraDesktop>() == null)
+                cam.gameObject.AddComponent<CamaraDesktop>();
         }
+
+        // MRUK (deteção de QR para o alinhamento Ommo↔VR).
+        InstanciarMRUK();
+
+        // EcraVR — ecrã world-space do paciente (diálogo em VR na calibração).
+        var ecraVr = ConstruirEcraVR();
+        if (scaffold.Calib != null) scaffold.Calib.EcraVr = ecraVr;
 
         // Canvas principal dos menus (overlay).
         var canvas = CriarCanvasOverlay("MenuCanvas", 40);
@@ -144,96 +153,11 @@ public class OmmoSceneBuilder
     }
 
     // ═════════════════════════════════════════════════════════════════
-    // CENA MINIJOGO (DARDOS)
-    // ═════════════════════════════════════════════════════════════════
-    public static void BuildMinijogoDardos()
-    {
-        GarantirEventSystem();
-        CriarBootstrap();
-
-        var scaffold = ConstruirScaffoldOmmo(comCalibracao: false);
-
-        // Câmara fixa a enquadrar braço + alvo.
-        Camera cam = Camera.main ?? Object.FindObjectOfType<Camera>();
-        if (cam != null)
-        {
-            if (cam.gameObject.tag != "MainCamera") cam.gameObject.tag = "MainCamera";
-            cam.clearFlags      = CameraClearFlags.SolidColor;
-            cam.backgroundColor = Color.black;
-            cam.fieldOfView     = 55f;
-            cam.nearClipPlane   = 0.1f;
-            cam.farClipPlane    = 200f;
-            cam.transform.position = new Vector3(-9f, 17f, -3f);
-            cam.transform.LookAt(new Vector3(0f, 13f, 5f));
-        }
-
-        var luz = CreateEmpty("LuzDirecional").AddComponent<Light>();
-        luz.type = LightType.Directional; luz.intensity = 1.0f;
-        luz.color = new Color(1f, 0.97f, 0.9f);
-        luz.transform.rotation = Quaternion.Euler(50f, -20f, 0f);
-
-        // Sala (opcional).
-        var salaPrefab = CarregarPrefab($"{PastaDardos}/Sala.prefab");
-        if (salaPrefab != null) Object.Instantiate(salaPrefab).name = "Sala";
-
-        // Alvo de 5 aros.
-        var alvoGO = CreateEmpty("Alvo");
-        alvoGO.transform.position = new Vector3(0f, 13f, 8f);
-        alvoGO.transform.rotation = Quaternion.LookRotation(Vector3.back, Vector3.up);
-        var alvo = alvoGO.AddComponent<GamificationTarget>();
-        alvo.CriarVisualPlaceholder = true;
-        alvo.RaioExterior = 1.5f;
-        alvo.AroPrefabs = new[]
-        {
-            CarregarPrefab($"{PastaDardos}/Alvo1.prefab"), CarregarPrefab($"{PastaDardos}/Alvo2.prefab"),
-            CarregarPrefab($"{PastaDardos}/Alvo3.prefab"), CarregarPrefab($"{PastaDardos}/Alvo4.prefab"),
-            CarregarPrefab($"{PastaDardos}/Alvo5.prefab"),
-        };
-
-        // HUD.
-        var hudCanvas = CriarCanvasOverlay("HUDCanvas", 40);
-        var hud = CriarPainel("HUDJogo", hudCanvas.transform);
-        var textoPont = CriarTexto("TextoPontuacao", hud.transform, "0 %", 40, TextAlignmentOptions.Left,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-            new Vector2(24f, -20f), new Vector2(240f, 56f), Color.white, PoppinsExtraBold, FontStyles.Bold);
-        var textoDardos = CriarTexto("TextoDardos", hud.transform, "0/0", 40, TextAlignmentOptions.Right,
-            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f),
-            new Vector2(-40f, 40f), new Vector2(240f, 56f), Color.white, PoppinsExtraBold, FontStyles.Bold);
-        hud.SetActive(false);
-
-        // GamificationManager (runner).
-        var gmGO = CreateEmpty("GamificationManager");
-        var gm   = gmGO.AddComponent<GamificationManager>();
-        gm.Esqueleto     = scaffold.Esqueleto;
-        gm.Alvo          = alvo;
-        gm.DardoPrefab   = CarregarPrefab($"{PastaDardos}/Dardo.prefab");
-        gm.HUDJogo       = hud;
-        gm.TextoPontuacao = textoPont;
-        gm.TextoDardos    = textoDardos;
-
-        // Pausa (ESC).
-        var pauseUI = ConstruirPausa(hudCanvas.transform, out var pauseMenu);
-
-        // Controller.
-        var ctrlGO = CreateEmpty("MinigameController");
-        var ctrl   = ctrlGO.AddComponent<MinigameController>();
-        ctrl.Jogo          = gm;
-        ctrl.Esqueleto     = scaffold.Esqueleto;
-        ctrl.SensorManager = scaffold.SensorMgr;
-
-        // ScreenFader.
-        CriarFader();
-
-        Debug.Log("[OmmoBuilder] ✅ Cena MinijogoDardos construída.");
-    }
-
-    // ═════════════════════════════════════════════════════════════════
     // Scaffold Ommo partilhado
     // ═════════════════════════════════════════════════════════════════
     class ScaffoldRefs
     {
         public OmmoSensorManager     SensorMgr;
-        public OmmoEsqueletoJogador  Esqueleto;
         public OmmoCalibracaoManager Calib;
     }
 
@@ -245,9 +169,17 @@ public class OmmoSceneBuilder
         var sensorMgr   = appManager.AddComponent<OmmoSensorManager>();
         var autoPairing = appManager.AddComponent<OmmoAutoPairing>();
 
-        // BaseStation (origem do tracking) — invisível.
+        // BaseStation (origem do tracking). Pose por defeito AFASTADA do ponto de
+        // arranque do jogador (senão os visuais nascem "em cima" da cabeça) — a
+        // pose real vem do QR code via AlinhadorOmmoQr assim que o VR alinha.
+        // Yaw 90°: convenção de eixos do Ommo com o jogador de frente para a base.
         var baseStation = CreateEmpty("BaseStation");
-        baseStation.transform.position = new Vector3(0f, 13f, 0f);
+        baseStation.transform.SetPositionAndRotation(
+            new Vector3(0f, 0.85f, 1.5f), Quaternion.Euler(0f, 90f, 0f));
+
+        // Alinhador Ommo↔VR: ancora o BaseStation na pose do QR (ou F2 = manual).
+        var alinhador = appManager.AddComponent<AlinhadorOmmoQr>();
+        alinhador.OmmoRoot = baseStation.transform;
 
         // Objeto controlado (cubo) + prefab de dispositivo inativo.
         var cubo = CriarVisualSensor();
@@ -255,12 +187,13 @@ public class OmmoSceneBuilder
         var ommoDevice  = trackedRoot.AddComponent<OmmoDevice>();
         ommoDevice.SensorPrefab  = cubo;
         ommoDevice.RequestedMode = Ommo.DeviceFusionMode.FullFusion;
+        ommoDevice.DebugIntervalSegundos = 0f; // sem spam de posições na consola
         cubo.transform.SetParent(trackedRoot.transform, false);
         cubo.transform.localPosition = Vector3.zero;
         trackedRoot.SetActive(false);
 
         devManager.BaseStation    = baseStation;
-        devManager.UnityScaleInCM = 10f;
+        devManager.UnityScaleInCM = 100f; // 1 unidade Unity = 1 m (obrigatório para VR/MRUK)
         devManager.DeviceTypePrefabs = new OmmoDeviceManager.DeviceTypePrefab[]
         {
             new OmmoDeviceManager.DeviceTypePrefab { DeviceType = 0, Prefab = trackedRoot }
@@ -270,21 +203,198 @@ public class OmmoSceneBuilder
         sensorMgr.HardwareMonitor = monitor;
         sensorMgr.AutoPairing     = autoPairing;
 
-        var esqueleto = CreateEmpty("EsqueletoJogador").AddComponent<OmmoEsqueletoJogador>();
+        // O jogador nas cenas: só a mão (pose do sensor) + estimador de corpo (câmara VR).
+        // O antigo esqueleto visível (OmmoEsqueletoJogador) foi aposentado.
+        CreateEmpty("MaoJogador").AddComponent<MaoJogador>();
+        CreateEmpty("RastreadorCorpo").AddComponent<RastreadorCorpoJogador>();
 
         OmmoCalibracaoManager calib = null;
         if (comCalibracao)
         {
             calib = appManager.AddComponent<OmmoCalibracaoManager>();
             calib.SensorManager = sensorMgr;
-            calib.Esqueleto     = esqueleto;
             var pressao         = appManager.AddComponent<EntradaPressao>();
             pressao.FiltroNome  = "GRASP"; // o sensor de pressão anuncia-se como GRASP_x.y.z
+            pressao.LogValores  = false;   // sem spam de leituras na consola
             calib.Pressao       = pressao;
             calib.AutoPairing   = autoPairing;
         }
 
-        return new ScaffoldRefs { SensorMgr = sensorMgr, Esqueleto = esqueleto, Calib = calib };
+        return new ScaffoldRefs { SensorMgr = sensorMgr, Calib = calib };
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // Scaffold VR para a cena de minijogo (mantida manualmente)
+    // ═════════════════════════════════════════════════════════════════
+    /// <summary>
+    /// Adiciona à CENA ABERTA tudo o que uma cena de minijogo precisa do lado
+    /// PrevenGame/Ommo/VR: bootstrap, scaffold Ommo (sem calibração), MRUK,
+    /// EcraVR, EntradaPressao, GestorMinijogo e o MinijogoTesteWaypoints (trocar
+    /// depois pela implementação real de MinijogoBase, ex.: dardos).
+    /// O mundo 3D (sala, luz, alvo...) continua a ser feito à mão no editor.
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Adicionar Scaffold VR ao Minijogo (cena atual)")]
+    public static void AdicionarScaffoldMinijogo()
+    {
+        if (Object.FindObjectOfType<GestorMinijogo>() != null)
+        {
+            EditorUtility.DisplayDialog("PrevenGame", "A cena já tem um GestorMinijogo.", "OK");
+            return;
+        }
+
+        GarantirEventSystem();
+        CriarBootstrap();
+        var scaffold = ConstruirScaffoldOmmo(comCalibracao: false);
+        InstanciarMRUK();
+        var ecra = ConstruirEcraVR();
+
+        var pressao = new GameObject("EntradaPressao").AddComponent<EntradaPressao>();
+        pressao.FiltroNome = "GRASP";
+        pressao.LogValores = false; // sem spam de leituras na consola
+
+        var gestorGO = CreateEmpty("GestorMinijogo");
+        var gestor   = gestorGO.AddComponent<GestorMinijogo>();
+        gestor.Ecra          = ecra;
+        gestor.SensorManager = scaffold.SensorMgr;
+        gestor.Pressao       = pressao;
+        gestor.Minijogo      = CreateEmpty("MinijogoTeste").AddComponent<MinijogoTesteWaypoints>();
+
+        CopiarSpritesExerciciosParaResources();
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ Scaffold VR do minijogo adicionado à cena atual.");
+    }
+
+    /// <summary>
+    /// Copia os PNG das demos (UIAssets/Exercises/&lt;prefixo&gt;_1..5.png) para
+    /// Assets/Resources/Exercises/&lt;Tipo&gt;/&lt;n&gt;.png — o HudVR carrega-os em runtime
+    /// (as cenas de minijogo não passam pelo builder). O destino usa o nome do enum
+    /// (ASCII) e índices numéricos, independente dos nomes de export do artista.
+    /// Re-copia quando a origem é mais recente (re-exports).
+    /// </summary>
+    static void CopiarSpritesExerciciosParaResources()
+    {
+        foreach (ExerciciosWaypoints.TipoExercicio tipo in
+                 System.Enum.GetValues(typeof(ExerciciosWaypoints.TipoExercicio)))
+        {
+            string prefixo    = PrefixoImagensExercicio(tipo);
+            string dirDestino = $"Assets/Resources/Exercises/{tipo}";
+            for (int s = 1; s <= 5; s++)
+            {
+                string origem  = $"{PastaUI}/Exercises/{prefixo}_{s}.png";
+                string destino = $"{dirDestino}/{s}.png";
+                if (!System.IO.File.Exists(origem)) continue;
+
+                CarregarSpriteAsset(origem); // normaliza import settings na origem
+
+                if (System.IO.File.Exists(destino))
+                {
+                    // Só re-copia se o export de origem for mais recente.
+                    if (System.IO.File.GetLastWriteTimeUtc(origem) <=
+                        System.IO.File.GetLastWriteTimeUtc(destino)) continue;
+                    AssetDatabase.DeleteAsset(destino);
+                }
+
+                if (!System.IO.Directory.Exists(dirDestino))
+                    System.IO.Directory.CreateDirectory(dirDestino);
+                AssetDatabase.Refresh();
+                AssetDatabase.CopyAsset(origem, destino);
+                CarregarSpriteAsset(destino); // mesmos import settings na cópia
+            }
+        }
+        AssetDatabase.SaveAssets();
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // EcraVR — ecrã world-space do paciente (diálogo, tabela de score, pausa)
+    // ═════════════════════════════════════════════════════════════════
+    static EcraVR ConstruirEcraVR()
+    {
+        var root = CreateEmpty("EcraVR");
+        var canvas = root.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        var rt = canvas.GetComponent<RectTransform>();
+        rt.sizeDelta  = new Vector2(1920f, 1080f);
+        rt.localScale = Vector3.one * 0.001f; // 1920 px → 1.92 m de largura
+
+        var ecra = root.AddComponent<EcraVR>();
+        // Cobertura larga do viewport (o conteúdo é encostado aos cantos abaixo).
+        ecra.EscalaConteudo = 1f;
+        ecra.Distancia     = 1.2f;
+
+        // Diálogo dos helpers — instância própria (mesmo layout do diálogo do monitor).
+        CriarPainelDialogo("DialogoVR", root.transform, out var dlgVr);
+        ecra.Dialogo = dlgVr;
+
+        // Ajustes VR (menos clutter): só o orador visível, helpers mais pequenos
+        // ENCOSTADOS aos cantos inferiores, balão pequeno ancorado ao orador.
+        AjustarDialogoParaVR(dlgVr, escalaHelpers: 0.7f, escalaBalao: 0.55f);
+
+        // Tabela de score do minijogo (preenchida pelo GestorMinijogo).
+        var painelTabela = CriarPainel("PainelTabela", root.transform);
+        CriarImagemFull("TabelaBg", painelTabela.transform, null, new Color(0f, 0f, 0f, 0.75f));
+        var textoTabela = CriarTexto("TextoTabela", painelTabela.transform, "", 56, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(1400f, 800f), Color.white, PoppinsExtraBold, FontStyles.Bold);
+        painelTabela.SetActive(false);
+        ecra.PainelTabela = painelTabela;
+        ecra.TextoTabela  = textoTabela;
+
+        // Aviso de pausa (espelho do PauseMenu do operador).
+        var painelPausa = CriarPainel("PainelPausa", root.transform);
+        CriarImagemFull("PausaBg", painelPausa.transform, null, new Color(0f, 0f, 0f, 0.75f));
+        CriarTexto("TextoPausa", painelPausa.transform, "Jogo em pausa", 96, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(1400f, 300f), Color.white, PoppinsExtraBold, FontStyles.Bold);
+        painelPausa.SetActive(false);
+        ecra.PainelPausa = painelPausa;
+
+        root.SetActive(false); // mostrado pelo fluxo (calibração/minijogo)
+        return ecra;
+    }
+
+    /// <summary>
+    /// Reduz o clutter do diálogo na instância VR: só o ORADOR fica visível,
+    /// personagens mais pequenos colados aos cantos inferiores, e o balão
+    /// (com textos proporcionais) pequeno e ANCORADO ao personagem que fala.
+    /// Não toca na instância do monitor (os modos são opt-in por instância).
+    /// </summary>
+    static void AjustarDialogoParaVR(HelperDialogueManager dlg, float escalaHelpers, float escalaBalao)
+    {
+        dlg.MostrarApenasOrador = true;
+        dlg.BalaoJuntoAoOrador  = true;
+
+        // Personagens: escala menor + encostados aos cantos (âncoras já são os cantos inferiores).
+        if (dlg.ImagemPatrick != null)
+        {
+            dlg.ImagemPatrick.rectTransform.localScale       = Vector3.one * escalaHelpers;
+            dlg.ImagemPatrick.rectTransform.anchoredPosition = new Vector2(15f, 5f);
+        }
+        if (dlg.ImagemJane != null)
+        {
+            dlg.ImagemJane.rectTransform.localScale       = Vector3.one * escalaHelpers;
+            dlg.ImagemJane.rectTransform.anchoredPosition = new Vector2(-15f, 5f);
+        }
+
+        // Balão: encolher o rect (o manager reescreve localScale no flip, por isso
+        // a escala não serve) e os textos proporcionalmente.
+        if (dlg.BalaoImagem != null)
+            dlg.BalaoImagem.rectTransform.sizeDelta *= escalaBalao;
+        EncolherTextoBalao(dlg.TextoBalao,    escalaBalao);
+        EncolherTextoBalao(dlg.TextoBalaoSub, escalaBalao);
+
+        // Offsets do balão a partir do canto inferior do orador (BalaoJuntoAoOrador):
+        // assenta logo acima da cabeça do personagem (personagem ~532 px alto a 0.7).
+        dlg.PosBalaoPatrick = new Vector2(40f, 545f);
+        dlg.PosBalaoJane    = new Vector2(-40f, 545f);
+    }
+
+    static void EncolherTextoBalao(TextMeshProUGUI texto, float f)
+    {
+        if (texto == null) return;
+        texto.fontSize *= f;
+        var rt = texto.rectTransform;
+        rt.offsetMin *= f;
+        rt.offsetMax *= f;
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -302,7 +412,7 @@ public class OmmoSceneBuilder
         var boxRect = box.AddComponent<RectTransform>();
         boxRect.anchorMin = boxRect.anchorMax = boxRect.pivot = new Vector2(0.5f, 0.5f);
         boxRect.anchoredPosition = new Vector2(0f, -132f);
-        boxRect.sizeDelta        = new Vector2(1740f, 775f);
+        boxRect.sizeDelta        = new Vector2(1740f, 820f);
         var scroll = box.AddComponent<ScrollRect>();
 
         // Viewport: máscara de recorte + Image invisível para a roda do rato
@@ -394,9 +504,12 @@ public class OmmoSceneBuilder
         var cardBtn = card.AddComponent<Button>();
 
         // Imagem do exercício — dentro da moldura desenhada (10%–50% da altura).
+        // As imagens do artista são ~quadradas (584×573) e já trazem a borda que
+        // combina com o card — preserveAspect evita distorção dentro da zona.
         var img = CriarImagem("ImagemExercicio", card.transform, null,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(330f, 240f));
-        img.raycastTarget = false;
+        img.raycastTarget  = false;
+        img.preserveAspect = true;
         var hover = card.AddComponent<CardAnimacaoHover>();
         hover.ImagemAlvo = img;
         hover.Sprites    = CarregarSpritesExercicio(tipo);
@@ -465,34 +578,6 @@ public class OmmoSceneBuilder
         rect.sizeDelta        = size;
         go.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0f); // invisível; mantém o raycast
         return go.AddComponent<Button>();
-    }
-
-    // ═════════════════════════════════════════════════════════════════
-    // UI — Pausa
-    // ═════════════════════════════════════════════════════════════════
-    static GameObject ConstruirPausa(Transform pai, out PauseMenu pauseMenu)
-    {
-        var overlay = CriarPainel("PausaOverlay", pai);
-        var cg = overlay.AddComponent<CanvasGroup>();
-        CriarImagemFull("PausaBg", overlay.transform, UISprite("Background"), new Color(0f, 0f, 0f, 0.85f));
-
-        var cont = CriarBotaoImagem("BotaoContinuar", overlay.transform, UISprite("continueButton"), UISprite("continueButtonHover"),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 140f), new Vector2(420f, 110f));
-        var main = CriarBotaoImagem("BotaoMainMenu", overlay.transform, UISprite("mainMenuButton"), UISprite("mainMenuButtonHover"),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(420f, 110f));
-        var exitG = CriarBotaoImagem("BotaoExitGame", overlay.transform, UISprite("exitGameButton"), UISprite("exitGameButtonHover"),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -140f), new Vector2(420f, 110f));
-
-        overlay.SetActive(false);
-
-        var pmGO = CreateEmpty("PauseMenu");
-        pauseMenu = pmGO.AddComponent<PauseMenu>();
-        pauseMenu.Overlay        = overlay;
-        pauseMenu.OverlayGroup   = cg;
-        pauseMenu.BotaoContinuar = cont;
-        pauseMenu.BotaoMainMenu  = main;
-        pauseMenu.BotaoExitGame  = exitG;
-        return overlay;
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -568,12 +653,56 @@ public class OmmoSceneBuilder
         var go = CreateEmpty("OmmoBootstrap");
         go.AddComponent<OmmoBootstrap>();
         go.AddComponent<SessionManager>();
+        go.AddComponent<GestorXR>(); // ciclo de vida XR + troca monitor↔VR (persistente)
+        ConfigurarGestorAudio(go.AddComponent<GestorAudio>());
         var cursor = go.AddComponent<CursorManager>();
         cursor.CursorTextura = UITexture("mouse");
 
         // Sensor de pressão BLE — GameObject próprio: o Awake do BLEManager destrói
         // o GO duplicado ao voltar à cena, por isso não pode partilhar o OmmoBootstrap.
         CreateEmpty("BLEManager").AddComponent<BLEManager>();
+    }
+
+    /// <summary>
+    /// Preenche o catálogo do GestorAudio a partir da pasta Sounds and SFX.
+    /// A música de fundo do hub é opcional: procura "backgroundMusic"/"musicaFundo"/
+    /// "hubMusic" (.mp3/.ogg/.wav) e avisa se ainda não existir.
+    /// </summary>
+    static void ConfigurarGestorAudio(GestorAudio audio)
+    {
+        audio.SfxScoreAlto           = Clip("amazingScoreSFX");
+        audio.SfxScoreMedio          = Clip("goodScoreSFX");
+        audio.SfxScoreBaixo          = Clip("badScoreSFX");
+        audio.SfxBracoConcluido      = Clip("completedArm");
+        audio.SfxExercicioConcluido  = Clip("completedExercise");
+        audio.SfxRufo                = Clip("drumRoll");
+        audio.SfxDialogoCurtoJane    = Clip("shortDialogue_Jane");
+        audio.SfxDialogoLongoJane    = Clip("longDialogue_Jane");
+        audio.SfxDialogoCurtoPatrick = Clip("shortDialogue_Patrick");
+        audio.SfxDialogoLongoPatrick = Clip("longDialogue_Patrick");
+        audio.SfxLancamentoDardo     = Clip("Darts/dartThrow");
+        audio.AmbienteBarDardos      = Clip("Darts/barAmbience");
+
+        // Música de fundo do hub (a adicionar pelo utilizador — nomes candidatos).
+        audio.MusicaHub = Clip("backgroundMusic", avisarSeFaltar: false)
+                       ?? Clip("musicaFundo",     avisarSeFaltar: false)
+                       ?? Clip("hubMusic",        avisarSeFaltar: false);
+        if (audio.MusicaHub == null)
+            Debug.Log($"[OmmoBuilder] Sem música de fundo do hub — coloca um \"backgroundMusic.mp3\" " +
+                      $"em {PastaSons} e refaz o Build (ou atribui no Inspector do GestorAudio).");
+    }
+
+    /// <summary>Carrega um AudioClip da pasta Sounds and SFX (tenta .mp3, .ogg e .wav).</summary>
+    static AudioClip Clip(string nome, bool avisarSeFaltar = true)
+    {
+        foreach (var ext in new[] { "mp3", "ogg", "wav" })
+        {
+            var c = AssetDatabase.LoadAssetAtPath<AudioClip>($"{PastaSons}/{nome}.{ext}");
+            if (c != null) return c;
+        }
+        if (avisarSeFaltar)
+            Debug.LogWarning($"[OmmoBuilder] AudioClip em falta: {PastaSons}/{nome}.(mp3|ogg|wav)");
+        return null;
     }
 
     static ScreenFader CriarFader()
@@ -692,11 +821,55 @@ public class OmmoSceneBuilder
         return go;
     }
 
+    /// <summary>
+    /// Instancia o prefab MRUK (pacote com.meta.xr.mrutilitykit) na cena aberta,
+    /// com QR tracking ativo e SEM carregar o modelo da sala (só precisamos dos
+    /// trackables). Idempotente — não duplica se já existir um MRUK na cena.
+    /// Também disponível como menu para a cena MinijogoDardos (mantida à mão).
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Adicionar MRUK à cena atual")]
+    public static void InstanciarMRUK()
+    {
+        if (Object.FindObjectOfType<Meta.XR.MRUtilityKit.MRUK>() != null)
+        {
+            Debug.Log("[OmmoBuilder] MRUK já existe na cena — nada a fazer.");
+            return;
+        }
+
+        const string caminhoPrefab = "Packages/com.meta.xr.mrutilitykit/Core/Tools/MRUK.prefab";
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(caminhoPrefab);
+        if (prefab == null)
+        {
+            Debug.LogError($"[OmmoBuilder] Prefab MRUK não encontrado em {caminhoPrefab}.");
+            return;
+        }
+
+        var instancia = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        instancia.name = "MRUK";
+        Undo.RegisterCreatedObjectUndo(instancia, "Create MRUK");
+
+        var mruk = instancia.GetComponent<Meta.XR.MRUtilityKit.MRUK>();
+        if (mruk != null && mruk.SceneSettings != null)
+        {
+            mruk.SceneSettings.LoadSceneOnStartup = false; // só trackables; sem modelo da sala
+            var tc = mruk.SceneSettings.TrackerConfiguration;
+            tc.QRCodeTrackingEnabled = true;
+            mruk.SceneSettings.TrackerConfiguration = tc;
+        }
+
+        // INATIVO de propósito: o MRUK exige OVRCameraRig + sessão XR no Awake,
+        // e no nosso fluxo ambos só existem depois do GestorXR.IniciarVR() (fim
+        // da intro da calibração). O GestorXR ativa este objeto nesse momento.
+        instancia.SetActive(false);
+        EditorUtility.SetDirty(instancia);
+        Debug.Log("[OmmoBuilder] ✅ MRUK adicionado (QR on, inativo até o GestorXR ligar o VR).");
+    }
+
     static GameObject CriarVisualSensor()
     {
         var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cubo.name = "CuboSensor";
-        cubo.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        cubo.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f); // ~3 cm (1 u = 1 m)
         Object.DestroyImmediate(cubo.GetComponent<BoxCollider>());
         cubo.GetComponent<MeshRenderer>().sharedMaterial = CriarMaterialRimGlow(new Color(0.95f, 0.95f, 0.95f));
         return cubo;
@@ -739,8 +912,6 @@ public class OmmoSceneBuilder
         return arr;
     }
 
-    static GameObject CarregarPrefab(string path) => AssetDatabase.LoadAssetAtPath<GameObject>(path);
-
     /// <summary>
     /// Carrega um sprite garantindo os import settings de qualidade da UI: tipo Sprite,
     /// sem compressão (a DXT cria blocos nas bordas), mipmaps + trilinear (sem serrilhado
@@ -769,16 +940,34 @@ public class OmmoSceneBuilder
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
-    /// <summary>Sprites de exemplo do exercício (pasta UIAssets/Exercises — vazia até haver animações).</summary>
+    /// <summary>
+    /// Prefixo dos ficheiros de animação do exercício, como exportados pelo artista
+    /// (UIAssets/Exercises/&lt;prefixo&gt;_1..5.png, nomes PT com acentos).
+    /// </summary>
+    static string PrefixoImagensExercicio(ExerciciosWaypoints.TipoExercicio tipo)
+    {
+        switch (tipo)
+        {
+            case ExerciciosWaypoints.TipoExercicio.FlexaoBraco:    return "flexãoDoBraço";
+            case ExerciciosWaypoints.TipoExercicio.ElevacaoTotal:  return "elevaçãoTotal";
+            case ExerciciosWaypoints.TipoExercicio.AbducaoLateral: return "abduçãoLateral";
+            case ExerciciosWaypoints.TipoExercicio.FlexaoCotovelo: return "flexãoHorizontal";
+            default:                                               return tipo.ToString();
+        }
+    }
+
+    /// <summary>Sprites da animação do exercício (UIAssets/Exercises/&lt;prefixo&gt;_1..5.png).</summary>
     static Sprite[] CarregarSpritesExercicio(ExerciciosWaypoints.TipoExercicio tipo)
     {
         var lista = new List<Sprite>();
-        string pasta = $"{PastaUI}/Exercises/{tipo}";
+        string prefixo = PrefixoImagensExercicio(tipo);
         for (int s = 1; s <= 5; s++)
         {
-            var sp = CarregarSpriteAsset($"{pasta}/{s}.png");
+            var sp = CarregarSpriteAsset($"{PastaUI}/Exercises/{prefixo}_{s}.png");
             if (sp != null) lista.Add(sp);
         }
+        if (lista.Count == 0)
+            Debug.LogWarning($"[OmmoBuilder] Sem imagens para {tipo} (esperava {PastaUI}/Exercises/{prefixo}_1..5.png).");
         return lista.ToArray();
     }
 

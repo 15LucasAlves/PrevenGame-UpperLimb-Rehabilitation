@@ -39,6 +39,13 @@ public class HelperDialogueManager : MonoBehaviour
     public Vector2 PosBalaoPatrick = new Vector2( 120f, -120f);
     public Vector2 PosBalaoJane    = new Vector2(-120f, -120f);
 
+    [Header("Modo VR (EcraVR) — menos clutter; defaults false = instância do monitor intocada")]
+    [Tooltip("Mostra APENAS o personagem que está a falar (o outro desaparece).")]
+    public bool MostrarApenasOrador = false;
+    [Tooltip("Ancora o balão ao canto inferior do orador em vez do topo-centro. " +
+             "PosBalaoPatrick/Jane passam a ser offsets a partir do canto inferior respetivo.")]
+    public bool BalaoJuntoAoOrador = false;
+
     [Header("Máquina de escrever")]
     [Tooltip("Velocidade de escrita em caracteres por segundo. 0 = texto instantâneo.")]
     public float VelocidadeEscrita = 40f;
@@ -144,6 +151,13 @@ public class HelperDialogueManager : MonoBehaviour
     {
         DefinirEmocao(HelperId.Jane,    HelperEmocao.Neutral);
         DefinirEmocao(HelperId.Patrick, HelperEmocao.Neutral);
+
+        // Em modo só-orador ninguém aparece até a primeira fala definir quem fala.
+        if (MostrarApenasOrador)
+        {
+            if (ImagemJane    != null) ImagemJane.enabled    = false;
+            if (ImagemPatrick != null) ImagemPatrick.enabled = false;
+        }
     }
 
     /// <summary>Abre o painel; se estava fechado, a conversa começa com ambos Neutral.</summary>
@@ -161,7 +175,20 @@ public class HelperDialogueManager : MonoBehaviour
     void Aplicar(HelperId quem, HelperEmocao emocao, string texto, string subtexto = null)
     {
         DefinirEmocao(quem, emocao);
+
+        // Modo só-orador (VR): esconde quem não está a falar.
+        if (MostrarApenasOrador)
+        {
+            var outro = quem == HelperId.Jane ? ImagemPatrick : ImagemJane;
+            if (outro != null) outro.enabled = false;
+        }
+
         AplicarOrador(quem);
+
+        // Blip de diálogo (curto/longo pelo tamanho da fala; dedupe no GestorAudio
+        // para a linha espelhada monitor+EcraVR tocar só uma vez).
+        if (!string.IsNullOrEmpty(texto))
+            GestorAudio.Instancia?.TocarDialogo(quem, texto);
 
         // Subtexto na caixa própria: instantâneo, escondido quando vazio.
         if (TextoBalaoSub != null)
@@ -192,6 +219,15 @@ public class HelperDialogueManager : MonoBehaviour
         bool jane = quem == HelperId.Jane;
 
         var rt = BalaoImagem.rectTransform;
+
+        // Modo VR: balão ancorado ao canto inferior do orador (pivot no canto
+        // interior; com o flip da Jane o balão estende-se para DENTRO do ecrã).
+        if (BalaoJuntoAoOrador)
+        {
+            rt.anchorMin = rt.anchorMax = jane ? new Vector2(1f, 0f) : new Vector2(0f, 0f);
+            rt.pivot = new Vector2(0f, 0f);
+        }
+
         rt.anchoredPosition = jane ? PosBalaoJane : PosBalaoPatrick;
         rt.localScale       = new Vector3(jane ? -1f : 1f, 1f, 1f);
 
