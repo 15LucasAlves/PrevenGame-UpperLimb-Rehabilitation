@@ -20,6 +20,10 @@ public class EntradaPressao : MonoBehaviour
     public string FiltroNome = "GRASP";
     [Tooltip("Sem dispositivo ligado, repete o scan a cada N segundos (o anúncio BLE pode não estar ativo no primeiro).")]
     public float RescanSegundos = 10f;
+
+    [Tooltip("INTERRUPTOR DE SEGURANÇA: desliga todo o BLE (o BLEDll nativo pode crashar o editor " +
+             "ao configurar o UART). Com isto off, a captura fica por Enter/gatilho.")]
+    public bool AtivarBle = true;
     [Tooltip("Tempo máximo de uma tentativa de ligação antes de voltar ao scan (segundos).")]
     public float TimeoutLigacao = 10f;
 
@@ -57,6 +61,16 @@ public class EntradaPressao : MonoBehaviour
 
     void Start()
     {
+        // Interruptor de segurança: o BLEDll nativo já matou o editor durante a
+        // configuração do UART — em Modo Comando (testes sem hardware) ou com o
+        // toggle desligado, o BLE nem arranca (Enter/gatilho continuam a funcionar).
+        if (!AtivarBle ||
+            (SessionManager.Instancia != null && SessionManager.Instancia.ModoComando))
+        {
+            Debug.Log("[EntradaPressao] BLE desativado (AtivarBle=false ou Modo Comando) — captura por Enter/gatilho.");
+            return;
+        }
+
         _ble = BLEManager.Instance;
         if (_ble == null)
         {

@@ -19,8 +19,13 @@ public abstract class MinijogoBase : MonoBehaviour
         public bool       BracoDireito;
         public int        RepAtual;    // 1-based
         public int        TotalReps;   // reps do bloco (braço) atual
-        public Vector3[]  Waypoints;   // trajetória gerada com o ombro live
-        public MaoJogador Mao;         // posição/rotação da mão (sensor Ommo)
+        public Vector3[]  Waypoints;   // trajetória gerada com o ombro no início da rep
+        public MaoJogador Mao;         // posição/rotação da mão (sensor Ommo/comando)
+
+        // Para minijogos com waypoints DINÂMICOS (recalculados por frame a partir
+        // do ombro live — o exercício acompanha o jogador quando ele se desloca).
+        public RastreadorCorpoJogador Rastreador;
+        public float ComprimentoBraco;
     }
 
     /// <summary>Emitido quando a repetição em curso termina, com a % (0–100) alcançada.</summary>

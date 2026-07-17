@@ -111,6 +111,20 @@ public class GestorAudio : MonoBehaviour
         if (_musica.isPlaying) _musica.Stop();
     }
 
+    /// <summary>
+    /// Ambiente em loop de uma cena de minijogo (ex.: bar dos dardos). Reutiliza
+    /// a fonte de música — o handler de cena pára/repõe automaticamente ao
+    /// mudar de cena (a música do hub volta no Menu).
+    /// </summary>
+    public void TocarAmbiente(AudioClip clip, float volume = 1f)
+    {
+        if (clip == null) return;
+        if (_musica.clip == clip && _musica.isPlaying) return;
+        _musica.clip   = clip;
+        _musica.volume = VolumeMusica * volume;
+        _musica.Play();
+    }
+
     // ── SFX ───────────────────────────────────────────────────────────
     public void TocarSfx(AudioClip clip, float volume = 1f)
     {

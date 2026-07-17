@@ -27,6 +27,10 @@ public class RastreadorCorpoJogador : MonoBehaviour
     [Tooltip("Esferas de debug nos ombros estimados (editor/desenvolvimento).")]
     public bool MostrarDebug = false;
 
+    [Tooltip("Ajuste fino ao ombro estimado, no referencial yaw-local da cabeça " +
+             "[x=lateral, y=vertical, z=frente]. Ex.: y=-0.05 se o exercício aparecer alto demais.")]
+    public Vector3 AjusteOmbroLocal = Vector3.zero;
+
     /// <summary>Yaw estimado do corpo (rotação só em Y).</summary>
     public Quaternion YawCorpo => Quaternion.Euler(0f, _yawCorpo, 0f);
 
@@ -72,7 +76,10 @@ public class RastreadorCorpoJogador : MonoBehaviour
 
     /// <summary>
     /// Posição mundo estimada do ombro do braço pedido: posição da câmara + offset
-    /// calibrado rodado pelo yaw de corpo. Fallback: posição mundo da calibração.
+    /// calibrado rodado pelo yaw de corpo. Se ESTE braço não tiver dados de cabeça
+    /// mas o OUTRO tiver, usa o offset do outro espelhado lateralmente — ambos os
+    /// braços seguem SEMPRE o jogador (nunca um segue e o outro fica fixo).
+    /// Último recurso: posição mundo da calibração.
     /// </summary>
     public Vector3 ObterOmbroAtual(bool direito)
     {
@@ -82,8 +89,21 @@ public class RastreadorCorpoJogador : MonoBehaviour
         if (!dados.Valido) return Vector3.zero;
 
         var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
-        if (dados.TemDadosCabeca && cabeca != null)
-            return cabeca.position + YawCorpo * dados.OffsetOmbroLocalCabeca;
+        if (cabeca != null)
+        {
+            if (dados.TemDadosCabeca)
+                return cabeca.position + YawCorpo * (dados.OffsetOmbroLocalCabeca + AjusteOmbroLocal);
+
+            // Espelho do outro braço (offset lateral invertido em yaw-local).
+            var outro = sm.ObterBraco(!direito);
+            if (outro.Valido && outro.TemDadosCabeca)
+            {
+                AvisarEspelho(direito);
+                var off = outro.OffsetOmbroLocalCabeca;
+                off.x = -off.x;
+                return cabeca.position + YawCorpo * (off + AjusteOmbroLocal);
+            }
+        }
 
         return dados.PosOmbro;
     }
@@ -97,10 +117,31 @@ public class RastreadorCorpoJogador : MonoBehaviour
         if (!dados.Valido) return Vector3.forward;
 
         var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
-        if (dados.TemDadosCabeca && cabeca != null)
-            return (YawCorpo * dados.DirecaoFrenteLocal).normalized;
+        if (cabeca != null)
+        {
+            if (dados.TemDadosCabeca)
+                return (YawCorpo * dados.DirecaoFrenteLocal).normalized;
+
+            var outro = sm.ObterBraco(!direito);
+            if (outro.Valido && outro.TemDadosCabeca)
+            {
+                var dir = outro.DirecaoFrenteLocal;
+                dir.x = -dir.x; // espelho lateral em yaw-local
+                return (YawCorpo * dir).normalized;
+            }
+        }
 
         return dados.DirecaoFrente;
+    }
+
+    private bool _avisoEspelhoDado;
+    void AvisarEspelho(bool direito)
+    {
+        if (_avisoEspelhoDado) return;
+        _avisoEspelhoDado = true;
+        Debug.LogWarning($"[RastreadorCorpo] Braço {(direito ? "direito" : "esquerdo")} foi calibrado SEM dados de " +
+                         "cabeça — a usar o espelho do outro braço para seguir o jogador. Recalibrar com o headset " +
+                         "bem posto resolve de vez.");
     }
 
     // ── Debug ─────────────────────────────────────────────────────────

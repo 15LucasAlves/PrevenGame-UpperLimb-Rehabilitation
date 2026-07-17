@@ -49,6 +49,7 @@ public class GestorXR : MonoBehaviour
     private GameObject   _placard;          // aviso no HMD durante as fases de monitor
     private Camera       _camaraDesktop;    // câmara da cena atual marcada com CamaraDesktop
     private Camera       _camaraEspectador; // espelha a vista do jogador no monitor em ModoVR
+    private bool         _tinhaFoco;        // detetar o regresso do foco da sessão
 
     /// <summary>Obtém o gestor, criando-o (persistente) se ainda não existir na cena.</summary>
     public static GestorXR ObterOuCriar()
@@ -146,6 +147,9 @@ public class GestorXR : MonoBehaviour
         bool avisou = false;
         while (mruk != null && !OVRManager.hasVrFocus)
         {
+            // Modo Comando dispensa o MRUK por completo (não há QR/base station).
+            if (SessionManager.Instancia != null && SessionManager.Instancia.ModoComando) yield break;
+
             if (!avisou)
             {
                 avisou = true;
@@ -155,20 +159,36 @@ public class GestorXR : MonoBehaviour
         }
         yield return new WaitForSeconds(0.5f); // deixa a sessão estabilizar após o foco
 
-        // ORDEM CRÍTICA (validada na VrTestScene): o passthrough tem de estar ativo
-        // — câmaras frontais ligadas — ANTES de o MRUK configurar os trackers,
-        // senão o tracker de QR fica configurado mas nunca deteta nada.
-        // (O passthrough é pedido na criação do rig; aqui só se espera pelo init.)
+        if (SessionManager.Instancia != null && SessionManager.Instancia.ModoComando) yield break;
+
+        // ORDEM CRÍTICA (validada na VrTestScene): ativar o passthrough SÓ AGORA,
+        // com a sessão focada (headset na cara) — o init falha permanentemente se
+        // for pedido com a sessão idle. Câmaras ligadas ANTES de o MRUK configurar
+        // os trackers, senão o tracker de QR fica configurado mas nunca deteta.
+        AtivadorPassthrough.Ativar();
         float timeout = Time.unscaledTime + 5f;
         while (Time.unscaledTime < timeout && !OVRManager.IsInsightPassthroughInitialized())
             yield return null;
+
         if (!OVRManager.IsInsightPassthroughInitialized())
-            Debug.LogWarning("[GestorXR] Passthrough não inicializou em 5 s — o QR pode não detetar.");
+        {
+            // Sem passthrough o QR nunca deteta E a lib nativa do MRUK fica
+            // meia-inicializada a rebentar NullReferences todos os frames —
+            // mais vale nem ativar. F2 (manual) ou F3 (modo comando) desbloqueiam.
+            Debug.LogWarning("[GestorXR] Passthrough não inicializou — MRUK NÃO ativado " +
+                             "(QR indisponível; usa F2 para alinhar manualmente ou F3 para o modo comando).");
+            yield break;
+        }
 
         if (mruk != null && !mruk.gameObject.activeSelf)
         {
+            // Defensivo (cobre cenas cujo MRUK foi serializado antes desta decisão):
+            // sem world-locking — o QR é a nossa âncora; o MRUK não pode reescrever
+            // o TrackingSpace nem colocar spatial anchors persistentes.
+            mruk.EnableWorldLock = false;
+
             mruk.gameObject.SetActive(true);
-            Debug.Log("[GestorXR] MRUK ativado (sessão com foco, passthrough inicializado).");
+            Debug.Log("[GestorXR] MRUK ativado (sessão com foco, passthrough inicializado, world-lock OFF).");
         }
     }
 
@@ -195,6 +215,37 @@ public class GestorXR : MonoBehaviour
         if (_camaraEspectador != null) _camaraEspectador.enabled = true;
         AtualizarPlacard();
         Debug.Log("[GestorXR] ModoVR (espectador no monitor).");
+        return true;
+    }
+
+    /// <summary>
+    /// Teleporta o RIG para a cabeça do jogador aterrar na pose alvo: roda o rig
+    /// em yaw à volta da cabeça e translada. Com <paramref name="manterAlturaReal"/>
+    /// a altura física do jogador preserva-se; sem ela, a cabeça aterra EXATAMENTE
+    /// na altura do alvo. Devolve o delta aplicado, para o chamador poder mover
+    /// outros objetos presos ao mundo real (ex.: BaseStation do Ommo) em conjunto.
+    /// </summary>
+    public bool TeleportarCabecaPara(Pose alvo, out Vector3 pivot, out Quaternion deltaRot, out Vector3 deltaPos,
+                                     bool manterAlturaReal = true)
+    {
+        pivot = Vector3.zero; deltaRot = Quaternion.identity; deltaPos = Vector3.zero;
+        if (_rig == null || Cabeca == null) return false;
+
+        pivot = Cabeca.position;
+        float yawCabeca = Cabeca.eulerAngles.y;
+        float yawAlvo   = alvo.rotation.eulerAngles.y;
+        deltaRot = Quaternion.Euler(0f, Mathf.DeltaAngle(yawCabeca, yawAlvo), 0f);
+
+        var rigT = _rig.transform;
+        rigT.position = pivot + deltaRot * (rigT.position - pivot);
+        rigT.rotation = deltaRot * rigT.rotation;
+
+        deltaPos = alvo.position - Cabeca.position;
+        if (manterAlturaReal) deltaPos.y = 0f;
+        rigT.position += deltaPos;
+
+        Debug.Log($"[GestorXR] Rig teleportado: cabeça em ({Cabeca.position.x:F2}, {Cabeca.position.y:F2}, {Cabeca.position.z:F2}), " +
+                  $"yaw Δ={deltaRot.eulerAngles.y:F0}°.");
         return true;
     }
 
@@ -265,11 +316,16 @@ public class GestorXR : MonoBehaviour
 
         var manager = go.AddComponent<OVRManager>();
         manager.trackingOriginType          = OVRManager.TrackingOrigin.FloorLevel;
-        manager.isInsightPassthroughEnabled = true; // câmaras frontais: QR + ver a base real
+        // ATENÇÃO: NÃO pedir o passthrough aqui. Com o headset pousado no arranque,
+        // o init falha e o estado "Failed" do OVRManager é PEGAJOSO (nunca re-tenta)
+        // → câmaras nunca ligam → o QR nunca deteta. O passthrough é ativado pelo
+        // AtivadorPassthrough DEPOIS de a sessão ter foco (sequência validada).
+        manager.isInsightPassthroughEnabled = false;
         manager.AllowRecenter               = true;
 
         var passthrough = go.AddComponent<OVRPassthroughLayer>();
         passthrough.overlayType = OVROverlay.OverlayType.Underlay;
+        passthrough.enabled     = false; // ligado pelo AtivadorPassthrough
 
         _rig = go.AddComponent<OVRCameraRig>();
 
@@ -300,6 +356,7 @@ public class GestorXR : MonoBehaviour
         cam.allowHDR        = false;
         cam.clearFlags      = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        cam.farClipPlane    = 5000f; // mundos grandes (FBX) sem cortes de imagem
     }
 
     /// <summary>
@@ -317,6 +374,7 @@ public class GestorXR : MonoBehaviour
         _camaraEspectador.depth           = 10f; // por cima de qualquer outra câmara no monitor
         _camaraEspectador.fieldOfView     = 75f;
         _camaraEspectador.allowHDR        = false;
+        _camaraEspectador.farClipPlane    = 5000f;
         _camaraEspectador.enabled         = false; // ligada só em ModoVR
     }
 
@@ -362,19 +420,57 @@ public class GestorXR : MonoBehaviour
         _placard.SetActive(false);
     }
 
-    /// <summary>Mostra o placard no HMD só em ModoMonitor (com XR ativo) e recentra-o à frente da cabeça.</summary>
+    /// <summary>Mostra o placard no HMD só em ModoMonitor (com XR ativo) e coloca-o já à frente da cabeça.</summary>
     void AtualizarPlacard()
     {
         if (_placard == null) return;
         bool mostrar = VrAtivo && !EmModoVR;
         _placard.SetActive(mostrar);
-        if (mostrar && Cabeca != null)
+        if (mostrar) SeguirPlacard(instantaneo: true);
+    }
+
+    void Update()
+    {
+        // O layer de passthrough às vezes falha o RESUME quando a sessão adormece
+        // (headset tirado, sensor de proximidade ativo) e volta — "Failed to resume
+        // layer / error -2". Re-ativar ao recuperar o foco é idempotente e recupera
+        // os casos leves. (A cura real é desligar o sensor de proximidade no MQDH.)
+        bool foco = OVRManager.hasVrFocus;
+        if (foco && !_tinhaFoco && VrAtivo)
         {
-            Vector3 frente = Cabeca.forward; frente.y = 0f;
-            if (frente.sqrMagnitude < 0.001f) frente = Vector3.forward;
-            frente.Normalize();
-            _placard.transform.position = Cabeca.position + frente * 2f;
-            _placard.transform.rotation = Quaternion.LookRotation(frente, Vector3.up);
+            Debug.Log("[GestorXR] Sessão recuperou o foco — a garantir o passthrough.");
+            AtivadorPassthrough.Ativar();
         }
+        _tinhaFoco = foco;
+    }
+
+    void LateUpdate()
+    {
+        if (_placard != null && _placard.activeSelf) SeguirPlacard(instantaneo: false);
+    }
+
+    /// <summary>
+    /// O placard persegue o centro da visão com lerp suave (como o EcraVR) —
+    /// o jogador vê sempre o aviso, para onde quer que olhe, sem colagem rígida.
+    /// </summary>
+    void SeguirPlacard(bool instantaneo)
+    {
+        if (Cabeca == null) return;
+
+        Vector3 alvoPos  = Cabeca.TransformPoint(new Vector3(0f, 0f, 2f));
+        Vector3 paraAqui = alvoPos - Cabeca.position;
+        Quaternion alvoRot = paraAqui.sqrMagnitude > 0.0001f
+            ? Quaternion.LookRotation(paraAqui.normalized, Vector3.up)
+            : _placard.transform.rotation;
+
+        if (instantaneo)
+        {
+            _placard.transform.SetPositionAndRotation(alvoPos, alvoRot);
+            return;
+        }
+
+        float t = 1f - Mathf.Exp(-4f * Time.deltaTime); // suave, independente de fps
+        _placard.transform.position = Vector3.Lerp(_placard.transform.position, alvoPos, t);
+        _placard.transform.rotation = Quaternion.Slerp(_placard.transform.rotation, alvoRot, t);
     }
 }

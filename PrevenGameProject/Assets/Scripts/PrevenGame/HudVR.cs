@@ -85,8 +85,10 @@ public class HudVR : MonoBehaviour
         demoGO.transform.SetParent(fundoGO.transform, false);
         var demoRect = demoGO.AddComponent<RectTransform>();
         demoRect.anchorMin = Vector2.zero; demoRect.anchorMax = Vector2.one;
-        demoRect.offsetMin = new Vector2(10f, 10f);
-        demoRect.offsetMax = new Vector2(-10f, -10f);
+        // Margens NEGATIVAS: a imagem (PNG transparente com borda própria) fica
+        // maior que o fundo cinzento, que se mantém do mesmo tamanho.
+        demoRect.offsetMin = new Vector2(-18f, -18f);
+        demoRect.offsetMax = new Vector2(18f, 18f);
         var demoImg = demoGO.AddComponent<Image>();
         demoImg.color = Color.white;
         demoImg.preserveAspect = true;

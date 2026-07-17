@@ -52,14 +52,13 @@ public class AlinhadorOmmoQr : MonoBehaviour
 
     [Header("Convenção de eixos do Ommo")]
     [Tooltip("Yaw extra (graus) aplicado à origem Ommo em TODOS os alinhamentos (QR e manual). " +
-             "Corrige a convenção de eixos do hardware — observado: a frente física da base " +
-             "fica 90° à direita do que os dados assumem.")]
-    public float CorrecaoYawOmmoGraus = 90f;
+             "Corrige a convenção de eixos do hardware — validado com o QR real: -90.")]
+    public float CorrecaoYawOmmoGraus = -90f;
 
     [Header("Visual de debug")]
-    [Tooltip("Caixa laranja no sítio onde o jogo pensa que a base station está (com marcador de frente). " +
-             "Move-se com o alinhamento — deve sobrepor-se à base física real.")]
-    public bool MostrarVisualBase = true;
+    [Tooltip("APENAS PARA DEBUG: caixa laranja no sítio onde o jogo pensa que a base station está. " +
+             "Desligado por defeito — o jogador calibra sem objetos de ajuda.")]
+    public bool MostrarVisualBase = false;
 
     /// <summary>De onde veio o alinhamento atual (para logs/diagnóstico).</summary>
     public enum Fonte { Nenhum, Persistido, Qr, Manual }
@@ -67,15 +66,31 @@ public class AlinhadorOmmoQr : MonoBehaviour
     /// <summary>True depois de o alinhamento ter sido aplicado ao OmmoRoot nesta cena.</summary>
     public bool Alinhado { get; private set; }
 
+    /// <summary>
+    /// Enquanto false, o alinhamento continua a REFINAR-SE com cada leitura do QR
+    /// (o jogador pode olhar para a base a qualquer momento — não se assume que
+    /// está de frente para ela no arranque). A calibração chama <see cref="Congelar"/>
+    /// quando as capturas começam; depois disso só desvios grandes re-alinham.
+    /// </summary>
+    public bool Congelado { get; private set; }
+
     /// <summary>Fonte do alinhamento atual.</summary>
     public Fonte FonteAtual { get; private set; } = Fonte.Nenhum;
+
+    [Tooltip("Velocidade do refinamento contínuo (lerp/s) enquanto não congelado.")]
+    public float VelocidadeRefinar = 4f;
 
     private bool _subscrito;
     private bool _avisoMrukDado;
     private float _tempoInicioEspera = -1f;
     private float _proximoLogEstado;
+    private float _proximoLogRefino;
     private float _proximoWatchdog = -1f;
+    private int _ciclosWatchdogFalhados;
+    private float _segundosSemQr;
+    private bool _dicaOticaDada;
     private int _leiturasOk;
+    private GameObject _visualBase;
     private Pose _ultimaLeitura;
     private bool _temUltimaLeitura;
     private readonly List<MRUKTrackable> _trackables = new List<MRUKTrackable>();
@@ -96,37 +111,48 @@ public class AlinhadorOmmoQr : MonoBehaviour
             Debug.Log("[AlinhadorQr] Alinhamento persistido aplicado ao OmmoRoot.");
         }
 
-        CriarVisualBase();
+        AtualizarVisualBase();
     }
 
     /// <summary>
-    /// Caixa de debug presa ao OmmoRoot: mostra onde o jogo pensa que a base
-    /// station está (acompanha o alinhamento automaticamente por ser filha).
-    /// A caixa laranja é o corpo; o cubo pequeno marca o +Z (frente) da origem.
+    /// Visual de debug preso ao OmmoRoot — ativável/desativável EM RUNTIME pelo
+    /// flag <see cref="MostrarVisualBase"/> (com o passthrough ligado é a
+    /// ferramenta para afinar o offset QR→origem: a caixa deve sobrepor-se à
+    /// base física). Caixa laranja = corpo; cubo branco = +Z (frente) da origem.
     /// </summary>
-    void CriarVisualBase()
+    void AtualizarVisualBase()
     {
-        if (!MostrarVisualBase || OmmoRoot == null) return;
+        if (MostrarVisualBase && _visualBase == null && OmmoRoot != null)
+        {
+            _visualBase = new GameObject("VisualBaseStation");
+            _visualBase.transform.SetParent(OmmoRoot, false);
 
-        var corpo = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        corpo.name = "VisualBaseStation";
-        Object.Destroy(corpo.GetComponent<Collider>());
-        corpo.transform.SetParent(OmmoRoot, false);
-        corpo.transform.localPosition = Vector3.zero;
-        corpo.transform.localScale    = new Vector3(0.28f, 0.05f, 0.28f);
-        corpo.GetComponent<Renderer>().material.color = new Color(1f, 0.55f, 0.1f);
+            var corpo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            corpo.name = "Corpo";
+            Object.Destroy(corpo.GetComponent<Collider>());
+            corpo.transform.SetParent(_visualBase.transform, false);
+            corpo.transform.localScale = new Vector3(0.28f, 0.05f, 0.28f);
+            corpo.GetComponent<Renderer>().material.color = new Color(1f, 0.55f, 0.1f);
 
-        var frente = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        frente.name = "VisualBaseFrente";
-        Object.Destroy(frente.GetComponent<Collider>());
-        frente.transform.SetParent(OmmoRoot, false);
-        frente.transform.localPosition = new Vector3(0f, 0f, 0.18f);
-        frente.transform.localScale    = new Vector3(0.03f, 0.03f, 0.08f);
-        frente.GetComponent<Renderer>().material.color = Color.white;
+            var frente = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            frente.name = "Frente";
+            Object.Destroy(frente.GetComponent<Collider>());
+            frente.transform.SetParent(_visualBase.transform, false);
+            frente.transform.localPosition = new Vector3(0f, 0f, 0.18f);
+            frente.transform.localScale    = new Vector3(0.03f, 0.03f, 0.08f);
+            frente.GetComponent<Renderer>().material.color = Color.white;
+        }
+        else if (!MostrarVisualBase && _visualBase != null)
+        {
+            Destroy(_visualBase);
+            _visualBase = null;
+        }
     }
 
     void Update()
     {
+        AtualizarVisualBase(); // flag alterável em runtime (afinar offsets com passthrough)
+
         // Plano B: alinhamento manual com F2 (operador).
         if (Input.GetKeyDown(KeyCode.F2)) AlinharManualFrenteCabeca();
 
@@ -168,7 +194,11 @@ public class AlinhadorOmmoQr : MonoBehaviour
     /// </summary>
     void WatchdogConfigTracker()
     {
-        if (MRUK.Instance.TrackerConfiguration.QRCodeTrackingEnabled) return; // já ativa
+        if (MRUK.Instance.TrackerConfiguration.QRCodeTrackingEnabled)
+        {
+            _ciclosWatchdogFalhados = 0;
+            return; // já ativa
+        }
         if (_proximoWatchdog < 0f || Time.unscaledTime < _proximoWatchdog) return;
         _proximoWatchdog = Time.unscaledTime + 5f;
 
@@ -177,6 +207,15 @@ public class AlinhadorOmmoQr : MonoBehaviour
         cfg.KeyboardTrackingEnabled     = !cfg.KeyboardTrackingEnabled; // muda o pedido → força retry
         MRUK.Instance.SceneSettings.TrackerConfiguration = cfg;
         Debug.Log("[AlinhadorQr] Watchdog: config ativa do QR ainda False — a forçar novo pedido ao runtime.");
+
+        // O pedido nunca é aceite? O serviço de tracking do Link no PC está morto —
+        // nenhum retry do nosso lado o ressuscita. Diz claramente o que fazer.
+        _ciclosWatchdogFalhados++;
+        if (_ciclosWatchdogFalhados == 6) // ~30 s de recusas
+            Debug.LogError("[AlinhadorQr] ⛔ O runtime do Link NÃO aceita a configuração do tracker de QR há 30 s — " +
+                           "o serviço de tracking/âncoras do PC está avariado. Solução: fechar Unity + app Meta Quest Link, " +
+                           "REINICIAR O PC e o headset, reabrir por ordem (Link → headset → Unity). " +
+                           "Para continuar já: F2 (alinhamento manual) ou F3 (modo comando).");
     }
 
     /// <summary>
@@ -194,6 +233,7 @@ public class AlinhadorOmmoQr : MonoBehaviour
         sb.Append($"suportado={MRUK.Instance.QRCodeTrackingSupported} | ");
         sb.Append($"config pedida QR={MRUK.Instance.SceneSettings.TrackerConfiguration.QRCodeTrackingEnabled} | ");
         sb.Append($"config ATIVA QR={MRUK.Instance.TrackerConfiguration.QRCodeTrackingEnabled} | ");
+        sb.Append($"passthrough={(OVRManager.IsInsightPassthroughInitialized() ? "ON" : "OFF!")} | ");
 
         MRUK.Instance.GetTrackables(_trackables);
         int qrs = 0;
@@ -206,9 +246,25 @@ public class AlinhadorOmmoQr : MonoBehaviour
         if (qrs == 0) sb.Append("nenhum QR detetado | ");
         sb.Append($"estabilidade={_leiturasOk}/{LeiturasEstaveis} | fonte atual={FonteAtual}");
         Debug.Log(sb.ToString());
+
+        // Dica única: tracker ativo + câmaras ligadas + nada detetado durante ~30 s
+        // = problema ÓTICO (distância/ângulo/luz/QR), não de software.
+        if (qrs == 0 && MRUK.Instance.TrackerConfiguration.QRCodeTrackingEnabled &&
+            OVRManager.IsInsightPassthroughInitialized())
+        {
+            _segundosSemQr += 2f;
+            if (!_dicaOticaDada && _segundosSemQr >= 30f)
+            {
+                _dicaOticaDada = true;
+                Debug.LogWarning("[AlinhadorQr] 💡 Tracker ativo e câmaras ligadas mas nenhum QR em 30 s — é ótico: " +
+                                 "aproxima-te a 30–60 cm do código, olha DIRETAMENTE para ele 3–4 s, boa luz, " +
+                                 "QR plano/mate com margem branca. Se persistir, F2 alinha manualmente.");
+            }
+        }
+        else _segundosSemQr = 0f;
     }
 
-    // ── Deteção + estabilização ───────────────────────────────────────
+    // ── Deteção contínua ("ir fazendo checks") ────────────────────────
     void ProcurarQrEstavel()
     {
         MRUK.Instance.GetTrackables(_trackables);
@@ -221,23 +277,54 @@ public class AlinhadorOmmoQr : MonoBehaviour
                 (t.MarkerPayloadString == null || !t.MarkerPayloadString.Contains(PayloadFiltro))) continue;
 
             var leitura = new Pose(t.transform.position, t.transform.rotation);
+            Pose origemNova = ComporOrigem(leitura);
 
-            // Já alinhado: só re-alinha se a base tiver sido mesmo movida.
-            if (Alinhado)
+            // CONGELADO (capturas/jogo em curso): só um desvio grande re-alinha —
+            // em POSIÇÃO ou em ROTAÇÃO (um erro só de orientação também conta).
+            if (Congelado)
             {
-                Pose origemNova = ComporOrigem(leitura);
-                if (OmmoRoot != null &&
-                    Vector3.Distance(origemNova.position, OmmoRoot.position) > LimiarRealinhar)
+                if (OmmoRoot != null)
                 {
-                    Debug.Log("[AlinhadorQr] QR re-detetado com desvio grande — a re-alinhar.");
-                    Alinhado = false;
-                    _leiturasOk = 0;
-                    _temUltimaLeitura = false;
+                    float desvioPos = Vector3.Distance(origemNova.position, OmmoRoot.position);
+                    float desvioRot = Quaternion.Angle(origemNova.rotation, OmmoRoot.rotation);
+                    if (desvioPos > LimiarRealinhar || desvioRot > 10f)
+                    {
+                        Debug.Log($"[AlinhadorQr] QR re-detetado com desvio grande (pos {desvioPos * 100f:F1} cm, " +
+                                  $"rot {desvioRot:F0}°) — a re-alinhar.");
+                        Congelado = false;
+                        Alinhado  = false;
+                        _leiturasOk = 0;
+                        _temUltimaLeitura = false;
+                    }
                 }
                 return;
             }
 
-            // Estabilização: N leituras consecutivas com jitter baixo.
+            // JÁ ALINHADO mas não congelado: refina continuamente — o jogador pode
+            // só agora ter olhado bem para a base; segue a leitura com suavização.
+            if (Alinhado)
+            {
+                if (OmmoRoot != null)
+                {
+                    float dist = Vector3.Distance(origemNova.position, OmmoRoot.position);
+                    float k = 1f - Mathf.Exp(-VelocidadeRefinar * Time.deltaTime);
+                    OmmoRoot.SetPositionAndRotation(
+                        Vector3.Lerp(OmmoRoot.position, origemNova.position, k),
+                        Quaternion.Slerp(OmmoRoot.rotation, origemNova.rotation, k));
+
+                    if (dist > 0.03f && Time.unscaledTime >= _proximoLogRefino)
+                    {
+                        _proximoLogRefino = Time.unscaledTime + 1f;
+                        Debug.Log($"[AlinhadorQr] A refinar alinhamento (desvio {dist * 100f:F1} cm).");
+                    }
+                    if (SessionManager.Instancia != null)
+                        SessionManager.Instancia.GuardarAlinhamentoOmmo(
+                            new Pose(OmmoRoot.position, OmmoRoot.rotation));
+                }
+                return;
+            }
+
+            // PRIMEIRO alinhamento: N leituras consecutivas com jitter baixo.
             if (_temUltimaLeitura &&
                 Vector3.Distance(leitura.position, _ultimaLeitura.position) <= LimiarJitter)
                 _leiturasOk++;
@@ -249,17 +336,30 @@ public class AlinhadorOmmoQr : MonoBehaviour
 
             if (_leiturasOk >= LeiturasEstaveis)
             {
-                var origem = ComporOrigem(leitura);
-                AplicarPose(origem, persistir: true, Fonte.Qr);
+                AplicarPose(origemNova, persistir: true, Fonte.Qr);
                 Debug.Log($"[AlinhadorQr] ✅ Alinhado pelo QR \"{t.MarkerPayloadString}\" após {LeiturasEstaveis} leituras estáveis:\n" +
                           $"  pose QR:     pos=({leitura.position.x:F3}, {leitura.position.y:F3}, {leitura.position.z:F3}) " +
                           $"euler={leitura.rotation.eulerAngles}\n" +
-                          $"  offset QR→origem: pos={OffsetPosicao} euler={OffsetRotacaoEuler}\n" +
-                          $"  origem Ommo: pos=({origem.position.x:F3}, {origem.position.y:F3}, {origem.position.z:F3}) " +
-                          $"euler={origem.rotation.eulerAngles}");
+                          $"  offset QR→origem: pos={OffsetPosicao} euler={OffsetRotacaoEuler} (+ yaw Ommo {CorrecaoYawOmmoGraus}°)\n" +
+                          $"  origem Ommo: pos=({origemNova.position.x:F3}, {origemNova.position.y:F3}, {origemNova.position.z:F3}) " +
+                          $"euler={origemNova.rotation.eulerAngles}\n" +
+                          $"  (continua a refinar até as capturas começarem)");
             }
             return; // considera só o primeiro QR válido
         }
+    }
+
+    /// <summary>
+    /// Congela o alinhamento (chamado pela calibração quando as capturas começam —
+    /// a partir daqui a base não deve "respirar" debaixo do exercício).
+    /// </summary>
+    public void Congelar()
+    {
+        if (!Alinhado || Congelado) { Congelado = Alinhado; return; }
+        Congelado = true;
+        if (OmmoRoot != null && SessionManager.Instancia != null)
+            SessionManager.Instancia.GuardarAlinhamentoOmmo(new Pose(OmmoRoot.position, OmmoRoot.rotation));
+        Debug.Log($"[AlinhadorQr] 🔒 Alinhamento congelado (fonte {FonteAtual}) — só desvios > {LimiarRealinhar} m re-alinham.");
     }
 
     /// <summary>Compõe a pose da origem Ommo a partir da pose do QR e do offset físico.</summary>

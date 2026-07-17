@@ -33,6 +33,8 @@ public class GestorMinijogo : MonoBehaviour
     public float SegundosAnuncioBraco = 3f;
     [Tooltip("Segundos de intervalo entre repetições.")]
     public float SegundosEntreReps = 1f;
+    [Tooltip("Segundos que o feedback final fica visível antes de voltar ao Menu (score no monitor).")]
+    public float SegundosMostrarResultado = 4f;
 
     enum Estado { AguardarSensor, AnunciarBraco, EmRep, EntreReps, Tabela, Concluido }
 
@@ -70,7 +72,11 @@ public class GestorMinijogo : MonoBehaviour
 
         // Minijogos correm em VR (se falhar, continua no monitor com fallback de calibração).
         GestorXR.ObterOuCriar().ModoVR();
-        if (SensorManager != null) SensorManager.IniciarTracking(1);
+
+        // No jogo o único visual da mão é o dardo — o cubo do SIU fica escondido.
+        if (Mao != null) Mao.EsconderVisualSensor = true;
+        // Em Modo Comando não há hardware Ommo — o tracking nem arranca.
+        if (!EmModoComando && SensorManager != null) SensorManager.IniciarTracking(1);
         if (Pressao != null) Pressao.OnPressao += AoPressao;
 
         Minijogo.OnRepConcluida += AoRepConcluida;
@@ -129,10 +135,11 @@ public class GestorMinijogo : MonoBehaviour
                 break;
 
             case Estado.Tabela:
-                bool confirmar = _pressaoPendente ||
-                                 Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
-                _pressaoPendente = false;
-                if (confirmar) Concluir();
+                // Sem confirmação: o feedback fica uns segundos e volta-se ao Menu
+                // (o score detalhado aparece no MONITOR; o HMD mostra o placard
+                // "Remove os óculos" automaticamente em ModoMonitor).
+                _timer -= Time.deltaTime;
+                if (_timer <= 0f) Concluir();
                 break;
         }
     }
@@ -146,6 +153,9 @@ public class GestorMinijogo : MonoBehaviour
         // O yaw de corpo alinha-se com a cabeça no início de cada bloco.
         if (Rastreador != null) Rastreador.ReporYawCorpo();
 
+        // Em Modo Comando, a mão passa a ser o comando do lado do braço em jogo.
+        if (Mao != null) Mao.DefinirMaoComando(bloco.Direito);
+
         // HUD: demo do exercício + contador reposto para este braço.
         if (_hud != null)
         {
@@ -154,15 +164,13 @@ public class GestorMinijogo : MonoBehaviour
             _hud.DefinirReps(_rep, bloco.Reps);
         }
 
-        // Anúncio no EcraVR: Jane = braço esquerdo, Patrick = direito.
-        if (Ecra != null && Ecra.Dialogo != null)
+        // Anúncio no painel do EcraVR.
+        if (Ecra != null)
         {
             Ecra.Mostrar(true);
             if (Ecra.PainelTabela != null) Ecra.PainelTabela.SetActive(false);
-            var quem   = bloco.Direito ? HelperId.Patrick : HelperId.Jane;
             string lado = bloco.Direito ? "direito" : "esquerdo";
-            Ecra.Dialogo.MostrarLinha(quem, HelperEmocao.Pleased,
-                $"Agora com o braço {lado}! Segue os alvos com a mão.");
+            Ecra.MostrarTexto($"Agora com o braço {lado}! Segue os alvos com a mão.");
         }
 
         _timer  = SegundosAnuncioBraco;
@@ -181,12 +189,14 @@ public class GestorMinijogo : MonoBehaviour
 
         var cfg = new MinijogoBase.ConfigRep
         {
-            Tipo         = _tipo,
-            BracoDireito = bloco.Direito,
-            RepAtual     = _rep,
-            TotalReps    = bloco.Reps,
-            Waypoints    = ExerciciosWaypoints.Gerar(_tipo, ombro, dados.ComprimentoBraco, frente, bloco.Direito),
-            Mao          = Mao,
+            Tipo             = _tipo,
+            BracoDireito     = bloco.Direito,
+            RepAtual         = _rep,
+            TotalReps        = bloco.Reps,
+            Waypoints        = ExerciciosWaypoints.Gerar(_tipo, ombro, dados.ComprimentoBraco, frente, bloco.Direito),
+            Mao              = Mao,
+            Rastreador       = Rastreador,
+            ComprimentoBraco = dados.ComprimentoBraco,
         };
 
         if (_hud != null) _hud.DefinirReps(_rep, bloco.Reps);
@@ -220,24 +230,28 @@ public class GestorMinijogo : MonoBehaviour
         }
     }
 
-    // ── Tabela de score ───────────────────────────────────────────────
+    // ── Fim do minijogo (feedback curto; a tabela detalhada fica só no log) ──
     void MostrarTabela()
     {
         _estado = Estado.Tabela;
         GestorAudio.Instancia?.TocarSfx(GestorAudio.Instancia.SfxExercicioConcluido);
         if (_hud != null) _hud.Mostrar(false);
 
-        string texto = ConstruirTextoTabela();
-        Debug.Log($"[GestorMinijogo] Tabela:\n{texto}");
+        Debug.Log($"[GestorMinijogo] Resultados:\n{ConstruirTextoTabela()}");
+
+        _timer = SegundosMostrarResultado;
 
         if (Ecra != null)
         {
             Ecra.Mostrar(true);
-            if (Ecra.Dialogo != null)
-                Ecra.Dialogo.MostrarLinha(HelperId.Jane, HelperEmocao.Pleased,
-                    "Minijogo concluído! Faz pressão no Ommo para continuar.");
-            if (Ecra.TextoTabela != null) Ecra.TextoTabela.text = texto;
-            if (Ecra.PainelTabela != null) Ecra.PainelTabela.SetActive(true);
+            if (Ecra.PainelTabela != null) Ecra.PainelTabela.SetActive(false);
+
+            // Só o feedback; o resultado detalhado vê-se no monitor a seguir.
+            float media = MediaGlobal();
+            string elogio = media >= 75f ? "Excelente trabalho!"
+                          : media >= 45f ? "Bom trabalho!"
+                          :                "Boa tentativa — continua!";
+            Ecra.MostrarTexto($"{elogio}\nRemove os óculos para veres o teu resultado.");
         }
     }
 
@@ -294,6 +308,9 @@ public class GestorMinijogo : MonoBehaviour
     }
 
     // ── Entradas / pausa ──────────────────────────────────────────────
+    static bool EmModoComando =>
+        SessionManager.Instancia != null && SessionManager.Instancia.ModoComando;
+
     void AoPressao()
     {
         if (_estado == Estado.Tabela) _pressaoPendente = true;

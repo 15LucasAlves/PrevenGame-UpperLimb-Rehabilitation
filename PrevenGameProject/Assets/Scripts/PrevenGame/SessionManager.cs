@@ -49,6 +49,34 @@ public class SessionManager : MonoBehaviour
     public float   ComprimentoBraco { get; private set; }
     public Vector3 DirecaoFrente    { get; private set; }
 
+    // ── Modo Comando (testes sem Ommo) ────────────────────────────────
+    /// <summary>
+    /// INTERRUPTOR-MESTRE do bypass: false = o Modo Comando está DESATIVADO por
+    /// completo (F3 inerte, ModoComandoPorDefeito ignorado) e a app funciona
+    /// exclusivamente no fluxo VR+Ommo real. Voltar a true só quando for preciso
+    /// testar sem hardware.
+    /// </summary>
+    public static bool ModoComandoPermitido = false;
+
+    /// <summary>
+    /// Quando true, o comando do Quest substitui o sensor Ommo (SIU): a
+    /// <see cref="MaoJogador"/> segue o hand anchor do rig e a calibração/minijogos
+    /// saltam a espera de sensores e do alinhamento QR. Alternado com F3 na
+    /// calibração — para testar o jogo sem o hardware Ommo.
+    /// Só pode ficar true com <see cref="ModoComandoPermitido"/> ligado.
+    /// </summary>
+    public bool ModoComando { get; private set; }
+
+    public void DefinirModoComando(bool ativo)
+    {
+        if (ativo && !ModoComandoPermitido)
+        {
+            Debug.Log("[SessionManager] Modo Comando está DESATIVADO (ModoComandoPermitido=false) — pedido ignorado.");
+            ativo = false;
+        }
+        ModoComando = ativo;
+    }
+
     // ── Alinhamento Ommo↔VR (QR na base station) ──────────────────────
     /// <summary>
     /// Pose (mundo Unity/VR) da origem do espaço de tracking Ommo, obtida pelo
@@ -88,6 +116,11 @@ public class SessionManager : MonoBehaviour
 
     /// <summary>True quando um minijogo terminou a fila e o Menu deve mostrar a fase Score.</summary>
     public bool TemScoresPendentes { get; private set; }
+
+    /// <summary>O tutorial da seleção só se mostra na PRIMEIRA visita ao ecrã (persiste entre cenas).</summary>
+    public bool TutorialSelecaoVisto { get; private set; }
+
+    public void MarcarTutorialSelecaoVisto() => TutorialSelecaoVisto = true;
 
     public bool     TemAtual => _indice >= 0 && _indice < _fila.Count;
     public Minijogo Atual    => TemAtual ? _fila[_indice] : default;

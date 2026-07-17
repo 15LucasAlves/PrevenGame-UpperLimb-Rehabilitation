@@ -91,6 +91,26 @@ public class OmmoSceneBuilder
                 cam.gameObject.AddComponent<CamaraDesktop>();
         }
 
+        // Modelos de calibração: base station (filha do BaseStation — segue o
+        // alinhamento QR) e GRASP como visual da MaoJogador (segue o sensor e
+        // liga/desliga com o tracking). Poses/escalas VALIDADAS pelo utilizador
+        // com o hardware real (2026-07-17). O cubo antigo do OmmoDevice fica escondido.
+        var baseStationGO = GameObject.Find("BaseStation");
+        if (baseStationGO != null)
+            InstanciarModeloComPose("Assets/Prefabs/calibrationPrefabs/Ommo.obj",
+                baseStationGO.transform, "ModeloBaseStation",
+                new Vector3(-0.06f, 0f, 0f), Vector3.zero, 0.001f);
+
+        var maoJogador = Object.FindObjectOfType<MaoJogador>();
+        if (maoJogador != null)
+        {
+            maoJogador.EsconderVisualSensor = true; // o cubo interno nunca aparece
+            var grasp = InstanciarModeloComPose("Assets/Prefabs/calibrationPrefabs/Grasp.fbx",
+                maoJogador.transform, "ModeloGrasp",
+                new Vector3(-0.1f, 0f, 0f), new Vector3(-90f, 180f, 0f), 1.07f);
+            if (grasp != null) maoJogador.Visual = grasp;
+        }
+
         // MRUK (deteção de QR para o alinhamento Ommo↔VR).
         InstanciarMRUK();
 
@@ -304,6 +324,111 @@ public class OmmoSceneBuilder
         AssetDatabase.SaveAssets();
     }
 
+    /// <summary>
+    /// Instancia um modelo (obj/fbx) como filho com pose LOCAL e escala uniforme
+    /// exatas (valores afinados/validados no Inspector com o hardware real).
+    /// </summary>
+    static GameObject InstanciarModeloComPose(string caminho, Transform pai, string nome,
+        Vector3 posLocal, Vector3 eulerLocal, float escalaUniforme)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(caminho);
+        if (prefab == null)
+        {
+            Debug.LogWarning($"[OmmoBuilder] Modelo não encontrado: {caminho}");
+            return null;
+        }
+
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        go.name = nome;
+        go.transform.SetParent(pai, false);
+        go.transform.localPosition = posLocal;
+        go.transform.localRotation = Quaternion.Euler(eulerLocal);
+        go.transform.localScale    = Vector3.one * escalaUniforme;
+
+        Debug.Log($"[OmmoBuilder] Modelo \"{nome}\": pos={posLocal}, rot={eulerLocal}, escala={escalaUniforme}.");
+        return go;
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // Snapshot das luzes (guardar/repor as afinações feitas à mão)
+    // ═════════════════════════════════════════════════════════════════
+    [System.Serializable] class EstadoLuz
+    {
+        public string Nome;
+        public float  Intensidade;
+        public Color  Cor;
+        public float  Alcance;
+        public int    Tipo;
+        public bool   Ativa;
+    }
+    [System.Serializable] class SnapshotLuzes { public List<EstadoLuz> Luzes = new List<EstadoLuz>(); }
+
+    const string CaminhoSnapshotLuzes = "Assets/Prefabs/PrevenGameAssets/Dardos/LuzesSnapshot.json";
+
+    /// <summary>
+    /// Guarda intensidade/cor/alcance/estado de TODAS as luzes da cena aberta
+    /// num JSON versionável — proteção contra perder afinações feitas à mão.
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Luzes/Guardar snapshot das luzes (cena atual)")]
+    public static void GuardarSnapshotLuzes()
+    {
+        var snap = new SnapshotLuzes();
+        foreach (var luz in Object.FindObjectsOfType<Light>(true))
+        {
+            snap.Luzes.Add(new EstadoLuz
+            {
+                Nome        = luz.gameObject.name,
+                Intensidade = luz.intensity,
+                Cor         = luz.color,
+                Alcance     = luz.range,
+                Tipo        = (int)luz.type,
+                Ativa       = luz.enabled && luz.gameObject.activeInHierarchy,
+            });
+        }
+
+        System.IO.File.WriteAllText(CaminhoSnapshotLuzes, JsonUtility.ToJson(snap, prettyPrint: true));
+        AssetDatabase.Refresh();
+        Debug.Log($"[OmmoBuilder] 💡 Snapshot de {snap.Luzes.Count} luzes guardado em {CaminhoSnapshotLuzes}. " +
+                  "(Lembra-te: as luzes em si vivem na CENA — Ctrl+S grava-as; isto é o backup/restore.)");
+    }
+
+    /// <summary>Reaplica o snapshot às luzes da cena aberta (por nome, pela ordem de ocorrência).</summary>
+    [MenuItem("Ommo/PrevenGame/Luzes/Repor snapshot das luzes (cena atual)")]
+    public static void ReporSnapshotLuzes()
+    {
+        if (!System.IO.File.Exists(CaminhoSnapshotLuzes))
+        {
+            EditorUtility.DisplayDialog("PrevenGame", "Não há snapshot guardado ainda.", "OK");
+            return;
+        }
+
+        var snap = JsonUtility.FromJson<SnapshotLuzes>(System.IO.File.ReadAllText(CaminhoSnapshotLuzes));
+
+        // Fila por nome — nomes duplicados aplicam-se pela ordem em que aparecem.
+        var porNome = new Dictionary<string, Queue<EstadoLuz>>();
+        foreach (var e in snap.Luzes)
+        {
+            if (!porNome.TryGetValue(e.Nome, out var fila)) porNome[e.Nome] = fila = new Queue<EstadoLuz>();
+            fila.Enqueue(e);
+        }
+
+        int aplicadas = 0;
+        foreach (var luz in Object.FindObjectsOfType<Light>(true))
+        {
+            if (!porNome.TryGetValue(luz.gameObject.name, out var fila) || fila.Count == 0) continue;
+            var e = fila.Dequeue();
+            luz.intensity = e.Intensidade;
+            luz.color     = e.Cor;
+            luz.range     = e.Alcance;
+            luz.enabled   = e.Ativa;
+            EditorUtility.SetDirty(luz);
+            aplicadas++;
+        }
+
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log($"[OmmoBuilder] 💡 Snapshot reposto: {aplicadas}/{snap.Luzes.Count} luzes aplicadas (gravar a cena para persistir).");
+    }
+
     // ═════════════════════════════════════════════════════════════════
     // EcraVR — ecrã world-space do paciente (diálogo, tabela de score, pausa)
     // ═════════════════════════════════════════════════════════════════
@@ -317,17 +442,32 @@ public class OmmoSceneBuilder
         rt.localScale = Vector3.one * 0.001f; // 1920 px → 1.92 m de largura
 
         var ecra = root.AddComponent<EcraVR>();
-        // Cobertura larga do viewport (o conteúdo é encostado aos cantos abaixo).
-        ecra.EscalaConteudo = 1f;
-        ecra.Distancia     = 1.2f;
 
-        // Diálogo dos helpers — instância própria (mesmo layout do diálogo do monitor).
-        CriarPainelDialogo("DialogoVR", root.transform, out var dlgVr);
-        ecra.Dialogo = dlgVr;
+        // Painel de instruções — estilo menu de jogo VR: background da calibração
+        // + texto centrado. (Os helpers Patrick/Jane ficam SÓ no monitor.)
+        var painelInstr = new GameObject("PainelInstrucoes");
+        painelInstr.transform.SetParent(root.transform, false);
+        var piRect = painelInstr.AddComponent<RectTransform>();
+        piRect.anchorMin = piRect.anchorMax = piRect.pivot = new Vector2(0.5f, 0.5f);
+        piRect.anchoredPosition = Vector2.zero;
+        piRect.sizeDelta        = new Vector2(1100f, 420f);
+        var piImg = painelInstr.AddComponent<Image>();
+        var bgCalib = UISprite("Background"); // o mesmo da calibração do monitor
+        if (bgCalib != null) { piImg.sprite = bgCalib; piImg.color = Color.white; }
+        else piImg.color = new Color(0.09f, 0.12f, 0.10f, 1f);
+        piImg.raycastTarget = false;
 
-        // Ajustes VR (menos clutter): só o orador visível, helpers mais pequenos
-        // ENCOSTADOS aos cantos inferiores, balão pequeno ancorado ao orador.
-        AjustarDialogoParaVR(dlgVr, escalaHelpers: 0.7f, escalaBalao: 0.55f);
+        var textoInstr = CriarTexto("TextoInstrucoes", painelInstr.transform, "", 44,
+            TextAlignmentOptions.Center,
+            new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, Vector2.zero, Color.white, PoppinsMedium, FontStyles.Normal);
+        textoInstr.rectTransform.offsetMin = new Vector2(60f, 40f);
+        textoInstr.rectTransform.offsetMax = new Vector2(-60f, -40f);
+        textoInstr.raycastTarget = false;
+        painelInstr.SetActive(false);
+
+        ecra.PainelInstrucoes = painelInstr;
+        ecra.TextoInstrucoes  = textoInstr;
 
         // Tabela de score do minijogo (preenchida pelo GestorMinijogo).
         var painelTabela = CriarPainel("PainelTabela", root.transform);
@@ -353,48 +493,146 @@ public class OmmoSceneBuilder
     }
 
     /// <summary>
-    /// Reduz o clutter do diálogo na instância VR: só o ORADOR fica visível,
-    /// personagens mais pequenos colados aos cantos inferiores, e o balão
-    /// (com textos proporcionais) pequeno e ANCORADO ao personagem que fala.
-    /// Não toca na instância do monitor (os modos são opt-in por instância).
+    /// Instala o minijogo dos dardos na cena ABERTA (a dos dardos, mantida à mão):
+    /// troca o MinijogoTeste pelo MinijogoDardos, substitui o EcraVR antigo pelo
+    /// novo (painel de instruções em vez do diálogo com helpers), e usa a Camera
+    /// baked do FBX como ponto de partida do jogador (desativando-a).
     /// </summary>
-    static void AjustarDialogoParaVR(HelperDialogueManager dlg, float escalaHelpers, float escalaBalao)
+    [MenuItem("Ommo/PrevenGame/Instalar MinijogoDardos na cena atual")]
+    public static void InstalarMinijogoDardos()
     {
-        dlg.MostrarApenasOrador = true;
-        dlg.BalaoJuntoAoOrador  = true;
-
-        // Personagens: escala menor + encostados aos cantos (âncoras já são os cantos inferiores).
-        if (dlg.ImagemPatrick != null)
+        var gestor = Object.FindObjectOfType<GestorMinijogo>();
+        if (gestor == null)
         {
-            dlg.ImagemPatrick.rectTransform.localScale       = Vector3.one * escalaHelpers;
-            dlg.ImagemPatrick.rectTransform.anchoredPosition = new Vector2(15f, 5f);
-        }
-        if (dlg.ImagemJane != null)
-        {
-            dlg.ImagemJane.rectTransform.localScale       = Vector3.one * escalaHelpers;
-            dlg.ImagemJane.rectTransform.anchoredPosition = new Vector2(-15f, 5f);
+            EditorUtility.DisplayDialog("PrevenGame",
+                "A cena não tem GestorMinijogo — corre primeiro o 'Adicionar Scaffold VR ao Minijogo'.", "OK");
+            return;
         }
 
-        // Balão: encolher o rect (o manager reescreve localScale no flip, por isso
-        // a escala não serve) e os textos proporcionalmente.
-        if (dlg.BalaoImagem != null)
-            dlg.BalaoImagem.rectTransform.sizeDelta *= escalaBalao;
-        EncolherTextoBalao(dlg.TextoBalao,    escalaBalao);
-        EncolherTextoBalao(dlg.TextoBalaoSub, escalaBalao);
+        // 0. ESCALA DO MUNDO: mede o raio real do "aro 5" e normaliza o root do
+        // FBX para o alvo ter ~0.25 m de raio (alvo de dardos padrão). Sem isto
+        // o bar fica quilométrico (o far plane corta a imagem, o aro 1 fica a
+        // centenas de metros de altura e o dardo é um grão de pó invisível).
+        const float RAIO_ALVO_ARO5 = 0.25f;
+        var aro5 = GameObject.Find("aro 5");
+        if (aro5 != null && aro5.GetComponent<Renderer>() != null)
+        {
+            var bounds = aro5.GetComponent<Renderer>().bounds;
+            float raioAtual = Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z);
 
-        // Offsets do balão a partir do canto inferior do orador (BalaoJuntoAoOrador):
-        // assenta logo acima da cabeça do personagem (personagem ~532 px alto a 0.7).
-        dlg.PosBalaoPatrick = new Vector2(40f, 545f);
-        dlg.PosBalaoJane    = new Vector2(-40f, 545f);
-    }
+            Transform raiz = aro5.transform;
+            while (raiz.parent != null) raiz = raiz.parent;
 
-    static void EncolherTextoBalao(TextMeshProUGUI texto, float f)
-    {
-        if (texto == null) return;
-        texto.fontSize *= f;
-        var rt = texto.rectTransform;
-        rt.offsetMin *= f;
-        rt.offsetMax *= f;
+            if (raioAtual > 0.0001f && Mathf.Abs(raioAtual - RAIO_ALVO_ARO5) / RAIO_ALVO_ARO5 > 0.1f)
+            {
+                float fator = RAIO_ALVO_ARO5 / raioAtual;
+                raiz.localScale *= fator;
+                var aro1T = GameObject.Find("aro 1")?.transform;
+                Debug.Log($"[OmmoBuilder] 🌍 Escala do mundo normalizada: raio do aro 5 {raioAtual:F2} m → {RAIO_ALVO_ARO5:F2} m " +
+                          $"(fator {fator:E2}; escala do root \"{raiz.name}\" = {raiz.localScale.x:F4})." +
+                          (aro1T != null ? $" aro 1 agora em {aro1T.position}." : ""));
+            }
+            else Debug.Log($"[OmmoBuilder] Escala do mundo OK (raio do aro 5 = {raioAtual:F2} m).");
+        }
+        else Debug.LogWarning("[OmmoBuilder] \"aro 5\" sem Renderer/não encontrado — escala do mundo não verificada.");
+
+        // 1. Minijogo: desativa o placeholder de teste e cria/reutiliza os dardos.
+        var teste = Object.FindObjectOfType<MinijogoTesteWaypoints>(true);
+        if (teste != null) teste.gameObject.SetActive(false);
+
+        var dardos = Object.FindObjectOfType<MinijogoDardos>(true);
+        if (dardos == null)
+            dardos = CreateEmpty("MinijogoDardos").AddComponent<MinijogoDardos>();
+        gestor.Minijogo = dardos;
+
+        // Modelo do dardo = o "dardo" do FBX da cena (clonado por rep; o original fica).
+        if (dardos.ModeloDardo == null)
+        {
+            var modeloDardo = GameObject.Find("dardo") ?? GameObject.Find("Dardo");
+            if (modeloDardo != null)
+            {
+                dardos.ModeloDardo = modeloDardo;
+                Debug.Log($"[OmmoBuilder] Modelo do dardo = \"{modeloDardo.name}\" da cena.");
+            }
+            else Debug.LogWarning("[OmmoBuilder] Objeto \"dardo\" não encontrado — o minijogo usa o placeholder.");
+        }
+
+        // 2. EcraVR novo (o antigo tinha o diálogo dos helpers preso à câmara).
+        var ecraAntigo = Object.FindObjectOfType<EcraVR>(true);
+        if (ecraAntigo != null) Object.DestroyImmediate(ecraAntigo.gameObject);
+        gestor.Ecra = ConstruirEcraVR();
+
+        // 2b. Normaliza o AlinhadorOmmoQr da cena (componentes serializados podem
+        // ter defaults antigos): sem visuais de ajuda + yaw validado com o QR real.
+        var alinhadorCena = Object.FindObjectOfType<AlinhadorOmmoQr>(true);
+        if (alinhadorCena != null)
+        {
+            alinhadorCena.MostrarVisualBase      = false;
+            alinhadorCena.CorrecaoYawOmmoGraus   = -90f;
+        }
+
+        // 2c. Cubo interno do sensor nunca aparece no jogo (o visual é o dardo).
+        var maoCena = Object.FindObjectOfType<MaoJogador>();
+        if (maoCena != null) maoCena.EsconderVisualSensor = true;
+
+        // 3. Camera do FBX → marcador do ponto de partida do jogador.
+        var partida = gestor.GetComponent<PontoDePartidaJogador>();
+        if (partida == null) partida = gestor.gameObject.AddComponent<PontoDePartidaJogador>();
+        foreach (var cam in Object.FindObjectsOfType<Camera>(true))
+        {
+            if (cam.GetComponent<CamaraDesktop>() != null) continue; // não é a do FBX
+            cam.gameObject.tag = "Untagged";
+            cam.enabled = false;
+            var listener = cam.GetComponent<AudioListener>();
+            if (listener != null) listener.enabled = false;
+            partida.Ponto = cam.transform;
+            Debug.Log($"[OmmoBuilder] Ponto de partida = câmara \"{cam.name}\" do FBX (componente desativada).");
+            break;
+        }
+        if (partida.Ponto == null)
+            Debug.LogWarning("[OmmoBuilder] Sem câmara do FBX na cena — atribui o Ponto do PontoDePartidaJogador no Inspector.");
+
+        // Altura da cabeça = altura do centro do alvo ("aro 1").
+        if (partida.ReferenciaAltura == null)
+        {
+            var aro1 = GameObject.Find("aro 1");
+            if (aro1 != null) partida.ReferenciaAltura = aro1.transform;
+            else Debug.LogWarning("[OmmoBuilder] \"aro 1\" não encontrado — a altura de partida usa a do marcador.");
+        }
+
+        // 3b. Áudio: cenas montadas antes de o GestorAudio existir não o têm no
+        // bootstrap — sem ele, Play direto nesta cena fica MUDO (sem ambiente,
+        // sem SFX do dardo). Garante o componente e (re)liga os clips.
+        var bootstrapCena = Object.FindObjectOfType<OmmoBootstrap>();
+        if (bootstrapCena != null)
+        {
+            var audio = bootstrapCena.GetComponent<GestorAudio>();
+            if (audio == null) audio = bootstrapCena.gameObject.AddComponent<GestorAudio>();
+            ConfigurarGestorAudio(audio); // idempotente — preenche clips em falta
+            Debug.Log("[OmmoBuilder] GestorAudio garantido no bootstrap da cena (clips ligados).");
+        }
+        else Debug.LogWarning("[OmmoBuilder] Sem OmmoBootstrap na cena — áudio não configurado.");
+
+        // 4. Iluminação: as luzes vindas do FBX (Blender) têm intensidades/alcances
+        // desregulados e não iluminam a sala — garante SEMPRE a direcional
+        // principal (idempotente por nome; afinável/apagável pelo utilizador).
+        // SEM sombras: numa cena interior, uma direcional com sombras deixa a
+        // sala às escuras (o teto sombreia tudo). Sem sombras comporta-se como
+        // a luz de cabeça da Scene view — tudo visível, look uniforme.
+        if (GameObject.Find("LuzPrincipal") == null)
+        {
+            var luzGO = CreateEmpty("LuzPrincipal");
+            var luz = luzGO.AddComponent<Light>();
+            luz.type      = LightType.Directional;
+            luz.color     = new Color(1f, 0.93f, 0.82f); // quente, tom de bar
+            luz.intensity = 1.05f;
+            luz.shadows   = LightShadows.None;
+            luzGO.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
+            Debug.Log("[OmmoBuilder] Adicionada a direcional principal sem sombras (LuzPrincipal).");
+        }
+
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ MinijogoDardos instalado (gravar a cena para persistir).");
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -849,12 +1087,21 @@ public class OmmoSceneBuilder
         Undo.RegisterCreatedObjectUndo(instancia, "Create MRUK");
 
         var mruk = instancia.GetComponent<Meta.XR.MRUtilityKit.MRUK>();
-        if (mruk != null && mruk.SceneSettings != null)
+        if (mruk != null)
         {
-            mruk.SceneSettings.LoadSceneOnStartup = false; // só trackables; sem modelo da sala
-            var tc = mruk.SceneSettings.TrackerConfiguration;
-            tc.QRCodeTrackingEnabled = true;
-            mruk.SceneSettings.TrackerConfiguration = tc;
+            // SEM world-locking: o MRUK reescreveria o TrackingSpace com base nos
+            // spatial anchors dele (persistência entre sessões que NÃO usamos — o
+            // QR re-alinha a cada arranque) e lutaria contra o nosso alinhamento,
+            // além de gerar o tráfego de anchors que degrada as sessões Link.
+            mruk.EnableWorldLock = false;
+
+            if (mruk.SceneSettings != null)
+            {
+                mruk.SceneSettings.LoadSceneOnStartup = false; // só trackables; sem modelo da sala
+                var tc = mruk.SceneSettings.TrackerConfiguration;
+                tc.QRCodeTrackingEnabled = true;
+                mruk.SceneSettings.TrackerConfiguration = tc;
+            }
         }
 
         // INATIVO de propósito: o MRUK exige OVRCameraRig + sessão XR no Awake,

@@ -113,7 +113,12 @@ public class GameFlowManager : MonoBehaviour
         _fase = Fase.Selecao;
         GestorXR.Instancia?.ModoMonitor(); // seleção é no monitor (o HMD mostra o placard)
         SetPainel(SelecaoPainel, true);
-        if (Selecao) Selecao.Mostrar(Dialogo, FalasTutorial());
+
+        // Tutorial só na PRIMEIRA visita à seleção (voltar do score/minijogos não repete).
+        var sm = SessionManager.Instancia;
+        bool primeiraVez = sm == null || !sm.TutorialSelecaoVisto;
+        if (Selecao) Selecao.Mostrar(Dialogo, primeiraVez ? FalasTutorial() : null);
+        if (primeiraVez) sm?.MarcarTutorialSelecaoVisto();
     }
 
     /// <summary>Falas do tutorial: usa a sequência atribuída no Inspector, ou o texto por defeito.</summary>
@@ -165,8 +170,9 @@ public class GameFlowManager : MonoBehaviour
             sb.AppendLine($"\nMédia: {media:F0} %");
             ScoreTexto.text = sb.ToString();
 
-            // SFX da banda do score (amazing/good/bad).
-            if (scores.Count > 0) GestorAudio.Instancia?.TocarScoreBanda(media);
+            // Rufo de tambores + SFX da banda do score (amazing/good/bad).
+            if (scores.Count > 0 && GestorAudio.Instancia != null)
+                StartCoroutine(SomDoScore(media));
         }
 
         if (Dialogo != null)
@@ -202,6 +208,15 @@ public class GameFlowManager : MonoBehaviour
             Fala(h, emocao, txt),
             Fala(h, HelperEmocao.Pleased, "Clica para voltar ao menu."),
         };
+    }
+
+    /// <summary>Rufo de tambores e, quando acaba, o SFX da banda do resultado.</summary>
+    System.Collections.IEnumerator SomDoScore(float media)
+    {
+        var audio = GestorAudio.Instancia;
+        audio.TocarSfx(audio.SfxRufo);
+        yield return new WaitForSeconds(1.4f);
+        audio.TocarScoreBanda(media);
     }
 
     void AoFecharScore()

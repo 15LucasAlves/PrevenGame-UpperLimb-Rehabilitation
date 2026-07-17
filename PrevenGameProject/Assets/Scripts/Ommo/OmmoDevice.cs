@@ -126,6 +126,12 @@ public class OmmoDevice : MonoBehaviour
 
         int sensorCount = _device.SensorUnitDescriptors.Count;
         Debug.Log("SetDeviceDescriptor - sensorCount " + sensorCount);
+
+        // O clone do template traz um CuboSensor HERDADO que nunca é movido
+        // (ficava parado na cena) — limpa os filhos antes de criar os sensores.
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            Destroy(transform.GetChild(i).gameObject);
+
         for (int i = 0; i < sensorCount; i++)
         {
             Vector3 posInicial = _referencial != null ? _referencial.position : Vector3.zero;

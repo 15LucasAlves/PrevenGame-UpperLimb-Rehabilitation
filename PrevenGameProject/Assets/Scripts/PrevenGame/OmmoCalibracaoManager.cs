@@ -51,6 +51,12 @@ public class OmmoCalibracaoManager : MonoBehaviour
     [Tooltip("Arrancar a calibração automaticamente no Start (para testar a cena isolada).")]
     public bool AutoIniciar = false;
 
+    [Header("Modo Comando (testes sem hardware Ommo — F3 alterna)")]
+    [Tooltip("Começar já em Modo Comando (o comando do Quest substitui o SIU; salta sensores, QR e pressão).")]
+    public bool ModoComandoPorDefeito = false;
+    [Tooltip("Mão do jogador (fonte da posição em Modo Comando). Auto-encontrada se vazia.")]
+    public MaoJogador Mao;
+
     /// <summary>Emitido quando a calibração termina (resultados já gravados no SessionManager).</summary>
     public event System.Action OnCalibracaoConcluida;
 
@@ -79,6 +85,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
     {
         if (SensorManager == null) SensorManager = FindObjectOfType<OmmoSensorManager>();
         if (Alinhador     == null) Alinhador     = FindObjectOfType<AlinhadorOmmoQr>();
+        if (Mao           == null) Mao           = FindObjectOfType<MaoJogador>();
         if (SensorManager) SensorManager.OnNumeroDeSensoresMudou += AoNumeroDeSensoresMudou;
         if (AutoIniciar) IniciarCalibracao();
     }
@@ -100,7 +107,11 @@ public class OmmoCalibracaoManager : MonoBehaviour
         _confirmacaoAgendada = false;
         _pressaoPendente     = false;
 
-        if (SensorManager) SensorManager.IniciarTracking(1);
+        if (ModoComandoPorDefeito && SessionManager.ModoComandoPermitido && SessionManager.Instancia != null)
+            SessionManager.Instancia.DefinirModoComando(true);
+
+        // Em Modo Comando não se toca no hardware Ommo (sem tracking, sem esperas).
+        if (!EmModoComando && SensorManager) SensorManager.IniciarTracking(1);
         if (Pressao)       Pressao.OnPressao += AoPressao;
         if (AutoPairing)   AutoPairing.OnSiuEmparelhado += AoSiuEmparelhado;
 
@@ -118,18 +129,86 @@ public class OmmoCalibracaoManager : MonoBehaviour
 
     void Update()
     {
-        if (!_ativo || !EmCaptura()) return;
-        if (_devicePalma == null || _devicePalma.NumeroSensores == 0) return;
+        if (!_ativo) return;
+
+        // F3 alterna o Modo Comando (o comando do Quest substitui o SIU).
+        if (Input.GetKeyDown(KeyCode.F3)) AlternarModoComando();
+
+        if (!EmCaptura()) return;
+
+        if (EmModoComando)
+        {
+            if (Mao != null) Mao.DefinirMaoComando(PassoDireito); // comando do lado do braço em calibração
+            if (Mao == null || !Mao.Ativa) return;
+        }
+        else if (_devicePalma == null || _devicePalma.NumeroSensores == 0) return;
 
         bool pedir = _pressaoPendente ||
-                     Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+                     Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                     GatilhoPremido();
         _pressaoPendente = false;
 
         if (!pedir) return;
         if (Time.unscaledTime - _ultimaCaptura < DebounceCaptura) return;
 
         _ultimaCaptura = Time.unscaledTime;
-        CapturarEstado(_devicePalma.ObterPosicaoSensor(0));
+        CapturarEstado(ObterPosicaoMao());
+    }
+
+    // ── Modo Comando ──────────────────────────────────────────────────
+    bool EmModoComando =>
+        SessionManager.Instancia != null && SessionManager.Instancia.ModoComando;
+
+    /// <summary>True nos passos do braço direito (usa-se o comando direito).</summary>
+    bool PassoDireito =>
+        _estado == EstadoCalibracao.BracoEstendidoDireito || _estado == EstadoCalibracao.OmbroDireito;
+
+    /// <summary>Gatilho do comando do lado ativo (só em Modo Comando).</summary>
+    bool GatilhoPremido()
+    {
+        if (!EmModoComando) return false;
+        var ctrl = PassoDireito ? OVRInput.Controller.RTouch : OVRInput.Controller.LTouch;
+        return OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, ctrl);
+    }
+
+    /// <summary>Posição da mão conforme a fonte ativa (comando ou sensor Ommo).</summary>
+    Vector3 ObterPosicaoMao()
+        => EmModoComando && Mao != null ? Mao.Posicao : _devicePalma.ObterPosicaoSensor(0);
+
+    void AlternarModoComando()
+    {
+        if (!SessionManager.ModoComandoPermitido)
+        {
+            Debug.Log("[Calibracao] F3 ignorado — o Modo Comando está desativado (SessionManager.ModoComandoPermitido=false).");
+            return;
+        }
+
+        var sm = SessionManager.Instancia;
+        if (sm == null) return;
+        sm.DefinirModoComando(!sm.ModoComando);
+
+        if (sm.ModoComando)
+        {
+            Debug.Log("[Calibracao] ✅ MODO COMANDO ativado — o comando do Quest substitui o SIU (F3 desativa).");
+            MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Pleased,
+                "Modo comando ativado! Usa o gatilho do comando para capturar.");
+
+            // O MRUK não é preciso sem Ommo — desativá-lo também trava o spam de
+            // NullReferences quando o passthrough falhou nesta máquina.
+            var mruk = FindObjectOfType<Meta.XR.MRUtilityKit.MRUK>();
+            if (mruk != null && mruk.gameObject.activeSelf)
+            {
+                mruk.gameObject.SetActive(false);
+                Debug.Log("[Calibracao] MRUK desativado (modo comando).");
+            }
+
+            TentarComecarCapturas(); // destrava esperas de sensor/alinhamento
+        }
+        else
+        {
+            Debug.Log("[Calibracao] Modo comando desativado — volta ao sensor Ommo.");
+            MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Neutral, "Modo comando desativado.");
+        }
     }
 
     // ── Intro / arranque das capturas ─────────────────────────────────
@@ -174,38 +253,43 @@ public class OmmoCalibracaoManager : MonoBehaviour
         // Nunca interrompe a intro: isto só corre depois de o jogador a ver toda.
         if (!_introTerminada || _estado != EstadoCalibracao.AguardarSensores) return;
 
-        if (_devicePalma == null)
+        // Em Modo Comando salta-se TUDO o que é Ommo: sensores, QR, pressão.
+        if (!EmModoComando)
         {
-            // A intro acabou mas o sensor ainda não ligou — informa e fica à espera
-            // (AoNumeroDeSensoresMudou volta a chamar isto quando ligar).
-            Debug.Log("[Calibracao] Sem sensor — a mostrar linha de espera (auto-pairing ativo).");
-            MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Neutral, "A aguardar sensor...");
-            return;
-        }
-
-        // Em VR, as capturas SÓ começam depois do alinhamento QR: sem ele, as
-        // posições do sensor estariam num referencial que o alinhamento posterior
-        // invalidaria (ombros/offsets errados). F2 = alinhamento manual de recurso.
-        var xr = GestorXR.Instancia;
-        if (xr != null && xr.VrAtivo && Alinhador != null && !Alinhador.Alinhado)
-        {
-            if (!_aguardaAlinhamento)
+            if (_devicePalma == null)
             {
-                _aguardaAlinhamento = true;
-                Debug.Log("[Calibracao] À espera do alinhamento QR antes das capturas...");
-                MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Neutral,
-                    "Olha para a base do Ommo — estou a detetar o código QR...");
-                StartCoroutine(EsperarAlinhamento());
+                // A intro acabou mas o sensor ainda não ligou — informa e fica à espera
+                // (AoNumeroDeSensoresMudou volta a chamar isto quando ligar).
+                Debug.Log("[Calibracao] Sem sensor — a mostrar linha de espera (auto-pairing ativo; F3 = modo comando).");
+                MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Neutral, "A aguardar sensor...");
+                return;
             }
-            return;
+
+            // Em VR, as capturas SÓ começam depois do alinhamento QR: sem ele, as
+            // posições do sensor estariam num referencial que o alinhamento posterior
+            // invalidaria (ombros/offsets errados). F2 = alinhamento manual de recurso.
+            var xr = GestorXR.Instancia;
+            if (xr != null && xr.VrAtivo && Alinhador != null && !Alinhador.Alinhado)
+            {
+                if (!_aguardaAlinhamento)
+                {
+                    _aguardaAlinhamento = true;
+                    Debug.Log("[Calibracao] À espera do alinhamento QR antes das capturas...");
+                    MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Neutral,
+                        "Olha para a base do Ommo — estou a detetar o código QR...");
+                    StartCoroutine(EsperarAlinhamento());
+                }
+                return;
+            }
         }
 
-        // Sensor presente: confirmação breve para o jogador perceber que o
+        // Fonte pronta: confirmação breve para o jogador perceber que o
         // dispositivo foi reconhecido, e só depois começam as capturas.
         if (_confirmacaoAgendada) return;
         _confirmacaoAgendada = true;
-        Debug.Log("[Calibracao] Sensor ligado — confirmação antes das capturas.");
-        MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Pleased, "Sensor ligado!");
+        Debug.Log("[Calibracao] Fonte pronta — confirmação antes das capturas.");
+        MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Pleased,
+            EmModoComando ? "Comando pronto!" : "Sensor ligado!");
         Invoke(nameof(ComecarCapturas), 1.2f);
     }
 
@@ -225,6 +309,11 @@ public class OmmoCalibracaoManager : MonoBehaviour
     {
         if (!_ativo || _estado != EstadoCalibracao.AguardarSensores) return;
         Debug.Log("[Calibracao] A começar as capturas (braço direito primeiro).");
+
+        // O alinhamento QR esteve a refinar-se continuamente até aqui; a partir
+        // das capturas a base não pode "respirar" debaixo do exercício — congela.
+        if (!EmModoComando && Alinhador != null) Alinhador.Congelar();
+
         _pressaoPendente = false;
         _ultimaCaptura   = Time.unscaledTime; // debounce inicial: nada captura no 1º instante
         _estado = EstadoCalibracao.BracoEstendidoDireito;
@@ -252,10 +341,22 @@ public class OmmoCalibracaoManager : MonoBehaviour
     // ── Captura ───────────────────────────────────────────────────────
     void CapturarEstado(Vector3 pos)
     {
-        // Pose da cabeça no instante da captura (só interessa nos passos de ombro,
-        // mas capturar sempre é inofensivo).
-        var cabeca = GestorXR.Instancia != null ? GestorXR.Instancia.Cabeca : null;
-        _temCabecaCaptura = cabeca != null;
+        // Pose da cabeça no instante da captura. Com o VR ativo, uma captura SEM
+        // cabeça tracked criaria um braço que não segue o jogador (fallback fixo)
+        // — recusa e pede para ajustar o headset, em vez de calibrar coxo.
+        var xr = GestorXR.Instancia;
+        var cabeca = xr != null ? xr.Cabeca : null;
+        bool cabecaValida = cabeca != null && cabeca.position.y >= 0.3f;
+
+        if (xr != null && xr.VrAtivo && !cabecaValida)
+        {
+            Debug.LogWarning("[Calibracao] Captura recusada — cabeça sem tracking válido (headset bem posto?).");
+            MostrarLinhaAmbos(HelperId.Patrick, HelperEmocao.Worried,
+                "Não estou a ver bem a tua cabeça — ajusta o headset e tenta outra vez.");
+            return;
+        }
+
+        _temCabecaCaptura = cabecaValida;
         if (_temCabecaCaptura)
         {
             _posCabecaCaptura = cabeca.position;
@@ -270,8 +371,10 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 break;
 
             case EstadoCalibracao.OmbroDireito:
-                GuardarBraco(direito: true, posOmbro: pos, posEstendida: _posEstendidaDireita);
-                _estado = EstadoCalibracao.BracoEstendidoEsquerdo;
+                if (GuardarBraco(direito: true, posOmbro: pos, posEstendida: _posEstendidaDireita))
+                    _estado = EstadoCalibracao.BracoEstendidoEsquerdo;
+                else
+                    _estado = EstadoCalibracao.BracoEstendidoDireito; // captura suspeita — repete o braço
                 break;
 
             case EstadoCalibracao.BracoEstendidoEsquerdo:
@@ -280,10 +383,14 @@ public class OmmoCalibracaoManager : MonoBehaviour
                 break;
 
             case EstadoCalibracao.OmbroEsquerdo:
-                GuardarBraco(direito: false, posOmbro: pos, posEstendida: _posEstendidaEsquerda);
-                _estado = EstadoCalibracao.Completo;
-                ConcluirCalibracao();
-                return;
+                if (GuardarBraco(direito: false, posOmbro: pos, posEstendida: _posEstendidaEsquerda))
+                {
+                    _estado = EstadoCalibracao.Completo;
+                    ConcluirCalibracao();
+                    return;
+                }
+                _estado = EstadoCalibracao.BracoEstendidoEsquerdo; // repete o braço
+                break;
         }
         MostrarInstrucao();
     }
@@ -291,11 +398,21 @@ public class OmmoCalibracaoManager : MonoBehaviour
     /// <summary>
     /// Calcula o comprimento e a direção frente do braço e grava no SessionManager.
     /// Com o headset posto, grava também o offset cabeça→ombro (referencial yaw-local
-    /// da cabeça) para o ombro poder seguir a câmara em runtime.
+    /// da cabeça). Devolve false (sem gravar) se a captura for suspeita — braço
+    /// demasiado curto = sensor parado/mal posicionado → o exercício sairia minúsculo.
     /// </summary>
-    void GuardarBraco(bool direito, Vector3 posOmbro, Vector3 posEstendida)
+    bool GuardarBraco(bool direito, Vector3 posOmbro, Vector3 posEstendida)
     {
         float comprimento = Vector3.Distance(posEstendida, posOmbro);
+
+        if (comprimento < 0.3f)
+        {
+            Debug.LogWarning($"[Calibracao] Captura REJEITADA — braço {(direito ? "direito" : "esquerdo")} " +
+                             $"com {comprimento * 100f:F0} cm (sensor parado/mal posicionado?). A repetir o braço.");
+            MostrarLinhaAmbos(direito ? HelperId.Patrick : HelperId.Jane, HelperEmocao.Worried,
+                "Hmm, essa medição saiu curta demais. Vamos repetir: estica bem o braço e faz pressão.");
+            return false;
+        }
 
         // Direção frente: do ombro para a mão estendida, projetada no plano horizontal.
         Vector3 dir        = posEstendida - posOmbro;
@@ -339,6 +456,7 @@ public class OmmoCalibracaoManager : MonoBehaviour
         }
         else sb.AppendLine("  ⚠ SEM dados de cabeça (VR inativo) — ombro fica fixo no mundo (fallback).");
         Debug.Log(sb.ToString());
+        return true;
     }
 
     void ConcluirCalibracao()
@@ -424,14 +542,14 @@ public class OmmoCalibracaoManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Mostra a mesma linha no diálogo do monitor (fisioterapeuta) e no EcraVR
-    /// (paciente com o headset posto). Um dos dois pode não existir.
+    /// Mostra a mesma linha no diálogo do monitor (fisioterapeuta, com os helpers)
+    /// e no painel de instruções do EcraVR (jogador). Um dos dois pode não existir.
     /// </summary>
     void MostrarLinhaAmbos(HelperId quem, HelperEmocao emocao, string texto)
     {
         Dialogo?.MostrarLinha(quem, emocao, texto);
-        if (EcraVr != null && EcraVr.Dialogo != null && EcraVr.gameObject.activeInHierarchy)
-            EcraVr.Dialogo.MostrarLinha(quem, emocao, texto);
+        if (EcraVr != null && EcraVr.gameObject.activeSelf)
+            EcraVr.MostrarTexto(texto);
     }
 
     // ── Instruções (guião: Patrick → braço direito, Jane → esquerdo) ──

@@ -5,6 +5,11 @@ using UnityEngine;
 /// sensor Ommo (na palma da mão). Substitui o antigo esqueleto visível
 /// (<c>OmmoEsqueletoJogador</c>), que deixou de ser usado nas cenas.
 ///
+/// Em <see cref="SessionManager.ModoComando"/> (F3 na calibração — testes sem o
+/// hardware Ommo), segue em vez disso o hand anchor do comando do Quest
+/// (<see cref="DefinirMaoComando"/> escolhe o lado; o OVRCameraRig atualiza os
+/// anchors sozinho).
+///
 /// Se não houver um visual atribuído, cria uma esfera simples. O visual pode
 /// ser trocado por um modelo de mão/dardo pelo minijogo.
 /// </summary>
@@ -16,39 +21,97 @@ public class MaoJogador : MonoBehaviour
     [Tooltip("Índice do sensor no dispositivo (0 = primeiro/único sensor).")]
     public int IndiceSensor = 0;
 
+    [Tooltip("Em Modo Comando: usar o comando direito (true) ou esquerdo (false).")]
+    public bool MaoDireita = true;
+
+    [Tooltip("Esconde o cubo interno do OmmoDevice — o visual do jogador é o campo Visual " +
+             "(modelo GRASP na calibração) ou o dardo no minijogo, nunca o cubo.")]
+    public bool EsconderVisualSensor = true;
+
     /// <summary>Dispositivo atualmente seguido (null enquanto nenhum sensor liga).</summary>
     public OmmoDevice Device { get; private set; }
 
-    /// <summary>True quando há dados de sensor a chegar.</summary>
-    public bool Ativa => Device != null && Device.NumeroSensores > IndiceSensor;
+    /// <summary>Em Modo Comando escolhe o lado do comando (chamado por calibração/minijogo por bloco).</summary>
+    public void DefinirMaoComando(bool direita) => MaoDireita = direita;
 
-    /// <summary>Posição mundo atual da mão (zero se sem sensor).</summary>
-    public Vector3 Posicao => Ativa ? Device.ObterPosicaoSensor(IndiceSensor) : Vector3.zero;
+    static bool ModoComando =>
+        SessionManager.Instancia != null && SessionManager.Instancia.ModoComando;
+
+    /// <summary>Anchor do comando ativo (null se o VR não está pronto).</summary>
+    Transform AnchorComando
+    {
+        get
+        {
+            var xr = GestorXR.Instancia;
+            if (xr == null || xr.Rig == null) return null;
+            return MaoDireita ? xr.Rig.rightHandAnchor : xr.Rig.leftHandAnchor;
+        }
+    }
+
+    /// <summary>True quando há dados a chegar (sensor Ommo ou comando em Modo Comando).</summary>
+    public bool Ativa => ModoComando
+        ? AnchorComando != null && ComandoLigado
+        : Device != null && Device.NumeroSensores > IndiceSensor;
+
+    /// <summary>O comando do lado ativo está ligado/tracked? (Comando adormecido daria posições nulas.)</summary>
+    bool ComandoLigado =>
+        OVRInput.IsControllerConnected(MaoDireita ? OVRInput.Controller.RTouch : OVRInput.Controller.LTouch);
+
+    /// <summary>Posição mundo atual da mão (zero se sem fonte).</summary>
+    public Vector3 Posicao
+    {
+        get
+        {
+            if (ModoComando) { var a = AnchorComando; return a != null ? a.position : Vector3.zero; }
+            return Ativa ? Device.ObterPosicaoSensor(IndiceSensor) : Vector3.zero;
+        }
+    }
 
     /// <summary>Rotação mundo atual da mão.</summary>
-    public Quaternion Rotacao => Ativa ? Device.ObterRotacaoSensor(IndiceSensor) : Quaternion.identity;
+    public Quaternion Rotacao
+    {
+        get
+        {
+            if (ModoComando) { var a = AnchorComando; return a != null ? a.rotation : Quaternion.identity; }
+            return Ativa ? Device.ObterRotacaoSensor(IndiceSensor) : Quaternion.identity;
+        }
+    }
 
     void Start()
     {
-        if (Visual == null)
+        // Sem visual por defeito: o jogador não precisa de feedback de objetos
+        // (na calibração sente o comando/sensor; no minijogo o visual é o dardo).
+        // Um visual só aparece se for atribuído no Inspector.
+        if (Visual != null)
         {
-            Visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            Visual.name = "VisualMao";
-            Visual.transform.localScale = Vector3.one * 0.04f;
-            Destroy(Visual.GetComponent<Collider>());
-            Visual.GetComponent<Renderer>().material.color = new Color(0.3f, 0.7f, 1f);
+            Visual.transform.SetParent(transform, false);
+            Visual.SetActive(false);
         }
-        Visual.transform.SetParent(transform, false);
-        Visual.SetActive(false);
     }
 
     void Update()
     {
-        // Liga-se ao primeiro OmmoDevice que aparecer (recriado a cada cena).
-        if (Device == null)
+        // Em Modo Comando a fonte é o hand anchor do rig — NÃO depende de haver
+        // OmmoDevice (sem este guard, o transform nunca seguia o comando e o
+        // dardo ficava pendurado na origem).
+        if (!ModoComando && Device == null)
         {
+            // Liga-se ao primeiro OmmoDevice que aparecer (recriado a cada cena).
             Device = FindObjectOfType<OmmoDevice>();
             if (Device == null) return;
+        }
+
+        // Visual do cubo do SIU: visível na calibração, escondido nos minijogos
+        // (o GestorMinijogo põe EsconderVisualSensor=true). Aplicado dinamicamente.
+        if (Device != null)
+        {
+            var sensorT = Device.ObterTransformSensor(IndiceSensor);
+            if (sensorT != null)
+            {
+                bool mostrar = !EsconderVisualSensor;
+                foreach (var r in sensorT.GetComponentsInChildren<Renderer>(true))
+                    if (r.enabled != mostrar) r.enabled = mostrar;
+            }
         }
 
         bool ativa = Ativa;
