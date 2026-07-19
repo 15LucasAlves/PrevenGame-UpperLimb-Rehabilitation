@@ -21,6 +21,9 @@ public class HudVR : MonoBehaviour
     public TextMeshProUGUI TextoReps;
 
     private static HudVR _instancia;
+    private Transform  _canvas;      // para pendurar painéis criados a pedido
+    private GameObject _feedPainel;  // canto superior esquerdo — feed da câmara de apoio
+    private RawImage   _feedImagem;
 
     /// <summary>Obtém o HUD, criando-o preso à cabeça se necessário. Null se o VR não estiver ativo.</summary>
     public static HudVR ObterOuCriar()
@@ -50,6 +53,47 @@ public class HudVR : MonoBehaviour
 
     public void Mostrar(bool ativo) => gameObject.SetActive(ativo);
 
+    /// <summary>
+    /// Liga o feed da câmara de apoio (vista lateral do exercício) ao canto
+    /// superior ESQUERDO do HUD — cria o painel na primeira chamada.
+    /// </summary>
+    public void DefinirFeedApoio(Texture textura)
+    {
+        if (textura == null || _canvas == null) return;
+
+        if (_feedPainel == null)
+        {
+            _feedPainel = new GameObject("FeedApoioFundo");
+            _feedPainel.transform.SetParent(_canvas, false);
+            var fundoRect = _feedPainel.AddComponent<RectTransform>();
+            fundoRect.anchorMin = fundoRect.anchorMax = new Vector2(0f, 1f);
+            fundoRect.pivot = new Vector2(0f, 1f);
+            fundoRect.anchoredPosition = new Vector2(30f, -30f);
+            fundoRect.sizeDelta = new Vector2(340f, 340f);
+            var fundoImg = _feedPainel.AddComponent<Image>();
+            fundoImg.color = new Color(0.09f, 0.12f, 0.10f, 0.9f); // igual ao painel da demo
+            fundoImg.raycastTarget = false;
+
+            var feedGO = new GameObject("FeedApoio");
+            feedGO.transform.SetParent(_feedPainel.transform, false);
+            var feedRect = feedGO.AddComponent<RectTransform>();
+            feedRect.anchorMin = Vector2.zero; feedRect.anchorMax = Vector2.one;
+            feedRect.offsetMin = new Vector2(8f, 8f);
+            feedRect.offsetMax = new Vector2(-8f, -8f);
+            _feedImagem = feedGO.AddComponent<RawImage>();
+            _feedImagem.raycastTarget = false;
+        }
+
+        _feedImagem.texture = textura;
+        _feedPainel.SetActive(true);
+    }
+
+    /// <summary>Mostra/esconde o painel do feed de apoio (se já foi criado).</summary>
+    public void MostrarFeedApoio(bool ativo)
+    {
+        if (_feedPainel != null) _feedPainel.SetActive(ativo);
+    }
+
     // ── Construção ────────────────────────────────────────────────────
     static HudVR Construir(Transform cabeca)
     {
@@ -66,6 +110,7 @@ public class HudVR : MonoBehaviour
         rt.localScale = Vector3.one * 0.001f; // 1400 px → 1.4 m a 1.1 m de distância
 
         var hud = root.AddComponent<HudVR>();
+        hud._canvas = canvasGO.transform;
 
         // Demo do exercício — baixo-esquerda. As imagens do artista têm fundo
         // transparente + borda própria, por isso levam um FUNDO sólido atrás
@@ -114,22 +159,25 @@ public class HudVR : MonoBehaviour
         return hud;
     }
 
-    /// <summary>Sprites 1..5 do exercício em Resources/Exercises/&lt;Tipo&gt; (ordenados numericamente).</summary>
+    /// <summary>
+    /// Sprites 1..5 do exercício em Resources/Exercises/&lt;Tipo&gt; (ordenados
+    /// numericamente). A pasta também tem o ÍCONE do minijogo (nome não numérico,
+    /// ex.: "preven game_dardos") — esse fica de fora da demo.
+    /// </summary>
     static Sprite[] CarregarSprites(ExerciciosWaypoints.TipoExercicio tipo)
     {
-        var sprites = Resources.LoadAll<Sprite>($"Exercises/{tipo}");
-        if (sprites == null || sprites.Length == 0)
+        var todos  = Resources.LoadAll<Sprite>($"Exercises/{tipo}");
+        var frames = new System.Collections.Generic.List<Sprite>();
+        if (todos != null)
+            foreach (var s in todos)
+                if (int.TryParse(s.name, out _)) frames.Add(s);
+
+        if (frames.Count == 0)
         {
             Debug.LogWarning($"[HudVR] Sem sprites em Resources/Exercises/{tipo} — corre o Build Cena (Menu) para os copiar.");
             return new Sprite[0];
         }
-        System.Array.Sort(sprites, (a, b) =>
-        {
-            bool na = int.TryParse(a.name, out int ia);
-            bool nb = int.TryParse(b.name, out int ib);
-            if (na && nb) return ia.CompareTo(ib);
-            return string.Compare(a.name, b.name, System.StringComparison.Ordinal);
-        });
-        return sprites;
+        frames.Sort((a, b) => int.Parse(a.name).CompareTo(int.Parse(b.name)));
+        return frames.ToArray();
     }
 }

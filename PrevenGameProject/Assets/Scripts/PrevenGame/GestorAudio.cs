@@ -89,17 +89,28 @@ public class GestorAudio : MonoBehaviour
 
     void AoCarregarCena(Scene cena, LoadSceneMode modo) => AplicarMusicaParaCena(cena);
 
-    /// <summary>Música do hub fora dos minijogos: toca no Menu, para nas outras cenas.</summary>
+    /// <summary>
+    /// Música do hub: toca no Menu; fora do Menu só se para SE for a música do
+    /// hub que está a tocar — o ambiente do minijogo (TocarAmbiente no Start da
+    /// cena) pode já ter arrancado (a ordem dos Start é indefinida) e não deve
+    /// ser morto aqui.
+    /// </summary>
     void AplicarMusicaParaCena(Scene cena)
     {
         if (cena.name == SessionManager.CenaMenu) TocarMusica(MusicaHub);
-        else                                      PararMusica();
+        else if (_musica.clip != null && _musica.clip == MusicaHub) PararMusica();
     }
 
     // ── Música ────────────────────────────────────────────────────────
     public void TocarMusica(AudioClip clip)
     {
-        if (clip == null) { PararMusica(); return; }
+        if (clip == null)
+        {
+            Debug.LogWarning("[GestorAudio] Música do hub SEM clip atribuído — refaz o Build Cena (Menu) " +
+                             "para ligar o MusicaDeFundoPaiva.mp3 (ou atribui MusicaHub no Inspector).");
+            PararMusica();
+            return;
+        }
         if (_musica.clip == clip && _musica.isPlaying) return;
         _musica.clip   = clip;
         _musica.volume = VolumeMusica;
@@ -118,7 +129,12 @@ public class GestorAudio : MonoBehaviour
     /// </summary>
     public void TocarAmbiente(AudioClip clip, float volume = 1f)
     {
-        if (clip == null) return;
+        if (clip == null)
+        {
+            Debug.LogWarning("[GestorAudio] Ambiente pedido SEM clip atribuído — corre o instalador da cena " +
+                             "do minijogo para (re)ligar os clips do GestorAudio.");
+            return;
+        }
         if (_musica.clip == clip && _musica.isPlaying) return;
         _musica.clip   = clip;
         _musica.volume = VolumeMusica * volume;
@@ -128,7 +144,12 @@ public class GestorAudio : MonoBehaviour
     // ── SFX ───────────────────────────────────────────────────────────
     public void TocarSfx(AudioClip clip, float volume = 1f)
     {
-        if (clip == null) return;
+        if (clip == null)
+        {
+            Debug.LogWarning("[GestorAudio] SFX pedido SEM clip atribuído — refaz o Build/instalador para " +
+                             "preencher o catálogo do GestorAudio.");
+            return;
+        }
         _sfx.PlayOneShot(clip, volume * VolumeSfx);
     }
 

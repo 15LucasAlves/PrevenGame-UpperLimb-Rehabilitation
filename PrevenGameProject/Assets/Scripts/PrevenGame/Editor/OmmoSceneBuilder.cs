@@ -25,6 +25,8 @@ public class OmmoSceneBuilder
 
     const string CenaMenu     = "Assets/Scenes/Menu.unity";
     const string CenaMinijogo = "Assets/Scenes/MinijogoDardos.unity";
+    const string CenaPomar    = "Assets/Scenes/MinijogoPomar.unity";
+    const string CenaHangar   = "Assets/Scenes/MinijogoAviao.unity";
 
     // Emoções por índice (HelperEmocao): Neutral, Pleased, Impressed, Laugh, Surprised, Worried, Disappointed
     static readonly string[] NomesJane =
@@ -43,7 +45,8 @@ public class OmmoSceneBuilder
     {
         if (!EditorUtility.DisplayDialog("PrevenGame — Build Cena",
             "Cria/grava Assets/Scenes/Menu.unity (splash+calibração+seleção+score).\n\n" +
-            "A cena MinijogoDardos.unity NÃO é tocada — é construída/mantida manualmente.\n\nContinuar?",
+            "As cenas de minijogo (Dardos/Hangar/Pomar) NÃO são tocadas — são construídas/mantidas " +
+            "manualmente e apenas registadas no Build Settings.\n\nContinuar?",
             "Sim", "Cancelar"))
             return;
 
@@ -56,10 +59,11 @@ public class OmmoSceneBuilder
         BuildMenuHub();
         EditorSceneManager.SaveScene(sMenu, CenaMenu);
 
-        // Regista o Menu e, se existir em disco, a cena do minijogo (mantida à mão).
+        // Regista o Menu e, se existirem em disco, as cenas dos minijogos (mantidas à mão).
         var cenas = new List<EditorBuildSettingsScene> { new EditorBuildSettingsScene(CenaMenu, true) };
-        if (System.IO.File.Exists(CenaMinijogo))
-            cenas.Add(new EditorBuildSettingsScene(CenaMinijogo, true));
+        foreach (var cena in new[] { CenaMinijogo, CenaHangar, CenaPomar })
+            if (System.IO.File.Exists(cena))
+                cenas.Add(new EditorBuildSettingsScene(cena, true));
         EditorBuildSettings.scenes = cenas.ToArray();
 
         AssetDatabase.SaveAssets();
@@ -104,7 +108,6 @@ public class OmmoSceneBuilder
         var maoJogador = Object.FindObjectOfType<MaoJogador>();
         if (maoJogador != null)
         {
-            maoJogador.EsconderVisualSensor = true; // o cubo interno nunca aparece
             var grasp = InstanciarModeloComPose("Assets/Prefabs/calibrationPrefabs/Grasp.fbx",
                 maoJogador.transform, "ModeloGrasp",
                 new Vector3(-0.1f, 0f, 0f), new Vector3(-90f, 180f, 0f), 1.07f);
@@ -501,13 +504,8 @@ public class OmmoSceneBuilder
     [MenuItem("Ommo/PrevenGame/Instalar MinijogoDardos na cena atual")]
     public static void InstalarMinijogoDardos()
     {
-        var gestor = Object.FindObjectOfType<GestorMinijogo>();
-        if (gestor == null)
-        {
-            EditorUtility.DisplayDialog("PrevenGame",
-                "A cena não tem GestorMinijogo — corre primeiro o 'Adicionar Scaffold VR ao Minijogo'.", "OK");
-            return;
-        }
+        var gestor = ObterOuCriarScaffoldMinijogo();
+        if (gestor == null) return;
 
         // 0. ESCALA DO MUNDO: mede o raio real do "aro 5" e normaliza o root do
         // FBX para o alvo ter ~0.25 m de raio (alvo de dardos padrão). Sem isto
@@ -545,6 +543,10 @@ public class OmmoSceneBuilder
             dardos = CreateEmpty("MinijogoDardos").AddComponent<MinijogoDardos>();
         gestor.Minijogo = dardos;
 
+        // Zonas de captura atuais (a cena pode ter serializado defaults antigos).
+        dardos.RaiosZonas      = new[] { 0.06f, 0.09f, 0.12f, 0.15f, 0.18f };
+        dardos.PontuacoesZonas = new[] { 1.00f, 0.75f, 0.50f, 0.25f, 0.10f };
+
         // Modelo do dardo = o "dardo" do FBX da cena (clonado por rep; o original fica).
         if (dardos.ModeloDardo == null)
         {
@@ -557,27 +559,204 @@ public class OmmoSceneBuilder
             else Debug.LogWarning("[OmmoBuilder] Objeto \"dardo\" não encontrado — o minijogo usa o placeholder.");
         }
 
-        // 2. EcraVR novo (o antigo tinha o diálogo dos helpers preso à câmara).
+        // 2+. Esqueleto comum (EcraVR, alinhador, posicionador com alvo = aro 1
+        // à distância de lançamento, câmaras FBX, áudio, luz).
+        InstalarComumMinijogo(gestor, GameObject.Find("aro 1")?.transform, 2.37f);
+
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ MinijogoDardos instalado (gravar a cena para persistir).");
+    }
+
+    // ═════════════════════════════════════════════════════════════════
+    // Instaladores — Hangar e Pomar
+    // ═════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Instala o jogo do HANGAR (elevação total) na cena aberta (MinijogoAviao):
+    /// scaffold se faltar, MinijogoAviao com o avião auto-encontrado e o asset do
+    /// bastão ligado, e o esqueleto comum. Os nomes internos do FBX são
+    /// desconhecidos — os campos ficam expostos no Inspector para corrigir.
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Instalar MinijogoHangar na cena atual")]
+    public static void InstalarMinijogoHangar()
+    {
+        var gestor = ObterOuCriarScaffoldMinijogo();
+        if (gestor == null) return;
+
+        var teste = Object.FindObjectOfType<MinijogoTesteWaypoints>(true);
+        if (teste != null) teste.gameObject.SetActive(false);
+
+        var jogo = Object.FindObjectOfType<MinijogoAviao>(true);
+        if (jogo == null) jogo = CreateEmpty("MinijogoHangar").AddComponent<MinijogoAviao>();
+        gestor.Minijogo = jogo;
+
+        // Valores atuais (a cena pode ter serializado defaults antigos).
+        jogo.DistanciaSaidaTotal = 3f;
+
+        if (jogo.Aviao == null) jogo.AutoEncontrarAviao();
+
+        if (jogo.ModeloBastao == null)
+        {
+            var bastao = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/PrevenGameAssets/Hangar/bastão avião.fbx");
+            if (bastao != null)
+            {
+                jogo.ModeloBastao = bastao;
+                Debug.Log("[OmmoBuilder] Lightstick = asset \"bastão avião.fbx\".");
+            }
+            else Debug.LogWarning("[OmmoBuilder] Asset \"bastão avião.fbx\" não encontrado em " +
+                                  "Assets/Prefabs/PrevenGameAssets/Hangar — o jogo usa o placeholder.");
+        }
+
+        // Escala do mundo: raiz SEMPRE a 1 (decisão do utilizador — a escala
+        // certa vem do import do FBX, não de auto-normalização).
+        Transform raizHangar = null;
+        if (jogo.Aviao != null) { raizHangar = jogo.Aviao; while (raizHangar.parent != null) raizHangar = raizHangar.parent; }
+        if (raizHangar == null) raizHangar = GameObject.Find("avioneta")?.transform;
+        if (raizHangar != null && raizHangar.localScale != Vector3.one)
+        {
+            raizHangar.localScale = Vector3.one;
+            Debug.Log($"[OmmoBuilder] Escala da raiz \"{raizHangar.name}\" reposta a 1.");
+        }
+        InstalarComumMinijogo(gestor, jogo.Aviao, 6f);
+
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ MinijogoHangar instalado (gravar a cena para persistir). " +
+                  "Confirma Aviao/DirecaoSaidaLocal/ModeloBastao no Inspector.");
+    }
+
+    /// <summary>
+    /// Instala o jogo do POMAR (flexão do cotovelo) na cena aberta (MinijogoPomar):
+    /// scaffold se faltar, MinijogoPomar com frutas/cesta auto-encontradas e o
+    /// esqueleto comum. Correr DEPOIS de montar o mundo (bushes + frutas) na cena.
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Instalar MinijogoPomar na cena atual")]
+    public static void InstalarMinijogoPomar()
+    {
+        var gestor = ObterOuCriarScaffoldMinijogo();
+        if (gestor == null) return;
+
+        var teste = Object.FindObjectOfType<MinijogoTesteWaypoints>(true);
+        if (teste != null) teste.gameObject.SetActive(false);
+
+        var jogo = Object.FindObjectOfType<MinijogoPomar>(true);
+        if (jogo == null) jogo = CreateEmpty("MinijogoPomar").AddComponent<MinijogoPomar>();
+        gestor.Minijogo = jogo;
+
+        if (jogo.FrutasModelos.Count == 0) jogo.AutoEncontrarFrutas();
+
+        if (jogo.Cesta == null)
+        {
+            foreach (var t in Object.FindObjectsOfType<Transform>(true))
+                if (t.name.ToLowerInvariant().Contains("cest")) { jogo.Cesta = t; break; }
+            if (jogo.Cesta != null) Debug.Log($"[OmmoBuilder] Cesta = \"{jogo.Cesta.name}\".");
+            else Debug.Log("[OmmoBuilder] Sem cesta na cena (ainda) — a fruta desaparece junto à anca; " +
+                           "atribui Cesta no Inspector quando tiveres o prefab.");
+        }
+
+        NormalizarEscalaMundoPorBounds(30f); // pomar ~30 m no máximo
+        InstalarComumMinijogo(gestor, jogo.Cesta, 1.5f);
+
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ MinijogoPomar instalado (gravar a cena para persistir). " +
+                  "Confirma FrutasModelos/Cesta no Inspector.");
+    }
+
+    /// <summary>
+    /// Cria (ou seleciona) o marcador de spawn do jogador — coloca-o na cena onde
+    /// o jogador deve ficar e roda-o para onde ele deve olhar (seta do gizmo).
+    /// O PosicionadorMundoJogo dá-lhe prioridade sobre o alvo.
+    /// </summary>
+    [MenuItem("Ommo/PrevenGame/Criar Ponto de Spawn do Jogador (cena atual)")]
+    public static void CriarPontoSpawnJogador()
+    {
+        var existente = Object.FindObjectOfType<PontoSpawnJogador>();
+        if (existente != null)
+        {
+            Selection.activeGameObject = existente.gameObject;
+            Debug.Log($"[OmmoBuilder] Já existe um PontoSpawnJogador (\"{existente.name}\") — selecionado.");
+            return;
+        }
+
+        var go = new GameObject("SpawnJogador");
+        go.AddComponent<PontoSpawnJogador>();
+
+        // Pose inicial: no chão por baixo da primeira câmara do FBX (com o yaw
+        // dela), como filho da raiz do mundo — o utilizador ajusta depois.
+        foreach (var cam in Object.FindObjectsOfType<Camera>(true))
+        {
+            if (cam.GetComponent<CamaraDesktop>() != null) continue;
+            Transform raiz = cam.transform;
+            while (raiz.parent != null) raiz = raiz.parent;
+            go.transform.SetParent(raiz, true);
+            var pos = cam.transform.position; pos.y = raiz.position.y;
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, cam.transform.eulerAngles.y, 0f);
+            break;
+        }
+
+        Selection.activeGameObject = go;
+        EditorSceneManager.MarkAllScenesDirty();
+        Debug.Log("[OmmoBuilder] ✅ SpawnJogador criado — posiciona-o onde o jogador deve ficar e roda a " +
+                  "seta para onde ele deve olhar (gravar a cena para persistir).");
+    }
+
+    /// <summary>Gestor da cena; sem ele, corre primeiro o scaffold completo (cenas novas/vazias).</summary>
+    static GestorMinijogo ObterOuCriarScaffoldMinijogo()
+    {
+        var gestor = Object.FindObjectOfType<GestorMinijogo>();
+        if (gestor != null) return gestor;
+
+        Debug.Log("[OmmoBuilder] Cena sem GestorMinijogo — a correr primeiro o scaffold VR completo.");
+        AdicionarScaffoldMinijogo();
+        gestor = Object.FindObjectOfType<GestorMinijogo>();
+        if (gestor == null)
+            EditorUtility.DisplayDialog("PrevenGame", "Não foi possível criar o scaffold do minijogo.", "OK");
+        return gestor;
+    }
+
+    /// <summary>
+    /// Passos genéricos partilhados pelos instaladores de minijogos: EcraVR novo,
+    /// AlinhadorOmmoQr normalizado (-90°, sem visuais), PosicionadorMundoJogo
+    /// (alvo + distância; raiz = topmost parent do alvo), câmaras do FBX
+    /// desativadas (a primeira vira MarcadorVista), GestorAudio garantido e
+    /// LuzPrincipal direcional sem sombras.
+    /// </summary>
+    static void InstalarComumMinijogo(GestorMinijogo gestor, Transform alvoPosicionador, float distanciaAlvo)
+    {
+        // EcraVR novo (versões antigas tinham o diálogo dos helpers preso à câmara).
         var ecraAntigo = Object.FindObjectOfType<EcraVR>(true);
         if (ecraAntigo != null) Object.DestroyImmediate(ecraAntigo.gameObject);
         gestor.Ecra = ConstruirEcraVR();
 
-        // 2b. Normaliza o AlinhadorOmmoQr da cena (componentes serializados podem
-        // ter defaults antigos): sem visuais de ajuda + yaw validado com o QR real.
+        // AlinhadorOmmoQr: sem visuais de ajuda + yaw validado com o QR real.
         var alinhadorCena = Object.FindObjectOfType<AlinhadorOmmoQr>(true);
         if (alinhadorCena != null)
         {
-            alinhadorCena.MostrarVisualBase      = false;
-            alinhadorCena.CorrecaoYawOmmoGraus   = -90f;
+            alinhadorCena.MostrarVisualBase    = false;
+            alinhadorCena.CorrecaoYawOmmoGraus = -90f;
         }
 
-        // 2c. Cubo interno do sensor nunca aparece no jogo (o visual é o dardo).
-        var maoCena = Object.FindObjectOfType<MaoJogador>();
-        if (maoCena != null) maoCena.EsconderVisualSensor = true;
+        // Posicionador do mundo: a cena constrói-se À VOLTA do jogador (o rig e
+        // o Ommo ficam ancorados à realidade/QR — é o mundo que vem ter com ele).
+        GameObjectUtility.RemoveMonoBehavioursWithMissingScript(gestor.gameObject);
+        var posicionador = gestor.GetComponent<PosicionadorMundoJogo>();
+        if (posicionador == null) posicionador = gestor.gameObject.AddComponent<PosicionadorMundoJogo>();
+        if (alvoPosicionador != null)
+        {
+            posicionador.AroCentral = alvoPosicionador;
+            Transform raizMundo = alvoPosicionador;
+            while (raizMundo.parent != null) raizMundo = raizMundo.parent;
+            posicionador.RaizMundo = raizMundo;
+            posicionador.DistanciaLancamento = distanciaAlvo;
+            Debug.Log($"[OmmoBuilder] PosicionadorMundoJogo: raiz = \"{raizMundo.name}\", " +
+                      $"alvo = \"{alvoPosicionador.name}\" a {distanciaAlvo:F2} m.");
+        }
+        else Debug.Log("[OmmoBuilder] Sem alvo para o PosicionadorMundoJogo — usa o FALLBACK por spawn " +
+                       "(o mundo alinha-se pelo forward do PontoSpawn/câmara do FBX aos óculos).");
 
-        // 3. Camera do FBX → marcador do ponto de partida do jogador.
-        var partida = gestor.GetComponent<PontoDePartidaJogador>();
-        if (partida == null) partida = gestor.gameObject.AddComponent<PontoDePartidaJogador>();
+        // Câmaras do FBX: desativadas; a primeira serve de MARCADOR DE VISTA do
+        // posicionador (a direção câmara→alvo é a vista autoral correta).
         foreach (var cam in Object.FindObjectsOfType<Camera>(true))
         {
             if (cam.GetComponent<CamaraDesktop>() != null) continue; // não é a do FBX
@@ -585,24 +764,38 @@ public class OmmoSceneBuilder
             cam.enabled = false;
             var listener = cam.GetComponent<AudioListener>();
             if (listener != null) listener.enabled = false;
-            partida.Ponto = cam.transform;
-            Debug.Log($"[OmmoBuilder] Ponto de partida = câmara \"{cam.name}\" do FBX (componente desativada).");
-            break;
+            if (posicionador.MarcadorVista == null)
+            {
+                posicionador.MarcadorVista = cam.transform;
+                Debug.Log($"[OmmoBuilder] Marcador de vista do posicionador = câmara \"{cam.name}\" do FBX.");
+            }
         }
-        if (partida.Ponto == null)
-            Debug.LogWarning("[OmmoBuilder] Sem câmara do FBX na cena — atribui o Ponto do PontoDePartidaJogador no Inspector.");
+        if (posicionador.MarcadorVista == null)
+            Debug.LogWarning("[OmmoBuilder] Sem câmara do FBX — o posicionador usa o forward do alvo (verifica InverterNormal).");
 
-        // Altura da cabeça = altura do centro do alvo ("aro 1").
-        if (partida.ReferenciaAltura == null)
+        // Spawner manual na cena → liga-o (tem prioridade sobre o alvo no runtime).
+        var spawner = Object.FindObjectOfType<PontoSpawnJogador>();
+        if (spawner != null)
         {
-            var aro1 = GameObject.Find("aro 1");
-            if (aro1 != null) partida.ReferenciaAltura = aro1.transform;
-            else Debug.LogWarning("[OmmoBuilder] \"aro 1\" não encontrado — a altura de partida usa a do marcador.");
+            posicionador.Spawner = spawner;
+            Debug.Log($"[OmmoBuilder] Spawner manual \"{spawner.name}\" ligado (prioridade sobre o alvo).");
         }
 
-        // 3b. Áudio: cenas montadas antes de o GestorAudio existir não o têm no
-        // bootstrap — sem ele, Play direto nesta cena fica MUDO (sem ambiente,
-        // sem SFX do dardo). Garante o componente e (re)liga os clips.
+        // Sem alvo, o alinhamento por spawn precisa da raiz do mundo: deriva-a
+        // do spawner ou do marcador (câmara do FBX).
+        if (posicionador.RaizMundo == null)
+        {
+            Transform origem = spawner != null ? spawner.transform : posicionador.MarcadorVista;
+            if (origem != null)
+            {
+                Transform raizFallback = origem;
+                while (raizFallback.parent != null) raizFallback = raizFallback.parent;
+                posicionador.RaizMundo = raizFallback;
+                Debug.Log($"[OmmoBuilder] Raiz do mundo (alinhamento por spawn) = \"{raizFallback.name}\".");
+            }
+        }
+
+        // Áudio: garante o GestorAudio no bootstrap da cena (Play direto com som).
         var bootstrapCena = Object.FindObjectOfType<OmmoBootstrap>();
         if (bootstrapCena != null)
         {
@@ -613,26 +806,60 @@ public class OmmoSceneBuilder
         }
         else Debug.LogWarning("[OmmoBuilder] Sem OmmoBootstrap na cena — áudio não configurado.");
 
-        // 4. Iluminação: as luzes vindas do FBX (Blender) têm intensidades/alcances
-        // desregulados e não iluminam a sala — garante SEMPRE a direcional
-        // principal (idempotente por nome; afinável/apagável pelo utilizador).
-        // SEM sombras: numa cena interior, uma direcional com sombras deixa a
-        // sala às escuras (o teto sombreia tudo). Sem sombras comporta-se como
-        // a luz de cabeça da Scene view — tudo visível, look uniforme.
+        // Iluminação: as luzes dos FBX (Blender) vêm desreguladas — garante a
+        // direcional principal SEM sombras (idempotente por nome; afinável).
         if (GameObject.Find("LuzPrincipal") == null)
         {
             var luzGO = CreateEmpty("LuzPrincipal");
             var luz = luzGO.AddComponent<Light>();
             luz.type      = LightType.Directional;
-            luz.color     = new Color(1f, 0.93f, 0.82f); // quente, tom de bar
+            luz.color     = new Color(1f, 0.93f, 0.82f); // quente
             luz.intensity = 1.05f;
             luz.shadows   = LightShadows.None;
             luzGO.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
             Debug.Log("[OmmoBuilder] Adicionada a direcional principal sem sombras (LuzPrincipal).");
         }
+    }
 
-        EditorSceneManager.MarkAllScenesDirty();
-        Debug.Log("[OmmoBuilder] ✅ MinijogoDardos instalado (gravar a cena para persistir).");
+    /// <summary>
+    /// Normaliza a escala do mundo pela dimensão MÁXIMA dos bounds de todos os
+    /// renderers: se o mundo for &gt;1.5× maior que o alvo, o root do FBX é
+    /// reduzido para caber. (Os FBX do Blender chegam muitas vezes ×100 — foi
+    /// assim com o bar dos dardos; sem isto o jogador fica DENTRO de geometria
+    /// colossal: backfaces pretas, buracos brancos de culling, z-fighting.)
+    /// </summary>
+    static void NormalizarEscalaMundoPorBounds(float dimensaoMaxAlvo)
+    {
+        var rends = Object.FindObjectsOfType<Renderer>();
+        if (rends.Length == 0) { Debug.Log("[OmmoBuilder] Sem renderers na cena — mundo por montar?"); return; }
+
+        Bounds b = rends[0].bounds;
+        Renderer maior = rends[0];
+        foreach (var r in rends)
+        {
+            b.Encapsulate(r.bounds);
+            if (r.bounds.size.sqrMagnitude > maior.bounds.size.sqrMagnitude) maior = r;
+        }
+        float dimMax = Mathf.Max(b.size.x, b.size.y, b.size.z);
+        Debug.Log($"[OmmoBuilder] 🌍 Bounds do mundo: {b.size.x:F1} × {b.size.y:F1} × {b.size.z:F1} m (centro {b.center}).");
+
+        if (dimMax <= dimensaoMaxAlvo * 2f || dimMax <= 0.001f)
+        {
+            Debug.Log($"[OmmoBuilder] Escala do mundo OK ({dimMax:F1} m; esperado até ~{dimensaoMaxAlvo:F0} m).");
+            return;
+        }
+
+        Transform raiz = maior.transform;
+        while (raiz.parent != null) raiz = raiz.parent;
+
+        // Ordem de grandeza do export ×100 do Blender → corrige EXATAMENTE ÷100
+        // (preserva o tamanho autoral do mundo — encaixar num alvo arbitrário
+        // encolhia mundos legitimamente grandes e o jogador ficava gigante).
+        // Fora dessa ordem de grandeza, encaixa no esperado como último recurso.
+        float fator = dimMax > dimensaoMaxAlvo * 20f ? 0.01f : dimensaoMaxAlvo / dimMax;
+        raiz.localScale *= fator;
+        Debug.Log($"[OmmoBuilder] 🌍 Escala do mundo normalizada: {dimMax:F0} m → {dimMax * fator:F0} m " +
+                  $"(fator {fator:E2}; root \"{raiz.name}\", escala = {raiz.localScale.x:F4}).");
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -675,11 +902,13 @@ public class OmmoSceneBuilder
 
         var grelha = content.AddComponent<GridLayoutGroup>();
         grelha.cellSize        = new Vector2(420f, 635f);   // = tamanho fixo dos cards
-        grelha.spacing         = new Vector2(20f, 20f);
+        grelha.spacing         = new Vector2(40f, 20f);
         grelha.padding         = new RectOffset(0, 0, 70, 70);
         grelha.startCorner     = GridLayoutGroup.Corner.UpperLeft;
         grelha.startAxis       = GridLayoutGroup.Axis.Horizontal;
-        grelha.childAlignment  = TextAnchor.UpperLeft;
+        // CENTRADO: com menos cards que colunas (hoje são 2), ficam no meio do
+        // painel em vez de encostados à esquerda.
+        grelha.childAlignment  = TextAnchor.UpperCenter;
         grelha.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
         grelha.constraintCount = 4;
 
@@ -693,13 +922,12 @@ public class OmmoSceneBuilder
         scroll.movementType      = ScrollRect.MovementType.Clamped;
         scroll.scrollSensitivity = 30f;
 
-        // Cards — um por exercício (4).
+        // Cards — um por exercício COM minijogo pronto (abdução lateral e POMAR
+        // escondidos até estarem jogáveis; o mapa de cenas está no MinigameSelectionUI).
         var tipos = new[]
         {
-            ExerciciosWaypoints.TipoExercicio.FlexaoBraco,
-            ExerciciosWaypoints.TipoExercicio.ElevacaoTotal,
-            ExerciciosWaypoints.TipoExercicio.AbducaoLateral,
-            ExerciciosWaypoints.TipoExercicio.FlexaoCotovelo,
+            ExerciciosWaypoints.TipoExercicio.FlexaoBraco,    // DARDOS
+            ExerciciosWaypoints.TipoExercicio.ElevacaoTotal,  // HANGAR
         };
         var cards = new SelectionCard[tipos.Length];
         for (int i = 0; i < tipos.Length; i++)
@@ -728,6 +956,18 @@ public class OmmoSceneBuilder
         return selUI;
     }
 
+    /// <summary>Título do minijogo de cada exercício (texto do card).</summary>
+    static string TituloJogo(ExerciciosWaypoints.TipoExercicio tipo)
+    {
+        switch (tipo)
+        {
+            case ExerciciosWaypoints.TipoExercicio.FlexaoBraco:    return "DARDOS";
+            case ExerciciosWaypoints.TipoExercicio.ElevacaoTotal:  return "HANGAR";
+            case ExerciciosWaypoints.TipoExercicio.FlexaoCotovelo: return "POMAR";
+            default:                                               return "DARDOS";
+        }
+    }
+
     static SelectionCard ConstruirCard(Transform pai, ExerciciosWaypoints.TipoExercicio tipo)
     {
         // O tamanho/posição reais vêm do GridLayoutGroup do Content (cellSize 420×635);
@@ -741,19 +981,29 @@ public class OmmoSceneBuilder
         if (cardSprite != null) cardImg.sprite = cardSprite; else cardImg.color = new Color(0.18f, 0.55f, 0.25f);
         var cardBtn = card.AddComponent<Button>();
 
-        // Imagem do exercício — dentro da moldura desenhada (10%–50% da altura).
-        // As imagens do artista são ~quadradas (584×573) e já trazem a borda que
-        // combina com o card — preserveAspect evita distorção dentro da zona.
+        // Imagem do exercício — rects por estado AFINADOS pelo utilizador
+        // (2026-07-18): repouso (ícone) 800×400 @ (-1,10); hover (demo, artes
+        // mais pequenas) 950×575 @ (-5,90) — o CardAnimacaoHover troca entre
+        // eles ao entrar/sair do hover.
         var img = CriarImagem("ImagemExercicio", card.transform, null,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(330f, 240f));
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-1f, 10f), new Vector2(800f, 400f));
         img.raycastTarget  = false;
         img.preserveAspect = true;
         var hover = card.AddComponent<CardAnimacaoHover>();
-        hover.ImagemAlvo = img;
-        hover.Sprites    = CarregarSpritesExercicio(tipo);
+        hover.ImagemAlvo    = img;
+        hover.Sprites       = CarregarSpritesExercicio(tipo);
+        hover.SpriteRepouso = CarregarIconeMinijogo(tipo); // ícone em repouso; demo no hover
+        // Sprite inicial gravado na cena = o que se vê em repouso.
+        var inicial = hover.SpriteRepouso != null ? hover.SpriteRepouso
+                    : (hover.Sprites.Length > 0 ? hover.Sprites[0] : null);
+        // CriarImagem(null) deixa a cor com alfa ~0 (placeholder invisível) — ao
+        // atribuir o sprite, a cor TEM de voltar a opaca, senão nada aparece.
+        if (inicial != null) { img.sprite = inicial; img.color = Color.white; }
+        Debug.Log($"[OmmoBuilder] Card {tipo}: ícone={(hover.SpriteRepouso != null ? hover.SpriteRepouso.name : "—")}, " +
+                  $"demo={hover.Sprites.Length} frames, inicial={(inicial != null ? inicial.name : "NENHUM ⚠")}.");
 
         // Título do jogo — na faixa desenhada (~53%–60% da altura).
-        var titulo = CriarTexto("TituloJogo", card.transform, "DARDOS", 40, TextAlignmentOptions.Center,
+        var titulo = CriarTexto("TituloJogo", card.transform, TituloJogo(tipo), 40, TextAlignmentOptions.Center,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -337f), new Vector2(330f, 48f), Color.white, PoppinsExtraBold, FontStyles.Bold);
         titulo.raycastTarget = false;
@@ -921,12 +1171,13 @@ public class OmmoSceneBuilder
         audio.SfxLancamentoDardo     = Clip("Darts/dartThrow");
         audio.AmbienteBarDardos      = Clip("Darts/barAmbience");
 
-        // Música de fundo do hub (a adicionar pelo utilizador — nomes candidatos).
-        audio.MusicaHub = Clip("backgroundMusic", avisarSeFaltar: false)
-                       ?? Clip("musicaFundo",     avisarSeFaltar: false)
-                       ?? Clip("hubMusic",        avisarSeFaltar: false);
+        // Música de fundo do hub (toca em loop nos menus; para nos minijogos).
+        audio.MusicaHub = Clip("MusicaDeFundoPaiva", avisarSeFaltar: false)
+                       ?? Clip("backgroundMusic",    avisarSeFaltar: false)
+                       ?? Clip("musicaFundo",        avisarSeFaltar: false)
+                       ?? Clip("hubMusic",           avisarSeFaltar: false);
         if (audio.MusicaHub == null)
-            Debug.Log($"[OmmoBuilder] Sem música de fundo do hub — coloca um \"backgroundMusic.mp3\" " +
+            Debug.Log($"[OmmoBuilder] Sem música de fundo do hub — coloca um \"MusicaDeFundoPaiva.mp3\" " +
                       $"em {PastaSons} e refaz o Build (ou atribui no Inspector do GestorAudio).");
     }
 
@@ -1203,18 +1454,56 @@ public class OmmoSceneBuilder
         }
     }
 
-    /// <summary>Sprites da animação do exercício (UIAssets/Exercises/&lt;prefixo&gt;_1..5.png).</summary>
+    /// <summary>
+    /// Ícone do minijogo do exercício — o PNG de nome NÃO numérico na pasta
+    /// Resources/Exercises/&lt;Tipo&gt; (ex.: "preven game_dardos.png"; os frames
+    /// da demo chamam-se 1..5). Devolve null se o artista ainda não o entregou.
+    /// </summary>
+    static Sprite CarregarIconeMinijogo(ExerciciosWaypoints.TipoExercicio tipo)
+    {
+        string dir = $"Assets/Resources/Exercises/{tipo}";
+        if (System.IO.Directory.Exists(dir))
+        {
+            foreach (var f in System.IO.Directory.GetFiles(dir, "*.png"))
+            {
+                string nome = System.IO.Path.GetFileNameWithoutExtension(f);
+                if (int.TryParse(nome, out _)) continue; // frame da demo
+                return CarregarSpriteAsset(f.Replace('\\', '/'));
+            }
+        }
+        Debug.LogWarning($"[OmmoBuilder] Sem ícone de minijogo para {tipo} em {dir} — " +
+                         "o card usa o 1º frame da demo em repouso.");
+        return null;
+    }
+
+    /// <summary>
+    /// Sprites da animação do exercício. Fonte primária: Resources/Exercises/&lt;Tipo&gt;/1..5.png
+    /// (nomes ASCII — imunes a problemas de normalização Unicode dos nomes com acentos);
+    /// fallback: UIAssets/Exercises/&lt;prefixo&gt;_1..5.png (nomes do artista).
+    /// </summary>
     static Sprite[] CarregarSpritesExercicio(ExerciciosWaypoints.TipoExercicio tipo)
     {
         var lista = new List<Sprite>();
-        string prefixo = PrefixoImagensExercicio(tipo);
+
         for (int s = 1; s <= 5; s++)
         {
-            var sp = CarregarSpriteAsset($"{PastaUI}/Exercises/{prefixo}_{s}.png");
+            var sp = CarregarSpriteAsset($"Assets/Resources/Exercises/{tipo}/{s}.png");
             if (sp != null) lista.Add(sp);
         }
+
         if (lista.Count == 0)
-            Debug.LogWarning($"[OmmoBuilder] Sem imagens para {tipo} (esperava {PastaUI}/Exercises/{prefixo}_1..5.png).");
+        {
+            string prefixo = PrefixoImagensExercicio(tipo);
+            for (int s = 1; s <= 5; s++)
+            {
+                var sp = CarregarSpriteAsset($"{PastaUI}/Exercises/{prefixo}_{s}.png");
+                if (sp != null) lista.Add(sp);
+            }
+        }
+
+        if (lista.Count == 0)
+            Debug.LogWarning($"[OmmoBuilder] ⚠ SEM imagens de demo para {tipo} — nem em " +
+                             $"Resources/Exercises/{tipo}/1..5.png nem em {PastaUI}/Exercises.");
         return lista.ToArray();
     }
 

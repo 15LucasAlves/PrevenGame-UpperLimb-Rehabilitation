@@ -56,7 +56,7 @@ public class SessionManager : MonoBehaviour
     /// exclusivamente no fluxo VR+Ommo real. Voltar a true só quando for preciso
     /// testar sem hardware.
     /// </summary>
-    public static bool ModoComandoPermitido = false;
+    public static bool ModoComandoPermitido = true;
 
     /// <summary>
     /// Quando true, o comando do Quest substitui o sensor Ommo (SIU): a
@@ -124,6 +124,9 @@ public class SessionManager : MonoBehaviour
 
     public bool     TemAtual => _indice >= 0 && _indice < _fila.Count;
     public Minijogo Atual    => TemAtual ? _fila[_indice] : default;
+
+    /// <summary>True enquanto houver mais minijogos na fila DEPOIS do atual.</summary>
+    public bool TemProximo => _indice + 1 < _fila.Count;
 
     // ── Unity ─────────────────────────────────────────────────────────
     void Awake()

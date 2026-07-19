@@ -6,11 +6,8 @@ using UnityEngine;
 /// Regras (decididas com o utilizador):
 ///   • O ombro segue a POSIÇÃO da câmara (se o jogador andar/deslocar-se, o ombro
 ///     acompanha — não se assume que está sentado).
-///   • A ROTAÇÃO da cabeça é largamente ignorada: um olhar rápido para o lado NÃO
-///     move o ombro. Mantém-se um "yaw de corpo" que só segue o yaw da cabeça
-///     quando este se afasta mais de <see cref="DeadbandGraus"/> e, mesmo aí,
-///     a uma velocidade limitada (<see cref="VelocidadeGrausPorSegundo"/>) —
-///     só uma rotação sustentada do corpo re-orienta os ombros.
+///   • O yaw de corpo segue o yaw da cabeça DIRETAMENTE, sem deadband nem
+///     suavização — o exercício acompanha o jogador rigidamente.
 ///
 /// O offset cabeça→ombro por braço vem da calibração (headset posto), guardado em
 /// <see cref="SessionManager.DadosBraco.OffsetOmbroLocalCabeca"/> no referencial
@@ -18,12 +15,6 @@ using UnityEngine;
 /// </summary>
 public class RastreadorCorpoJogador : MonoBehaviour
 {
-    [Tooltip("Desvio de yaw cabeça↔corpo (graus) a partir do qual o corpo começa a seguir a cabeça.")]
-    public float DeadbandGraus = 30f;
-
-    [Tooltip("Velocidade máxima (graus/s) a que o yaw de corpo segue a cabeça fora da deadband.")]
-    public float VelocidadeGrausPorSegundo = 60f;
-
     [Tooltip("Esferas de debug nos ombros estimados (editor/desenvolvimento).")]
     public bool MostrarDebug = false;
 
@@ -39,7 +30,6 @@ public class RastreadorCorpoJogador : MonoBehaviour
                          GestorXR.Instancia.Cabeca != null;
 
     private float _yawCorpo;
-    private bool  _inicializado;
     private GameObject _debugEsq, _debugDir;
 
     void Update()
@@ -47,22 +37,8 @@ public class RastreadorCorpoJogador : MonoBehaviour
         var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
         if (cabeca == null) return;
 
-        float yawCabeca = cabeca.eulerAngles.y;
-        if (!_inicializado)
-        {
-            _yawCorpo     = yawCabeca;
-            _inicializado = true;
-        }
-
-        // Fora da deadband, o corpo segue a cabeça a velocidade limitada até
-        // voltar a ficar dentro da deadband (rotação sustentada = corpo rodou).
-        float delta = Mathf.DeltaAngle(_yawCorpo, yawCabeca);
-        if (Mathf.Abs(delta) > DeadbandGraus)
-        {
-            float alvo = yawCabeca - Mathf.Sign(delta) * DeadbandGraus;
-            _yawCorpo = Mathf.MoveTowardsAngle(_yawCorpo, alvo,
-                                               VelocidadeGrausPorSegundo * Time.deltaTime);
-        }
+        // Rígido: o yaw de corpo É o yaw da cabeça (sem deadband nem lerp).
+        _yawCorpo = cabeca.eulerAngles.y;
 
         AtualizarDebug();
     }
@@ -71,7 +47,7 @@ public class RastreadorCorpoJogador : MonoBehaviour
     public void ReporYawCorpo()
     {
         var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
-        if (cabeca != null) { _yawCorpo = cabeca.eulerAngles.y; _inicializado = true; }
+        if (cabeca != null) _yawCorpo = cabeca.eulerAngles.y;
     }
 
     /// <summary>
@@ -108,30 +84,22 @@ public class RastreadorCorpoJogador : MonoBehaviour
         return dados.PosOmbro;
     }
 
-    /// <summary>Direção frente atual do braço pedido (yaw de corpo aplicado ao valor calibrado).</summary>
+    /// <summary>
+    /// Direção frente atual do braço pedido. Com VR é SEMPRE o forward horizontal
+    /// dos óculos — o exercício (waypoints, arco guia, marcador) fica paralelo à
+    /// direção da cabeça, não à direção que calhou ficar gravada na calibração
+    /// (essa saía torta se a cabeça estivesse rodada ao calibrar).
+    /// </summary>
     public Vector3 ObterDirecaoFrenteAtual(bool direito)
     {
+        var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
+        if (cabeca != null)
+            return YawCorpo * Vector3.forward;
+
         var sm = SessionManager.Instancia;
         if (sm == null) return Vector3.forward;
         var dados = sm.ObterBraco(direito);
-        if (!dados.Valido) return Vector3.forward;
-
-        var cabeca = UsaVr ? GestorXR.Instancia.Cabeca : null;
-        if (cabeca != null)
-        {
-            if (dados.TemDadosCabeca)
-                return (YawCorpo * dados.DirecaoFrenteLocal).normalized;
-
-            var outro = sm.ObterBraco(!direito);
-            if (outro.Valido && outro.TemDadosCabeca)
-            {
-                var dir = outro.DirecaoFrenteLocal;
-                dir.x = -dir.x; // espelho lateral em yaw-local
-                return (YawCorpo * dir).normalized;
-            }
-        }
-
-        return dados.DirecaoFrente;
+        return dados.Valido ? dados.DirecaoFrente : Vector3.forward;
     }
 
     private bool _avisoEspelhoDado;

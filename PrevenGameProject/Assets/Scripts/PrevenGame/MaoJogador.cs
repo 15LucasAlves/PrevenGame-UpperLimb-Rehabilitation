@@ -24,10 +24,6 @@ public class MaoJogador : MonoBehaviour
     [Tooltip("Em Modo Comando: usar o comando direito (true) ou esquerdo (false).")]
     public bool MaoDireita = true;
 
-    [Tooltip("Esconde o cubo interno do OmmoDevice — o visual do jogador é o campo Visual " +
-             "(modelo GRASP na calibração) ou o dardo no minijogo, nunca o cubo.")]
-    public bool EsconderVisualSensor = true;
-
     /// <summary>Dispositivo atualmente seguido (null enquanto nenhum sensor liga).</summary>
     public OmmoDevice Device { get; private set; }
 
@@ -101,19 +97,8 @@ public class MaoJogador : MonoBehaviour
             if (Device == null) return;
         }
 
-        // Visual do cubo do SIU: visível na calibração, escondido nos minijogos
-        // (o GestorMinijogo põe EsconderVisualSensor=true). Aplicado dinamicamente.
-        if (Device != null)
-        {
-            var sensorT = Device.ObterTransformSensor(IndiceSensor);
-            if (sensorT != null)
-            {
-                bool mostrar = !EsconderVisualSensor;
-                foreach (var r in sensorT.GetComponentsInChildren<Renderer>(true))
-                    if (r.enabled != mostrar) r.enabled = mostrar;
-            }
-        }
-
+        // Os cubos dos sensores são escondidos na fonte (OmmoDevice) — o visual
+        // do jogador é só o campo Visual (GRASP) ou o dardo do minijogo.
         bool ativa = Ativa;
         if (Visual != null && Visual.activeSelf != ativa) Visual.SetActive(ativa);
         if (!ativa) return;

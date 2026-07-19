@@ -289,15 +289,28 @@ public class GestorXR : MonoBehaviour
         var marcador = FindObjectOfType<CamaraDesktop>();
         _camaraDesktop = marcador != null ? marcador.GetComponent<Camera>() : null;
 
-        // Exatamente um AudioListener ativo: o da câmara desktop, ou o primeiro encontrado.
+        // Exatamente um AudioListener FUNCIONAL: o da câmara desktop, senão o da
+        // cabeça do rig, senão o primeiro num GameObject ATIVO. Um listener num
+        // GO inativo não conta — sem nenhum utilizável (ex.: a cena dos dardos,
+        // onde as câmaras do FBX não trazem listener e o rig nasce sem ele),
+        // garante-se um neste objeto persistente: sem listener o Unity avisa
+        // todos os frames e não há som.
         var listeners = FindObjectsOfType<AudioListener>(true);
         AudioListener escolhido = null;
         if (_camaraDesktop != null) escolhido = _camaraDesktop.GetComponent<AudioListener>();
-        foreach (var l in listeners)
+        if (escolhido == null && _rig != null && _rig.centerEyeAnchor != null)
+            escolhido = _rig.centerEyeAnchor.GetComponent<AudioListener>();
+        if (escolhido == null)
+            foreach (var l in listeners)
+                if (l.gameObject.activeInHierarchy) { escolhido = l; break; }
+        if (escolhido == null || !escolhido.gameObject.activeInHierarchy)
         {
-            if (escolhido == null) escolhido = l;
-            l.enabled = (l == escolhido);
+            escolhido = gameObject.GetComponent<AudioListener>();
+            if (escolhido == null) escolhido = gameObject.AddComponent<AudioListener>();
         }
+        foreach (var l in listeners) l.enabled = (l == escolhido);
+        escolhido.enabled = true;
+        Debug.Log($"[GestorXR] AudioListener ativo em \"{escolhido.gameObject.name}\".");
     }
 
     /// <summary>

@@ -9,6 +9,10 @@ public class OmmoDevice : MonoBehaviour
     [Tooltip("Sensor Prefab.")]
     public GameObject SensorPrefab;
 
+    [Tooltip("Mostrar os cubos/visuais dos sensores (DEBUG). No jogo ficam sempre " +
+             "escondidos — o visual do jogador é o modelo GRASP (calibração) ou o dardo (minijogo).")]
+    public bool MostrarVisuaisSensores = false;
+
     private List<GameObject> _sensors = new List<GameObject>();
 
     private Task _dataTask;
@@ -40,6 +44,18 @@ public class OmmoDevice : MonoBehaviour
     [Tooltip("Intervalo em segundos entre cada linha de debug na consola (0 = desativado).")]
     public float DebugIntervalSegundos = 0f;
     private float _debugTimer = 0f;
+
+    [Tooltip("Relatório de jitter do sensor 0 a cada segundo: amostras/s, média local e " +
+             "pico-a-pico (mm) dos dados RAW vs FILTRADOS + pose do referencial (BaseStation). " +
+             "Com a mão imóvel, o pico-a-pico É o jitter do sensor; se o filtrado for estável " +
+             "mas o visual tremer, o culpado é o referencial (re-alinhamento QR).")]
+    public bool DebugJitter = true;
+
+    // Estatísticas de jitter (acumuladas no thread gRPC, sob lock(this))
+    private int     _jitN;
+    private Vector3 _jitSomaRaw, _jitMinRaw, _jitMaxRaw;
+    private Vector3 _jitMinFilt, _jitMaxFilt;
+    private long    _jitInicioTicks;
 
     // TODO: make this a singleton
     private Ommo.Client _client;
@@ -135,7 +151,13 @@ public class OmmoDevice : MonoBehaviour
         for (int i = 0; i < sensorCount; i++)
         {
             Vector3 posInicial = _referencial != null ? _referencial.position : Vector3.zero;
-            _sensors.Add(Instantiate(SensorPrefab, posInicial, Quaternion.identity, gameObject.transform));
+            var clone = Instantiate(SensorPrefab, posInicial, Quaternion.identity, gameObject.transform);
+            // Os cubos dos sensores nunca aparecem no jogo (TODOS os índices —
+            // um SIU pode reportar mais do que um sensor).
+            if (!MostrarVisuaisSensores)
+                foreach (var r in clone.GetComponentsInChildren<Renderer>(true))
+                    r.enabled = false;
+            _sensors.Add(clone);
         }
 
         _sensorPositions    = new Vector3[sensorCount];
@@ -280,7 +302,52 @@ public class OmmoDevice : MonoBehaviour
                 // So we take the inverse as Unity frame is the Base station frame (with Y and Z axis swapped)
                 // We swap Y and Z values again to match Ommo Base station coordinate frame to Unity coordinate frame
                 _sensorOrientations[i] = Quaternion.Inverse(new Quaternion(mes.Quaternions[i].X, mes.Quaternions[i].Z, mes.Quaternions[i].Y, mes.Quaternions[i].W));
+
+                if (DebugJitter && i == 0 && rawPos != Vector3.zero)
+                    AcumularJitter(rawPos, _sensorPositions[0]);
             }
         }
+    }
+
+    /// <summary>
+    /// Acumula estatísticas de jitter do sensor 0 (chamado sob lock, no thread gRPC)
+    /// e a cada segundo despacha um relatório para a consola: taxa de amostras,
+    /// média local e pico-a-pico raw/filtrado, mais a pose do referencial.
+    /// </summary>
+    private void AcumularJitter(Vector3 raw, Vector3 filtrado)
+    {
+        if (_jitN == 0)
+        {
+            _jitInicioTicks = DateTime.UtcNow.Ticks;
+            _jitSomaRaw = Vector3.zero;
+            _jitMinRaw  = _jitMaxRaw  = raw;
+            _jitMinFilt = _jitMaxFilt = filtrado;
+        }
+        _jitN++;
+        _jitSomaRaw += raw;
+        _jitMinRaw  = Vector3.Min(_jitMinRaw,  raw);      _jitMaxRaw  = Vector3.Max(_jitMaxRaw,  raw);
+        _jitMinFilt = Vector3.Min(_jitMinFilt, filtrado); _jitMaxFilt = Vector3.Max(_jitMaxFilt, filtrado);
+
+        double seg = (DateTime.UtcNow.Ticks - _jitInicioTicks) / (double)TimeSpan.TicksPerSecond;
+        if (seg < 1.0) return;
+
+        int     n      = _jitN;
+        Vector3 media  = _jitSomaRaw / n;
+        Vector3 ppRaw  = (_jitMaxRaw  - _jitMinRaw)  * 1000f; // m → mm
+        Vector3 ppFilt = (_jitMaxFilt - _jitMinFilt) * 1000f;
+        _jitN = 0;
+
+        string nome = _nomeCache ?? "OmmoDevice";
+        UnityMainThreadDispatcher.Enqueue(() =>
+        {
+            var r = _referencial;
+            string baseTxt = r != null
+                ? $"base=({r.position.x:F3}, {r.position.y:F3}, {r.position.z:F3}) yaw={r.eulerAngles.y:F1}°"
+                : "base=—";
+            Debug.Log($"[OmmoJitter] {nome} S0: {n / seg:F0} amostras/s | " +
+                      $"média local m=({media.x:F3}, {media.y:F3}, {media.z:F3}) | " +
+                      $"pico-a-pico mm raw=({ppRaw.x:F1}, {ppRaw.y:F1}, {ppRaw.z:F1}) " +
+                      $"filtrado=({ppFilt.x:F1}, {ppFilt.y:F1}, {ppFilt.z:F1}) | {baseTxt}");
+        });
     }
 }

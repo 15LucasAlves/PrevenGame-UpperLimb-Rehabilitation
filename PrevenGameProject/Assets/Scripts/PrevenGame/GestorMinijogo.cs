@@ -73,8 +73,6 @@ public class GestorMinijogo : MonoBehaviour
         // Minijogos correm em VR (se falhar, continua no monitor com fallback de calibração).
         GestorXR.ObterOuCriar().ModoVR();
 
-        // No jogo o único visual da mão é o dardo — o cubo do SIU fica escondido.
-        if (Mao != null) Mao.EsconderVisualSensor = true;
         // Em Modo Comando não há hardware Ommo — o tracking nem arranca.
         if (!EmModoComando && SensorManager != null) SensorManager.IniciarTracking(1);
         if (Pressao != null) Pressao.OnPressao += AoPressao;
@@ -247,11 +245,15 @@ public class GestorMinijogo : MonoBehaviour
             if (Ecra.PainelTabela != null) Ecra.PainelTabela.SetActive(false);
 
             // Só o feedback; o resultado detalhado vê-se no monitor a seguir.
+            // Com mais minijogos na fila, o jogador FICA de óculos postos.
             float media = MediaGlobal();
             string elogio = media >= 75f ? "Excelente trabalho!"
                           : media >= 45f ? "Bom trabalho!"
                           :                "Boa tentativa — continua!";
-            Ecra.MostrarTexto($"{elogio}\nRemove os óculos para veres o teu resultado.");
+            bool haProximo = SessionManager.Instancia != null && SessionManager.Instancia.TemProximo;
+            Ecra.MostrarTexto($"{elogio}\n" + (haProximo
+                ? "Espera enquanto carregamos o próximo exercício…"
+                : "Remove os óculos para veres o teu resultado."));
         }
     }
 

@@ -18,8 +18,20 @@ public class MinigameSelectionUI : MonoBehaviour
     [Tooltip("CanvasGroup do painel — a interação fica bloqueada enquanto o tutorial fala.")]
     public CanvasGroup GrupoInteracao;
 
-    [Tooltip("Cena de minijogo a carregar (por agora todos os exercícios usam a cena dos dardos).")]
+    [Tooltip("Cena de minijogo de FALLBACK (exercícios sem cena própria no mapa CenaParaTipo).")]
     public string CenaMinijogo = "MinijogoDardos";
+
+    /// <summary>Cena de minijogo de cada exercício (fallback: <see cref="CenaMinijogo"/>).</summary>
+    public string CenaParaTipo(ExerciciosWaypoints.TipoExercicio tipo)
+    {
+        switch (tipo)
+        {
+            case ExerciciosWaypoints.TipoExercicio.FlexaoBraco:    return "MinijogoDardos";
+            case ExerciciosWaypoints.TipoExercicio.FlexaoCotovelo: return "MinijogoPomar";
+            case ExerciciosWaypoints.TipoExercicio.ElevacaoTotal:  return "MinijogoAviao";
+            default:                                               return CenaMinijogo;
+        }
+    }
 
     /// <summary>Ação do botão EXIT (definida pelo GameFlowManager; por omissão sai da app).</summary>
     public System.Action AoSair;
@@ -71,7 +83,7 @@ public class MinigameSelectionUI : MonoBehaviour
                     Tipo  = c.Tipo,
                     RepsL = c.RepsL,
                     RepsR = c.RepsR,
-                    Cena  = CenaMinijogo,
+                    Cena  = CenaParaTipo(c.Tipo),
                 });
             }
 

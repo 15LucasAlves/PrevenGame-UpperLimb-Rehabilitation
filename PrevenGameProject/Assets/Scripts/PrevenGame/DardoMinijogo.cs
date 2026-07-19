@@ -45,10 +45,19 @@ public class DardoMinijogo : MonoBehaviour
         }
 
         transform.position = destino;
-        if (UsarRotacaoCravado) transform.rotation = Quaternion.Euler(RotacaoCravadoEuler);
         EmVoo   = false;
         Cravado = true;
         if (paiAlvo != null) transform.SetParent(paiAlvo, true);
+        if (UsarRotacaoCravado)
+        {
+            // Rotação LOCAL relativa ao aro, aplicada DEPOIS do SetParent — o
+            // Inspector lê exatamente RotacaoCravadoEuler (0,0,0) e o dardo fica
+            // direito mesmo com o mundo rodado à volta do jogador. O clone do
+            // modelo (filho) também é zerado (perdia a pose de mão 0,90,0).
+            transform.localRotation = Quaternion.Euler(RotacaoCravadoEuler);
+            foreach (Transform filho in transform)
+                filho.localRotation = Quaternion.identity;
+        }
         aoChegar?.Invoke();
     }
 }

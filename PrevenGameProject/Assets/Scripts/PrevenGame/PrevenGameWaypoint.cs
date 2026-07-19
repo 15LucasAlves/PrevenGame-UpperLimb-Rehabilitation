@@ -222,6 +222,47 @@ public class PrevenGameWaypoint : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Alimenta o rastreio da melhor distância ao centro SEM nunca concluir o
+    /// waypoint (modo lista: a conclusão é decidida pelo minijogo via
+    /// <see cref="ForcarCaptura"/> quando a palma chega ao PRÓXIMO ponto).
+    /// </summary>
+    public void RegistarPosicao(Vector3 posicao)
+    {
+        if (_atingido || _estado != EstadoWaypoint.Ativo) return;
+
+        float dist    = Vector3.Distance(posicao, transform.position);
+        float raioMax = _zonasConfiguradas ? _raios[_raios.Length - 1] : Raio;
+        if (dist <= raioMax)
+        {
+            _dentroDeZona    = true;
+            _melhorDistancia = Mathf.Min(_melhorDistancia, dist);
+        }
+    }
+
+    /// <summary>
+    /// Força a captura imediata do waypoint (ex.: a palma já entrou na zona do
+    /// PRÓXIMO ponto — com zonas sobrepostas, a saída da zona atual podia nunca
+    /// acontecer). Pontua pela melhor distância registada (ou pela distância
+    /// atual, se nunca chegou a entrar — nesse caso vale a zona mínima).
+    /// </summary>
+    public bool ForcarCaptura(Vector3 posicao)
+    {
+        if (_atingido || _estado != EstadoWaypoint.Ativo) return false;
+
+        float melhor = Mathf.Min(_melhorDistancia, Vector3.Distance(posicao, transform.position));
+        UltimaPontuacao = _zonasConfiguradas ? CalcularPontuacao(melhor) : 1f;
+        if (UltimaPontuacao <= 0f && _pontuacoes != null && _pontuacoes.Length > 0)
+            UltimaPontuacao = _pontuacoes[_pontuacoes.Length - 1]; // passou ao lado: zona mínima
+
+        _dentroDeZona    = false;
+        _melhorDistancia = float.MaxValue;
+        _atingido        = true;
+        SetEstado(EstadoWaypoint.Completo);
+        OnAtingido?.Invoke();
+        return true;
+    }
+
     /// <summary>Repõe o waypoint para reutilização (nova repetição).</summary>
     public void Repor()
     {

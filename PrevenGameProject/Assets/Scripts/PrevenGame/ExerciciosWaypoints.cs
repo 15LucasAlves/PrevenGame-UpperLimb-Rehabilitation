@@ -61,13 +61,15 @@ public static class ExerciciosWaypoints
         return bracoDireito ? d : -d;
     }
 
-    // ── EX1 — Flexão do Braço (bicep curl frontal, cotovelo 0°→144°) ──────
+    // ── EX1 — Flexão do Braço (bicep curl frontal, cotovelo 0°→180°) ──────
+    // Como na demo: braço paralelo ao chão, o cotovelo NÃO sai do sítio e o
+    // antebraço roda até a mão encostar ao ombro (flexão completa = 180°).
     static Vector3[] FlexaoBraco(Vector3 posOmbro, float L, Vector3 dirFrente)
     {
         float Lu = L * FRACAO_BRACO_SUPERIOR;
         float Lf = L * FRACAO_ANTEBRACO;
 
-        float[] angulos = { 0f, 36f, 72f, 108f, 144f };
+        float[] angulos = { 0f, 45f, 90f, 135f, 180f };
         var pos = new Vector3[angulos.Length];
         for (int i = 0; i < angulos.Length; i++)
         {

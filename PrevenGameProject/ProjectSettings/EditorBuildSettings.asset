@@ -11,6 +11,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MinijogoDardos.unity
     guid: bff27fbe11f0baf46ac037e171b3dda2
+  - enabled: 1
+    path: Assets/Scenes/MinijogoAviao.unity
+    guid: d5067d84ef992894093d48fb2d6fd2c2
+  - enabled: 1
+    path: Assets/Scenes/MinijogoPomar.unity
+    guid: 2626d86c6cb4ebb47b462c23a4b11905
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: abb4ce0f755a2c74abda9718ed614daa, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 0ef236fed6314c74ba65b4eca5811f2a, type: 2}

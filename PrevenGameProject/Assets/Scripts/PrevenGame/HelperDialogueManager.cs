@@ -100,15 +100,37 @@ public class HelperDialogueManager : MonoBehaviour
 
     public void Reproduzir(IEnumerable<HelperFala> falas, System.Action aoTerminar = null)
     {
-        _sequencia  = falas != null ? new List<HelperFala>(falas) : new List<HelperFala>();
+        var lista = falas != null ? new List<HelperFala>(falas) : new List<HelperFala>();
+
+        // Defesa contra duplo-arranque: pedir a MESMA sequência enquanto ela
+        // ainda está a ser reproduzida é sempre bug do chamador — ignora-se e
+        // denuncia-se quem foi (stack trace), em vez de recomeçar do zero.
+        if (_emSequencia && MesmaSequencia(lista))
+        {
+            Debug.LogWarning("[Dialogo] Reproduzir DUPLICADO ignorado — a mesma sequência já está em curso. " +
+                             "Chamador:\n" + StackTraceUtility.ExtractStackTrace());
+            return;
+        }
+
+        _sequencia  = lista;
         _idxSeq     = 0;
         _aoTerminar = aoTerminar;
 
         if (_sequencia.Count == 0) { aoTerminar?.Invoke(); return; }
 
+        Debug.Log($"[Dialogo] Reproduzir: {_sequencia.Count} falas (1ª: \"{_sequencia[0].Texto}\").");
         _emSequencia = true;
         AbrirPainel();
         MostrarAtual();
+    }
+
+    /// <summary>Compara a sequência pedida com a que está em curso (mesmos textos, pela ordem).</summary>
+    bool MesmaSequencia(List<HelperFala> outra)
+    {
+        if (_sequencia == null || _sequencia.Count != outra.Count) return false;
+        for (int i = 0; i < outra.Count; i++)
+            if (_sequencia[i].Texto != outra[i].Texto) return false;
+        return outra.Count > 0;
     }
 
     public void Avancar()
